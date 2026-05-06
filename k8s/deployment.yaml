@@ -1,0 +1,304 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stars-bot
+  namespace: stars-bot
+  labels:
+    app.kubernetes.io/name: stars-bot
+    app.kubernetes.io/component: bot
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: stars-bot
+      app.kubernetes.io/component: bot
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: stars-bot
+        app.kubernetes.io/component: bot
+    spec:
+      # Graceful shutdown: Kubernetes sends SIGTERM, waits this long, then SIGKILL
+      terminationGracePeriodSeconds: 30
+
+      containers:
+        - name: stars-bot
+          image: stars-bot:latest
+          imagePullPolicy: Never
+          ports:
+            # hostPort 7001 = порт NEG / health check Google LB. Внутри контейнера — 3001 (APPLICATION_PORT).
+            - name: http
+              containerPort: 3001
+              hostPort: 7001
+              protocol: TCP
+
+          # Graceful shutdown before SIGKILL
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep 5"]
+
+          # Environment from ConfigMap
+          envFrom:
+            - configMapRef:
+                name: stars-bot-config
+
+          # Environment from Secrets
+          env:
+            - name: ENABLE_CRON
+              value: "false"
+            - name: ENABLE_BROADCAST
+              value: "false"
+            - name: ENABLE_SCREENSHOT
+              value: "false"
+            - name: BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: BOT_TOKEN
+            - name: BOT_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: BOT_ADMIN_TOKEN
+            - name: BOT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: BOT_URL
+            - name: WEBHOOK_DOMAIN
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: WEBHOOK_DOMAIN
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: DATABASE_URL
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: REDIS_PASSWORD
+            - name: WALLET_ADDRESS
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: WALLET_ADDRESS
+            - name: WALLET_MNEMONIC
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: WALLET_MNEMONIC
+            - name: TONCENTER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: TONCENTER_API_KEY
+            - name: FRAGMENT_API_URL
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: FRAGMENT_API_URL
+            - name: FRAGMENT_STEL_SSID
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: FRAGMENT_STEL_SSID
+            - name: FRAGMENT_STEL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: FRAGMENT_STEL_TOKEN
+            - name: FRAGMENT_STEL_TON_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: FRAGMENT_STEL_TON_TOKEN
+            - name: PLATEGA_MERCHANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: PLATEGA_MERCHANT_ID
+            - name: PLATEGA_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: PLATEGA_SECRET
+            - name: HELEKET_MERCHANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: HELEKET_MERCHANT_ID
+            - name: HELEKET_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: HELEKET_API_KEY
+            - name: HELEKET_CALLBACK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: HELEKET_CALLBACK_URL
+            - name: PLATEGA_IP_WHITELIST
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: PLATEGA_IP_WHITELIST
+                  optional: true
+            - name: HELEKET_IP_WHITELIST
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: HELEKET_IP_WHITELIST
+                  optional: true
+            - name: SBP2_IP_WHITELIST
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: SBP2_IP_WHITELIST
+                  optional: true
+            - name: AURAPAY_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: AURAPAY_API_KEY
+                  optional: true
+            - name: AURAPAY_SHOP_ID
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: AURAPAY_SHOP_ID
+                  optional: true
+            - name: AURAPAY_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: AURAPAY_SECRET_KEY
+                  optional: true
+            - name: AURAPAY_CALLBACK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: AURAPAY_CALLBACK_URL
+                  optional: true
+            - name: AURAPAY_IP_WHITELIST
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: AURAPAY_IP_WHITELIST
+                  optional: true
+            - name: SBP2_PARTNER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: SBP2_PARTNER_ID
+                  optional: true
+            - name: SBP2_PROJECT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: SBP2_PROJECT_ID
+                  optional: true
+            - name: SBP2_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: SBP2_API_KEY
+                  optional: true
+            - name: SENTRY_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: SENTRY_DSN
+                  optional: true
+            - name: S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: S3_ACCESS_KEY_ID
+                  optional: true
+            - name: S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: S3_SECRET_ACCESS_KEY
+                  optional: true
+            - name: TELEGRAM_API_ID
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: TELEGRAM_API_ID
+                  optional: true
+            - name: TELEGRAM_API_HASH
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: TELEGRAM_API_HASH
+                  optional: true
+            - name: MISTRAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: MISTRAL_API_KEY
+                  optional: true
+
+          # --- Health checks ---
+
+          # Startup probe: give the app up to 60s to start (30 * 2s)
+          startupProbe:
+            httpGet:
+              path: /api/health/startup
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 2
+            failureThreshold: 30
+            timeoutSeconds: 3
+
+          # Liveness probe: restart pod if the event loop is stuck
+          livenessProbe:
+            httpGet:
+              path: /api/health/live
+              port: http
+            initialDelaySeconds: 0
+            periodSeconds: 15
+            failureThreshold: 3
+            timeoutSeconds: 5
+
+          # Readiness probe: stop routing traffic if dependencies are down
+          readinessProbe:
+            httpGet:
+              path: /api/health/ready
+              port: http
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            failureThreshold: 6
+            successThreshold: 1
+            timeoutSeconds: 10
+
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "3000m"
+              memory: "4Gi"
+
+          # Security context
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            readOnlyRootFilesystem: false
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+
+      # Pull secrets if using private registry
+      # imagePullSecrets:
+      #   - name: registry-credentials

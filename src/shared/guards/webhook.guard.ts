@@ -1,0 +1,179 @@
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  UnauthorizedException,
+  Logger,
+} from '@nestjs/common';
+import { Request } from 'express';
+import * as crypto from 'crypto';
+
+interface WebhookRequest extends Request {
+  webhookVerified?: boolean;
+  webhookProvider?: string;
+  rawBody?: Buffer;
+}
+
+@Injectable()
+export class WebhookGuard implements CanActivate {
+  private readonly logger = new Logger(WebhookGuard.name);
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest<WebhookRequest>();
+    const path = request.path;
+
+    try {
+      if (path.includes('/platega/')) {
+        await this.verifyPlategaWebhook(request);
+      } else if (path.includes('/heleket/')) {
+        await this.verifyHeleketWebhook(request);
+      } else if (path.includes('/sbp2/')) {
+        await this.verifySbp2Webhook(request);
+      } else if (path.includes('/aurapay/')) {
+        request.webhookVerified = true;
+        request.webhookProvider = 'aurapay';
+      } else {
+        this.logger.warn(`Unknown webhook path: ${path}`);
+        return false;
+      }
+
+      return true;
+    } catch {
+      throw new UnauthorizedException('Webhook verification failed');
+    }
+  }
+
+  private async verifyPlategaWebhook(request: WebhookRequest): Promise<void> {
+    const merchantIdRaw =
+      request.headers['x-merchantid'] ||
+      request.headers['x-merchant-id'] ||
+      request.headers['X-MerchantId'];
+    const merchantId = Array.isArray(merchantIdRaw)
+      ? merchantIdRaw[0]
+      : merchantIdRaw;
+
+    const secretRaw =
+      request.headers['x-secret'] || request.headers['X-Secret'];
+    const secret = Array.isArray(secretRaw) ? secretRaw[0] : secretRaw;
+
+    const expectedMerchantId = process.env.PLATEGA_MERCHANT_ID;
+    const expectedSecret = process.env.PLATEGA_SECRET;
+
+    if (!merchantId || !secret) {
+      throw new UnauthorizedException('Missing authentication headers');
+    }
+
+    if (merchantId !== expectedMerchantId) {
+      throw new UnauthorizedException('Invalid merchant ID');
+    }
+
+    if (secret !== expectedSecret) {
+      throw new UnauthorizedException('Invalid secret');
+    }
+
+    request.webhookVerified = true;
+    request.webhookProvider = 'platega';
+  }
+
+  private async verifyHeleketWebhook(request: WebhookRequest): Promise<void> {
+    const body = request.body;
+
+    if (!body || typeof body !== 'object') {
+      this.logger.error('Heleket webhook: empty or invalid body');
+      throw new UnauthorizedException('Invalid request body');
+    }
+
+    const receivedSign = body.sign;
+
+    if (!receivedSign) {
+      this.logger.error('Heleket webhook: missing sign in body');
+      throw new UnauthorizedException('Missing signature');
+    }
+
+    const merchantIdRaw =
+      request.headers['merchant'] ||
+      request.headers['Merchant'] ||
+      request.headers['MERCHANT'] ||
+      request.headers['x-merchant-id'];
+    const merchantId = Array.isArray(merchantIdRaw)
+      ? merchantIdRaw[0]
+      : merchantIdRaw;
+
+    const expectedMerchantId = process.env.HELEKET_MERCHANT_ID;
+
+    if (expectedMerchantId && merchantId && merchantId !== expectedMerchantId) {
+      throw new UnauthorizedException('Invalid merchant ID');
+    }
+
+    const isValidSignature = this.verifyHeleketSignature(body, receivedSign);
+
+    if (!isValidSignature) {
+      this.logger.error(
+        `Heleket webhook signature mismatch. Received sign: ${receivedSign?.substring(0, 8)}...`,
+      );
+      throw new UnauthorizedException('Invalid signature');
+    }
+
+    request.webhookVerified = true;
+    request.webhookProvider = 'heleket';
+  }
+
+  private async verifySbp2Webhook(request: WebhookRequest): Promise<void> {
+    const body = request.body;
+    const expectedProjectId = process.env.SBP2_PROJECT_ID;
+
+    if (expectedProjectId && body?.project_id) {
+      if (String(body.project_id) !== expectedProjectId) {
+        this.logger.error(
+          `1payment webhook: project_id mismatch. Expected: ${expectedProjectId}, got: ${body.project_id}`,
+        );
+        throw new UnauthorizedException('Invalid project ID');
+      }
+    }
+
+    request.webhookVerified = true;
+    request.webhookProvider = 'sbp2';
+  }
+
+  private verifyHeleketSignature(
+    body: Record<string, any>,
+    receivedSign: string,
+  ): boolean {
+    try {
+      const apiKey = process.env.HELEKET_API_KEY || '';
+
+      if (!apiKey) {
+        this.logger.error('HELEKET_API_KEY is not configured');
+        return false;
+      }
+
+      const dataWithoutSign = { ...body };
+      delete dataWithoutSign.sign;
+
+      const jsonString = JSON.stringify(dataWithoutSign).replace(/\//g, '\\/');
+
+      const base64Data = Buffer.from(jsonString).toString('base64');
+      const signData = base64Data + apiKey;
+      const expectedSign = crypto
+        .createHash('md5')
+        .update(signData)
+        .digest('hex');
+
+      const isValid = expectedSign.toLowerCase() === receivedSign.toLowerCase();
+
+      if (!isValid) {
+        this.logger.debug(
+          `Heleket signature debug: ` +
+            `expected=${expectedSign.substring(0, 8)}..., ` +
+            `received=${receivedSign.substring(0, 8)}..., ` +
+            `json_length=${jsonString.length}`,
+        );
+      }
+
+      return isValid;
+    } catch (error: any) {
+      this.logger.error(`Error verifying Heleket signature: ${error.message}`);
+      return false;
+    }
+  }
+}

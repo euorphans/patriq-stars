@@ -1,0 +1,46 @@
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+*.log
+
+# Production
+dist/
+build/
+
+logs/
+*.log
+.pm2/
+
+.env
+.env.*
+!.env.example
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+.DS_Store
+Thumbs.db
+
+prisma/*.db
+prisma/*.db-journal
+
+docker-compose.override.yml
+
+# Локальный перенос БД
+starsbot-data-*.dump
+.pg-migrate-seq-tmp.sql
+
+*.md
+
+*.pub
+*.pem
+id_rsa*
+
+*.tsbuildinfo
+.cache/

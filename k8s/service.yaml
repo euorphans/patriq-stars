@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stars-bot
+  namespace: stars-bot
+  labels:
+    app.kubernetes.io/name: stars-bot
+    app.kubernetes.io/component: bot
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: stars-bot
+    app.kubernetes.io/component: bot
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

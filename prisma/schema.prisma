@@ -1,0 +1,438 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum ProductType {
+  STARS
+  PREMIUM
+  TON
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+  REFUNDED
+  FRAUD
+}
+
+enum PaymentMethod {
+  PLATEGA
+  HELEKET
+  TON
+  SBP2
+  AURAPAY_SBP
+  AURAPAY_CARD
+}
+
+enum FragmentQueueStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id          String  @id @default(uuid())
+  telegram_id String  @unique
+  username    String?
+  first_name  String?
+  last_name   String?
+
+  role       UserRole @default(USER)
+  is_active  Boolean  @default(true)
+  is_ban     Boolean  @default(false)
+  is_premium Boolean  @default(false)
+  agreement  Boolean  @default(false)
+  language   String   @default("ru")
+
+  captcha_passed_count Int     @default(0)
+  captcha_failed_count Int     @default(0)
+  is_captcha_banned    Boolean @default(false)
+  is_bot_blocked       Boolean @default(false)
+
+  referred_by    String?
+  referrer       User?   @relation("UserReferrals", fields: [referred_by], references: [id], onDelete: SetNull)
+  referrals      User[]  @relation("UserReferrals")
+
+  mops_coins              Int @default(0)
+  referral_coins_earned   Int @default(0)
+
+  /// Last time the user claimed the daily Mops Bones bonus (calendar day in Europe/Moscow)
+  mops_daily_bonus_at DateTime?
+
+  payments       Payment[]
+  fragment_queue FragmentQueue[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([telegram_id])
+  @@index([username])
+  @@index([is_ban])
+  @@index([is_bot_blocked])
+  @@index([is_captcha_banned])
+  @@index([referred_by])
+  @@index([created_at])
+}
+
+model Payment {
+  id                         String        @id @default(uuid())
+  order_number               Int           @unique @default(autoincrement())
+  user                       User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id                    String
+  user_telegram_id           String
+  recipient                  String
+  recipient_username         String?
+  recipient_name             String?
+  product_type               ProductType
+  product_quantity           String
+  payment_method             PaymentMethod
+  payment_system             PaymentMethod
+  provider_transaction_id    String?       @unique
+  external_payment_id        String?       @unique
+  is_anonymous               Boolean       @default(false)
+  status                     PaymentStatus @default(PENDING)
+  amount_rub                 Decimal       @db.Decimal(10, 2)
+  amount_usd                 Decimal       @db.Decimal(10, 2)
+  amount_ton                 Decimal?      @db.Decimal(20, 9)
+  amount_crypto              Decimal?      @db.Decimal(20, 9)
+  crypto_currency            String?
+  payment_system_fee_percent Decimal?      @db.Decimal(5, 2)
+  service_markup_percent     Decimal?      @db.Decimal(5, 2)
+  our_fee_percent            Decimal?      @db.Decimal(5, 2)
+  usd_rate                   Decimal?      @db.Decimal(10, 4)
+  purchase_price_usd         Decimal?      @db.Decimal(10, 2)
+  net_profit_rub             Decimal?      @db.Decimal(10, 2)
+  payment_url                String?
+  fragment_cookie            String?
+  payment_message_id         String?
+  details_message_id         String?
+  fragment_screenshot        String?
+  stuck_resolved_at          DateTime?
+  mops_coin_awarded          Boolean       @default(false)
+
+  created_at         DateTime            @default(now())
+  updated_at         DateTime            @updatedAt
+  fragment_queue     FragmentQueue[]
+  payment_phone      PaymentPhone?
+  notification_queue NotificationQueue[]
+
+  @@index([user_id])
+  @@index([user_telegram_id])
+  @@index([status])
+  @@index([product_type])
+  @@index([created_at])
+  @@index([status, payment_method])
+  @@index([status, created_at])
+  @@index([status, payment_method, created_at])
+  @@index([recipient_username])
+  @@map("payments")
+}
+
+model FragmentAccount {
+  id             String  @id @default(uuid())
+  name           String
+  stel_ssid      String
+  stel_token     String
+  stel_ton_token String
+  stel_hash      String?
+  is_active      Boolean @default(true)
+  priority       Int     @default(0)
+
+  fragment_queue FragmentQueue[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([is_active])
+  @@index([is_active, priority])
+  @@map("fragment_accounts")
+}
+
+model FragmentQueue {
+  id                    String              @id @default(uuid())
+  user                  User                @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id               String
+  payment               Payment?            @relation(fields: [payment_id], references: [id], onDelete: SetNull)
+  payment_id            String?             @unique
+  username              String
+  stars                 Int?
+  ton                   Int?
+  premium               Int?
+  status                FragmentQueueStatus @default(PENDING)
+  is_anon               Boolean             @default(false)
+  ton_comment           String?
+  ton_amount            Float?
+  valid_until           Int?
+  tx_hash               String?
+  retry_count           Int                 @default(0)
+  prev_ton_comments     String[]            @default([])
+  blockchain_miss_count Int                 @default(0)
+  /// Lite server accepted highload external (sendBatch); null = never submitted this memo from our wallet.
+  outbound_submitted_at   DateTime?
+  external_out_msg_hash   String?
+
+  fragment_account    FragmentAccount? @relation(fields: [fragment_account_id], references: [id], onDelete: SetNull)
+  fragment_account_id String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([user_id])
+  @@index([username])
+  @@index([status])
+  @@index([status, created_at])
+  @@index([status, updated_at])
+  @@index([payment_id])
+  @@index([fragment_account_id])
+  @@index([outbound_submitted_at])
+  @@map("fragment_queue")
+}
+
+model PaymentFee {
+  id             String  @id @default(uuid())
+  payment_system String  @unique
+  fee_percent    Decimal @default(0) @db.Decimal(5, 2)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([payment_system])
+  @@map("payment_fees")
+}
+
+model ServiceMarkup {
+  id             String  @id @default(uuid())
+  payment_system String  @unique
+  markup_percent Decimal @default(0) @db.Decimal(5, 2)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([payment_system])
+  @@map("service_markup")
+}
+
+model RequiredChannel {
+  id           String  @id @default(uuid())
+  channel_id   String  @unique
+  channel_name String?
+  channel_link String?
+  is_active    Boolean @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([channel_id])
+  @@index([is_active])
+  @@map("required_channels")
+}
+
+model SalesNotificationChannel {
+  id           String  @id @default(uuid())
+  channel_id   String  @unique
+  channel_name String?
+  is_active    Boolean @default(true)
+
+  created_at DateTime @default(now())
+
+  @@index([channel_id])
+  @@index([is_active])
+  @@map("sales_notification_channels")
+}
+
+model InsufficientFundsNotificationChannel {
+  id           String  @id @default(uuid())
+  channel_id   String  @unique
+  channel_name String?
+  is_active    Boolean @default(true)
+
+  created_at DateTime @default(now())
+
+  @@index([channel_id])
+  @@index([is_active])
+  @@map("insufficient_funds_notification_channels")
+}
+
+model FraudNotificationChannel {
+  id           String  @id @default(uuid())
+  channel_id   String  @unique
+  channel_name String?
+  is_active    Boolean @default(true)
+
+  created_at DateTime @default(now())
+
+  @@index([channel_id])
+  @@index([is_active])
+  @@map("fraud_notification_channels")
+}
+
+model BotSettings {
+  id            String  @id @default(uuid())
+  setting_key   String  @unique
+  setting_value String?
+
+  updated_at DateTime @updatedAt
+
+  @@index([setting_key])
+  @@map("bot_settings")
+}
+
+model DistributedLock {
+  id         String   @id
+  locked_by  String
+  locked_at  DateTime @default(now())
+  expires_at DateTime
+
+  @@index([expires_at])
+  @@map("distributed_locks")
+}
+
+model NotificationQueue {
+  id               String   @id @default(uuid())
+  user_telegram_id String
+  message_type     String
+  payment          Payment? @relation(fields: [payment_id], references: [id], onDelete: SetNull)
+  payment_id       String?
+  queue_item_id    String?
+  message_data     Json
+  status           String   @default("PENDING")
+  retry_count      Int      @default(0)
+  last_error       String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([status])
+  @@index([status, created_at])
+  @@index([user_telegram_id])
+  @@index([payment_id])
+  @@map("notification_queue")
+}
+
+model ButtonTemplate {
+  id      String @id @default(uuid())
+  name    String
+  buttons Json
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([name])
+  @@map("button_templates")
+}
+
+model BroadcastQueue {
+  id                  String @id @default(uuid())
+  admin_telegram_id   String
+  admin_chat_id       String
+  progress_message_id Int?
+
+  message          String  @db.Text
+  photo            String? @db.Text
+  animation        String? @db.Text
+  video            String? @db.Text
+  sticker          String? @db.Text
+  audio            String? @db.Text
+  entities         Json?
+  caption_entities Json?
+  buttons          Json?
+
+  target_audience  String  @default("all") // "all" | "premium" | "non_premium"
+
+  status           String  @default("PENDING")
+  total_users      Int     @default(0)
+  processed_users  Int     @default(0)
+  success_count    Int     @default(0)
+  failed_count     Int     @default(0)
+  last_user_cursor String?
+
+  locked_by String?
+  locked_at DateTime?
+  error     String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([status])
+  @@index([status, created_at])
+  @@map("broadcast_queue")
+}
+
+model BannedUsername {
+  id       String  @id @default(uuid())
+  username String  @unique
+  reason   String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([username])
+  @@map("banned_usernames")
+}
+
+model FraudList {
+  id          String  @id @default(uuid())
+  telegram_id String?
+  username    String?
+  reason      String?
+  added_by    String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([telegram_id])
+  @@index([username])
+  @@map("fraud_list")
+}
+
+model FraudWhitelist {
+  id          String @id @default(uuid())
+  telegram_id String @unique
+  added_by    String
+
+  created_at DateTime @default(now())
+
+  @@map("fraud_whitelist")
+}
+
+model PaymentPhone {
+  id               String  @id @default(uuid())
+  payment          Payment @relation(fields: [payment_id], references: [id], onDelete: Cascade)
+  payment_id       String  @unique
+  user_telegram_id String
+  phone_number     String
+
+  created_at DateTime @default(now())
+
+  @@index([user_telegram_id])
+  @@index([phone_number])
+  @@map("payment_phones")
+}
+
+model PaymentCard {
+  id               String @id @default(uuid())
+  payment_id       String @unique
+  user_telegram_id String
+  card_mask        String
+
+  created_at DateTime @default(now())
+
+  @@index([user_telegram_id])
+  @@index([card_mask])
+  @@map("payment_cards")
+}

@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: stars-bot
+  namespace: stars-bot
+  labels:
+    app.kubernetes.io/name: stars-bot
+    app.kubernetes.io/component: bot
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: stars-bot
+      app.kubernetes.io/component: bot

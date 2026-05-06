@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stars-bot-config
+  namespace: stars-bot
+  labels:
+    app.kubernetes.io/name: stars-bot
+    app.kubernetes.io/component: config
+data:
+  # Application
+  NODE_ENV: "production"
+  APPLICATION_PORT: "3001"
+
+  # Redis (internal cluster DNS)
+  REDIS_URL: "redis://redis-master.stars-bot.svc.cluster.local:6379"
+  REDIS_DB: "0"
+  USE_REDIS_SESSION: "true"
+
+  # PostgreSQL: внешняя БД. URL задаётся в .env → DATABASE_URL в секретах.
+
+  # Webhook
+  WEBHOOK_PATH: "/api/bot/webhook"
+
+  # Legal / Public offer links
+  AGREEMENT_URL: "https://telegra.ph/Politika-konfidencialnosti-02-15-91"
+  PRIVACY_POLICY_URL: "https://telegra.ph/Pravila-ispolzovaniya-02-15-2"
+
+  # Google Cloud Storage (S3 interoperability)
+  S3_BUCKET: "mopsstars-snapshots-gcp"
+  S3_REGION: "auto"
+  S3_ENDPOINT: "https://storage.googleapis.com"
+
+  # Frontend (CORS allowed origins, comma-separated)
+  FRONTEND_URL: "https://fh34hfhfw9efhjsdhkjsfd.lol"
+  # Static admin on GCS sends Origin: https://storage.googleapis.com (same for any bucket path)
+  CORS_EXTRA_ORIGINS: "https://storage.googleapis.com"
+
+  # Pricing defaults
+  STAR_PRICE_USD: "0.015"
+  MIN_STARS_PURCHASE: "50"
+  MAX_STARS_PURCHASE: "500000"
+  MIN_TON_PURCHASE: "1"
+  MAX_TON_PURCHASE: "10000"

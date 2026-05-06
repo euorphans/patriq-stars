@@ -1,0 +1,45 @@
+# Kubernetes Job for running Prisma migrations.
+# Run after deploying infrastructure (PostgreSQL) and before deploying the app,
+# or any time the schema changes.
+#
+# Usage:
+#   kubectl apply -f k8s/jobs/migrate.yaml
+#   kubectl logs -n stars-bot job/prisma-migrate -f
+#   kubectl delete job prisma-migrate -n stars-bot  # cleanup after success
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: prisma-migrate
+  namespace: stars-bot
+  labels:
+    app.kubernetes.io/name: stars-bot
+    app.kubernetes.io/component: migration
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: stars-bot
+        app.kubernetes.io/component: migration
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: registry.example.com/stars-bot:latest  # Same image as the app
+          command: ["npx"]
+          args: ["prisma", "db", "push", "--skip-generate"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: DATABASE_URL
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"

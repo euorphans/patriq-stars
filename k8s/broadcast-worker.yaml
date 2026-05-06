@@ -1,0 +1,154 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stars-bot-broadcast-worker
+  namespace: stars-bot
+  labels:
+    app.kubernetes.io/name: stars-bot
+    app.kubernetes.io/component: broadcast-worker
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: stars-bot
+      app.kubernetes.io/component: broadcast-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: stars-bot
+        app.kubernetes.io/component: broadcast-worker
+    spec:
+      terminationGracePeriodSeconds: 60
+
+      containers:
+        - name: stars-bot-broadcast-worker
+          image: stars-bot:latest
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 3001
+              protocol: TCP
+
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep 5"]
+
+          envFrom:
+            - configMapRef:
+                name: stars-bot-config
+
+          env:
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=1536"
+            - name: ENABLE_CRON
+              value: "false"
+            - name: ENABLE_BROADCAST
+              value: "true"
+            - name: ENABLE_SCREENSHOT
+              value: "false"
+            - name: LOG_LEVEL
+              value: "verbose"
+            - name: BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: BOT_TOKEN
+            - name: BOT_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: BOT_ADMIN_TOKEN
+            - name: BOT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: BOT_URL
+            - name: WEBHOOK_DOMAIN
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: WEBHOOK_DOMAIN
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: DATABASE_URL
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: REDIS_PASSWORD
+            - name: TONCENTER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: TONCENTER_API_KEY
+            - name: WALLET_ADDRESS
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: WALLET_ADDRESS
+            - name: SENTRY_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: SENTRY_DSN
+                  optional: true
+
+          startupProbe:
+            httpGet:
+              path: /api/health/startup
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 2
+            failureThreshold: 30
+            timeoutSeconds: 3
+
+          livenessProbe:
+            httpGet:
+              path: /api/health/live
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 20
+            timeoutSeconds: 30
+
+          readinessProbe:
+            httpGet:
+              path: /api/health/ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 8
+            successThreshold: 1
+            timeoutSeconds: 15
+
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            readOnlyRootFilesystem: false
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+
+          volumeMounts:
+            - name: crash-reports
+              mountPath: /crash-reports
+
+      volumes:
+        - name: crash-reports
+          emptyDir: {}
