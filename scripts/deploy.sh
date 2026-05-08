@@ -255,10 +255,14 @@ deploy_app() {
 # ─── HTTPS (cert-manager + Ingress, без ручного nginx) ─
 read_env_var() {
   local key="$1"
+  local line
   [[ -f "${PROJECT_DIR}/.env" ]] || return 0
-  # Поддержка: KEY=val, export KEY=val, пробелы в начале строки; снимаем CR (Windows)
-  grep -E "^[[:space:]]*(export[[:space:]]+)?${key}=" "${PROJECT_DIR}/.env" 2>/dev/null | tail -1 |
-    sed -E "s/^[[:space:]]*(export[[:space:]]+)?${key}=//" |
+  # grep без совпадений даёт код 1 — при set -o pipefail обязательно гасим (иначе весь deploy.sh падает молча).
+  line="$(
+    (grep -E "^[[:space:]]*(export[[:space:]]+)?${key}=" "${PROJECT_DIR}/.env" 2>/dev/null || true) | tail -1
+  )"
+  [[ -n "$line" ]] || return 0
+  sed -E "s/^[[:space:]]*(export[[:space:]]+)?${key}=//" <<<"$line" |
     sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/" |
     tr -d '\r'
 }
