@@ -198,10 +198,7 @@ export class PaymentsController {
         return { success: true };
       }
 
-      if (
-        statusNum === 6 ||
-        matchesStatus(status, PLATEGA_STATUS.CANCELED)
-      ) {
+      if (statusNum === 6 || matchesStatus(status, PLATEGA_STATUS.CANCELED)) {
         const cancelledPayment = await this.prisma.$transaction(async (tx) => {
           const currentPayment = await tx.payment.findUnique({
             where: { id: payment.id },
@@ -556,7 +553,7 @@ export class PaymentsController {
 
   private async queuePaymentFraudNotification(payment: any): Promise<void> {
     try {
-      const supportUrl = process.env.SUPPORT_URL || 'https://t.me/Mops_Support';
+      const supportUrl = process.env.SUPPORT_URL || 'https://t.me/dxminus';
 
       await this.prisma.notificationQueue.create({
         data: {
@@ -621,7 +618,11 @@ export class PaymentsController {
 
   private async notifySalesChannels(payment: any): Promise<void> {
     try {
-      if (!(await this.settingsService.shouldNotifySalesChannelsForPayment(payment))) {
+      if (
+        !(await this.settingsService.shouldNotifySalesChannelsForPayment(
+          payment,
+        ))
+      ) {
         return;
       }
 
@@ -776,5 +777,4 @@ export class PaymentsController {
       );
     }
   }
-
 }

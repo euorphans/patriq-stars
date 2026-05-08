@@ -131,7 +131,11 @@ export class FragmentScreenshotService {
       let stored: string;
       if (screenshot) {
         const key = `snapshots/payments/${params.paymentId}.png`;
-        const url = await this.snapshotStorage.upload(key, screenshot, 'image/png');
+        const url = await this.snapshotStorage.upload(
+          key,
+          screenshot,
+          'image/png',
+        );
         stored = url;
       } else {
         stored = 'html:' + html;
@@ -399,7 +403,7 @@ ${tableRows}
     </section>
   </main>
 
-  <div class="watermark">@MopsStarsBot<br><span>${this.esc(watermarkDate)}</span></div>
+  <div class="watermark">@patriqStarsBot<br><span>${this.esc(watermarkDate)}</span></div>
 </body>
 </html>`;
   }

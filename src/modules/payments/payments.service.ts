@@ -54,7 +54,7 @@ export class PaymentsService {
       ? `@${params.recipient_username.replace(/^@/, '')}`
       : params.recipient;
 
-    return `‼️ВНИМАНИЕ‼️ Вы совершаете покупку: ${productLabel}. Получатель: ${recipientUsername} (ID: ${params.user_telegram_id}). В магазине https://t.me/MopsStarsBot ‼️ Данную ссылку для оплаты может выдать только https://t.me/MopsStarsBot Если вам прислал её кто-то другой — не совершайте покупку! Возврат за этот платёж невозможен!`;
+    return `‼️ВНИМАНИЕ‼️ Вы совершаете покупку: ${productLabel}. Получатель: ${recipientUsername} (ID: ${params.user_telegram_id}). В магазине https://t.me/patriqStarsBot ‼️ Данную ссылку для оплаты может выдать только https://t.me/patriqStarsBot Если вам прислал её кто-то другой — не совершайте покупку! Возврат за этот платёж невозможен!`;
   }
 
   async createPayment(data: {

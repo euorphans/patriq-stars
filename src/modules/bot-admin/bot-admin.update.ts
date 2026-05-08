@@ -18,7 +18,7 @@ import { PaymentHealthService } from '@/modules/payments/payment-health.service'
 import { BroadcastQueueService } from '@/modules/cron/broadcast-queue.service';
 import { RedisLockService } from '@/shared/services/redis/redis-lock.service';
 import { escapeHtml } from '@/shared/utils/product.utils';
-import { toMoscowTime, formatShortDateTimeMoscow } from '@/shared/utils';
+import { toMoscowTime } from '@/shared/utils';
 import { normalizeSnapshotStorageUrl } from '@/shared/utils/storage-url.utils';
 import { InjectBot } from 'nestjs-telegraf';
 @Update()
@@ -573,15 +573,14 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
   async broadcastSendAll(@Ctx() ctx: BotContext): Promise<void> {
     if (!(await this.checkAccess(ctx))) return;
     ctx.answerCbQuery().catch(() => {});
-    try { await ctx.deleteMessage(); } catch {}
+    try {
+      await ctx.deleteMessage();
+    } catch {}
 
-    await ctx.reply(
-      '👥 <b>Выберите аудиторию для рассылки:</b>',
-      {
-        parse_mode: 'HTML',
-        reply_markup: AdminKeyboard.getBroadcastAudienceMenu().reply_markup,
-      },
-    );
+    await ctx.reply('👥 <b>Выберите аудиторию для рассылки:</b>', {
+      parse_mode: 'HTML',
+      reply_markup: AdminKeyboard.getBroadcastAudienceMenu().reply_markup,
+    });
   }
 
   @Action('broadcast_add_button')
@@ -629,12 +628,14 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
       `📝 <b>Добавление кнопки ${buttonNum}</b>\n\n` +
         `Отправьте кнопку в формате:\n` +
         `<code>Текст кнопки - https://ссылка</code>\n\n` +
-        `<i>Пример: ⭐️КУПИТЬ STARS⭐️ - https://t.me/MopsStarsBot?start=stars</i>`,
+        `<i>Пример: ⭐️КУПИТЬ STARS⭐️ - https://t.me/patriqStarsBot?start=stars</i>`,
       {
         parse_mode: 'HTML',
         reply_markup: Markup.inlineKeyboard([
           [
-            backInlineButton(isTemplateMode ? 'btn_tpl_create' : 'broadcast_back_to_buttons'),
+            backInlineButton(
+              isTemplateMode ? 'btn_tpl_create' : 'broadcast_back_to_buttons',
+            ),
           ],
         ]).reply_markup,
       },
@@ -3777,7 +3778,6 @@ ${methods
     }
   }
 
-
   @Action(/^edit_stuck_username:(.+)$/)
   async editStuckUsername(@Ctx() ctx: BotContext): Promise<void> {
     if (!(await this.checkAccess(ctx))) return;
@@ -3921,7 +3921,6 @@ ${methods
     };
   }
 
-
   @Action('payments_back_to_list')
   async backToPaymentsList(@Ctx() ctx: BotContext): Promise<void> {
     if (!(await this.checkAccess(ctx))) return;
@@ -3964,7 +3963,6 @@ ${methods
       ).reply_markup,
     });
   }
-
 
   private async showAdminPaymentDetails(
     ctx: BotContext,
@@ -4254,7 +4252,8 @@ ${methods
         const recNorm =
           payment.recipient_username?.replace(/^@+/, '').trim() || '';
         const recipientFraud =
-          recNorm && recNorm !== (payment.user.username || '').replace(/^@+/, '')
+          recNorm &&
+          recNorm !== (payment.user.username || '').replace(/^@+/, '')
             ? await this.prisma.fraudList.findFirst({
                 where: { username: recNorm },
                 select: { reason: true, added_by: true },
@@ -4343,13 +4342,9 @@ ${productDetailBlock}${feeDisplay}
       }
 
       if (fromFailedDeliveries) {
-        buttons.push([
-          backInlineButton('back_to_failed_deliveries'),
-        ]);
+        buttons.push([backInlineButton('back_to_failed_deliveries')]);
       } else if (payments.length > 0) {
-        buttons.push([
-          backInlineButton('payments_back_to_list'),
-        ]);
+        buttons.push([backInlineButton('payments_back_to_list')]);
       } else {
         buttons.push([backInlineButton('admin_search')]);
       }
@@ -4588,9 +4583,7 @@ ${productDetailBlock}${feeDisplay}
               {
                 parse_mode: 'HTML',
                 reply_markup: Markup.inlineKeyboard([
-                  [
-                    backInlineButton('broadcast_back_to_buttons'),
-                  ],
+                  [backInlineButton('broadcast_back_to_buttons')],
                 ]).reply_markup,
               },
             );
@@ -4601,13 +4594,11 @@ ${productDetailBlock}${feeDisplay}
             new URL(url);
           } catch {
             await ctx.reply(
-              '❌ Неверный формат URL в ссылке. Попробуйте еще раз:\n\n<i>Пример: ⭐️КУПИТЬ STARS⭐️ - https://t.me/MopsStarsBot?start=stars</i>',
+              '❌ Неверный формат URL в ссылке. Попробуйте еще раз:\n\n<i>Пример: ⭐️КУПИТЬ STARS⭐️ - https://t.me/patriqStarsBot?start=stars</i>',
               {
                 parse_mode: 'HTML',
                 reply_markup: Markup.inlineKeyboard([
-                  [
-                    backInlineButton('broadcast_back_to_buttons'),
-                  ],
+                  [backInlineButton('broadcast_back_to_buttons')],
                 ]).reply_markup,
               },
             );
@@ -4824,13 +4815,11 @@ ${productDetailBlock}${feeDisplay}
         }
 
         await ctx.reply(
-          '❌ Неверный формат. Отправьте кнопку в формате:\n\n<code>Текст кнопки - https://ссылка</code>\n\n<i>Пример: ⭐️КУПИТЬ STARS⭐️ - https://t.me/MopsStarsBot?start=stars</i>',
+          '❌ Неверный формат. Отправьте кнопку в формате:\n\n<code>Текст кнопки - https://ссылка</code>\n\n<i>Пример: ⭐️КУПИТЬ STARS⭐️ - https://t.me/patriqStarsBot?start=stars</i>',
           {
             parse_mode: 'HTML',
             reply_markup: Markup.inlineKeyboard([
-              [
-                backInlineButton('broadcast_back_to_buttons'),
-              ],
+              [backInlineButton('broadcast_back_to_buttons')],
             ]).reply_markup,
           },
         );
@@ -6653,7 +6642,7 @@ ${productDetailBlock}${feeDisplay}
       `📋 <b>Создание шаблона кнопок</b>\n\n` +
         `Добавьте кнопки для шаблона.\n` +
         `Формат: <code>Текст кнопки - https://ссылка.ru</code>\n\n` +
-        `<i>Например: ⭐️КУПИТЬ STARS⭐️ - https://t.me/MopsStarsBot?start=stars</i>`,
+        `<i>Например: ⭐️КУПИТЬ STARS⭐️ - https://t.me/patriqStarsBot?start=stars</i>`,
       {
         parse_mode: 'HTML',
         reply_markup: AdminKeyboard.getBroadcastButtonsMenu([], false)
@@ -7598,7 +7587,6 @@ ${errors.length > 0 ? `\n❌ Ошибки: ${errors.length}` : ''}
     }
   }
 
-
   @Action('fragment_accounts')
   async onFragmentAccounts(@Ctx() ctx: BotContext): Promise<void> {
     const user = ctx.from;
@@ -7939,9 +7927,7 @@ ${errors.length > 0 ? `\n❌ Ошибки: ${errors.length}` : ''}
         {
           parse_mode: 'HTML',
           reply_markup: Markup.inlineKeyboard([
-            [
-              backInlineButton('fragment_accounts'),
-            ],
+            [backInlineButton('fragment_accounts')],
           ]).reply_markup,
         },
       );
@@ -8163,9 +8149,7 @@ ${errors.length > 0 ? `\n❌ Ошибки: ${errors.length}` : ''}
         await ctx.reply(`✅ <b>Токены обновлены!</b>`, {
           parse_mode: 'HTML',
           reply_markup: Markup.inlineKeyboard([
-            [
-              backInlineButton('fragment_accounts'),
-            ],
+            [backInlineButton('fragment_accounts')],
           ]).reply_markup,
         });
       } else {
@@ -8290,7 +8274,9 @@ ${errors.length > 0 ? `\n❌ Ошибки: ${errors.length}` : ''}
   }
 
   private async executeBroadcastSendAll(ctx: BotContext): Promise<void> {
-    try { await ctx.deleteMessage(); } catch {}
+    try {
+      await ctx.deleteMessage();
+    } catch {}
 
     const message =
       ctx.session.broadcastMessage || ctx.session.broadcastCaption;

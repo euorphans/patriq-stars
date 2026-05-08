@@ -26,7 +26,7 @@ data:
   # Документы и поддержка: экран «Информация», старт/оферта, платежи (MainKeyboard.getInfoMenu берёт те же AGREEMENT / PRIVACY / SUPPORT)
   AGREEMENT_URL: "https://telegra.ph/Politika-konfidencialnosti-02-15-91"
   PRIVACY_POLICY_URL: "https://telegra.ph/Pravila-ispolzovaniya-02-15-2"
-  SUPPORT_URL: "https://t.me/Mops_Support"
+  SUPPORT_URL: "https://t.me/dxminus"
   # Опционально, если для экрана «Информация» нужны другие ссылки, чем для соглашения при старте:
   # INFO_RULES_URL, INFO_PRIVACY_URL, INFO_OFFER_URL, INFO_SUPPORT_URL
 

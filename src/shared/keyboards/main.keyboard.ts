@@ -44,7 +44,7 @@ const MAIN_MENU_CUSTOM_EMOJI = {
 } as const;
 
 /** Как в payments / cron: при пустом env кнопка «Поддержка» не пропадает. */
-const DEFAULT_INFO_SUPPORT_URL = 'https://t.me/Mops_Support';
+const DEFAULT_INFO_SUPPORT_URL = 'https://t.me/dxminus';
 
 /** Кнопки экрана «Информация» (url + icon_custom_emoji_id). */
 const INFO_MENU_CUSTOM_EMOJI = {
@@ -113,19 +113,13 @@ export class MainKeyboard {
       .persistent();
   }
 
-  static getMainMenuAdmin(
-    i18n: I18nService,
-    lang: SupportedLanguage = 'ru',
-  ) {
+  static getMainMenuAdmin(i18n: I18nService, lang: SupportedLanguage = 'ru') {
     return {
       reply_markup: { inline_keyboard: mainMenuInlineRows(i18n, lang) },
     };
   }
 
-  static getMainMenu(
-    i18n: I18nService,
-    lang: SupportedLanguage = 'ru',
-  ) {
+  static getMainMenu(i18n: I18nService, lang: SupportedLanguage = 'ru') {
     const cacheKey = `main_${lang}`;
     const cached = getCachedKeyboard(cacheKey);
     if (cached) return cached;
@@ -144,8 +138,7 @@ export class MainKeyboard {
    */
   static getInfoMenu(i18n: I18nService, lang: SupportedLanguage = 'ru') {
     const rulesUrl =
-      trimUrl(process.env.INFO_RULES_URL) ||
-      trimUrl(process.env.AGREEMENT_URL);
+      trimUrl(process.env.INFO_RULES_URL) || trimUrl(process.env.AGREEMENT_URL);
     const privacyUrl =
       trimUrl(process.env.INFO_PRIVACY_URL) ||
       trimUrl(process.env.PRIVACY_POLICY_URL);
@@ -304,9 +297,7 @@ export class MainKeyboard {
     mode: 'pick' | 'manual' = 'pick',
   ) {
     if (mode === 'manual') {
-      return Markup.inlineKeyboard([
-        [backInlineButton('back_to_recipient')],
-      ]);
+      return Markup.inlineKeyboard([[backInlineButton('back_to_recipient')]]);
     }
 
     const presetSet = new Set<number>();
@@ -526,9 +517,7 @@ export class MainKeyboard {
     if (page > 0 || hasMore) {
       const navRow = [];
       if (page > 0) {
-        navRow.push(
-          backInlineButton(`purchases_page_${filter}_${page - 1}`),
-        );
+        navRow.push(backInlineButton(`purchases_page_${filter}_${page - 1}`));
       }
       if (hasMore) {
         navRow.push(
