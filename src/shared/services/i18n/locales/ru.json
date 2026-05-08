@@ -36,7 +36,7 @@
   "menu": {
     "welcome": "<b>Добро пожаловать.</b>\n\nЗдесь можно оформить Telegram Stars и подписку Premium. Оплата — банковской картой или СБП, при необходимости криптовалютой.\n\n<b>Выберите раздел ниже.</b>",
     "main": {
-      "stars": "Купить звезды",
+      "stars": "Купить звёзды",
       "premium": "Купить Premium",
       "gifts": "Подарки",
       "profile": "Профиль",
@@ -99,14 +99,14 @@
     "load_error": "Ошибка загрузки покупок"
   },
   "product": {
-    "stars": "звезд",
-    "stars_recipient": "звезды",
+    "stars": "звёзд",
+    "stars_recipient": "звёзды",
     "ton": "TON",
     "premium": "PREMIUM",
     "delivery": {
-      "stars": "<b>Куда начислить Stars?</b>",
-      "ton": "<b>Куда зачислить TON?</b>",
-      "premium": "<b>На какой аккаунт оформить Premium?</b>"
+      "stars": "<b>Кому оформить звёзды?</b>",
+      "ton": "<b>Кому оформить TON?</b>",
+      "premium": "<b>Кому оформить Premium?</b>"
     },
     "recipient": {
       "self": "На этот Telegram-аккаунт",
