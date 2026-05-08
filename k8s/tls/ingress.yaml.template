@@ -1,0 +1,28 @@
+# Подставляется scripts/deploy.sh: __PUBLIC_HOST__, __INGRESS_CLASS__, __CLUSTER_ISSUER__
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: stars-bot
+  namespace: stars-bot
+  labels:
+    app.kubernetes.io/name: stars-bot
+    app.kubernetes.io/component: ingress
+  annotations:
+    cert-manager.io/cluster-issuer: "__CLUSTER_ISSUER__"
+spec:
+  ingressClassName: __INGRESS_CLASS__
+  tls:
+    - hosts:
+        - __PUBLIC_HOST__
+      secretName: stars-bot-tls
+  rules:
+    - host: __PUBLIC_HOST__
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: stars-bot
+                port:
+                  number: 80

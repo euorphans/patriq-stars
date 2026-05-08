@@ -9,11 +9,12 @@
 #   ./scripts/deploy.sh --update-db  # обновление кода + prisma db push (если менялась схема)
 #   ./scripts/deploy.sh --restart    # перезапуск без пересборки
 #   ./scripts/deploy.sh --status     # показать статус всех компонентов
-# Внешний вход: Google Cloud Load Balancer (NEG / порт на ВМ).
+# Внешний HTTPS: в .env задай WEBHOOK_DOMAIN + ACME_EMAIL — скрипт поставит cert-manager и Ingress (Traefik в k3s).
 #   ./scripts/deploy.sh --logs       # логи бота (follow)
 #   ./scripts/deploy.sh --merge-legacy /path/to.dump   # дамп → import_legacy → слияние в production
 #   MERGE_LEGACY_USE_EXISTING_IMPORT=1 ./scripts/deploy.sh --merge-legacy   # данные уже в import_legacy
 #   ./scripts/deploy.sh --destroy    # удалить всё (осторожно!)
+#   ./scripts/deploy.sh --ingress    # только cert-manager + Ingress + TLS (после полного деплоя или смены домена)
 #
 # Первый деплой: .env → ./scripts/deploy.sh
 
@@ -25,6 +26,8 @@ IMAGE="stars-bot:latest"
 FULL_IMAGE="docker.io/library/${IMAGE}"
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 K8S_DIR="${PROJECT_DIR}/k8s"
+TLS_DIR="${K8S_DIR}/tls"
+CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.16.2}"
 
 # k3s: /etc/rancher/k3s/k3s.yaml часто только root; обёртка kubectl может подставлять его при пустом KUBECONFIG.
 # Один раз скопируй: mkdir -p ~/.kube && sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config && sudo chown "$(id -u):$(id -g)" ~/.kube/config
@@ -243,7 +246,158 @@ deploy_app() {
   # Ожидание
   log "  Ожидание раскатки..."
   kubectl rollout status deployment/stars-bot -n "$NAMESPACE" --timeout=180s
+
+  deploy_https_edge
+
   ok "Приложение задеплоено"
+}
+
+# ─── HTTPS (cert-manager + Ingress, без ручного nginx) ─
+read_env_var() {
+  local key="$1"
+  [[ -f "${PROJECT_DIR}/.env" ]] || return 0
+  grep -E "^${key}=" "${PROJECT_DIR}/.env" 2>/dev/null | tail -1 | cut -d= -f2- |
+    sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/"
+}
+
+normalize_public_host() {
+  local raw="$1"
+  raw="${raw#https://}"
+  raw="${raw#http://}"
+  raw="${raw%%/*}"
+  raw="${raw%%:*}"
+  echo "$raw"
+}
+
+ensure_cert_manager() {
+  if kubectl get deployment cert-manager -n cert-manager &>/dev/null; then
+    kubectl wait --for=condition=Available deployment/cert-manager -n cert-manager --timeout=120s 2>/dev/null || true
+    return 0
+  fi
+
+  log "Установка cert-manager ${CERT_MANAGER_VERSION}..."
+  kubectl apply -f "https://github.com/cert-manager/cert-manager/releases/download/${CERT_MANAGER_VERSION}/cert-manager.yaml"
+
+  log "Ожидание cert-manager CRD и подов..."
+  local i
+  for i in $(seq 1 60); do
+    kubectl get crd certificates.cert-manager.io &>/dev/null && break
+    sleep 2
+  done
+
+  kubectl wait --for=condition=Available deployment/cert-manager -n cert-manager --timeout=300s
+  kubectl wait --for=condition=Available deployment/cert-manager-webhook -n cert-manager --timeout=300s
+  kubectl wait --for=condition=Available deployment/cert-manager-cainjector -n cert-manager --timeout=120s 2>/dev/null || true
+  ok "cert-manager готов"
+}
+
+apply_cluster_issuers() {
+  local email="$1"
+  local ic="$2"
+
+  kubectl apply -f - <<EOF
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: ${email}
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: ${ic}
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: ${email}
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: ${ic}
+EOF
+  ok "ClusterIssuer обновлён (prod + staging)"
+}
+
+render_apply_ingress() {
+  local host="$1"
+  local ic="$2"
+  local issuer="$3"
+
+  if [[ ! -f "${TLS_DIR}/ingress.yaml.template" ]]; then
+    err "Нет файла ${TLS_DIR}/ingress.yaml.template"
+    exit 1
+  fi
+
+  sed \
+    -e "s|__PUBLIC_HOST__|${host}|g" \
+    -e "s|__INGRESS_CLASS__|${ic}|g" \
+    -e "s|__CLUSTER_ISSUER__|${issuer}|g" \
+    "${TLS_DIR}/ingress.yaml.template" | kubectl apply -f -
+}
+
+deploy_https_edge() {
+  local email raw_host host ic issuer staging
+
+  email="$(read_env_var ACME_EMAIL)"
+  raw_host="$(read_env_var WEBHOOK_DOMAIN)"
+  host="$(normalize_public_host "$raw_host")"
+  ic="$(read_env_var INGRESS_CLASS)"
+  ic="${ic:-traefik}"
+  staging="$(read_env_var USE_LETSENCRYPT_STAGING)"
+
+  if [[ -z "$email" || -z "$host" ]]; then
+    warn "HTTPS/Ingress пропущен: в .env задай ACME_EMAIL=you@mail.ru и WEBHOOK_DOMAIN=https://домен (DNS A→этот сервер, порты 80/443 открыты)."
+    return 0
+  fi
+
+  if ! kubectl get ingressclass "$ic" &>/dev/null; then
+    err "IngressClass «${ic}» не найден. k3s: обычно traefik. Проверь: kubectl get ingressclass"
+    err "Или задай INGRESS_CLASS=... в .env"
+    exit 1
+  fi
+
+  log "HTTPS: выпуск TLS (Let's Encrypt) и Ingress для https://${host}/ ..."
+  ensure_cert_manager
+  apply_cluster_issuers "$email" "$ic"
+
+  issuer="letsencrypt-prod"
+  if [[ "$staging" == "1" ]]; then
+    issuer="letsencrypt-staging"
+    warn "USE_LETSENCRYPT_STAGING=1 — браузер покажет недоверенный сертификат (только для отладки)."
+  fi
+
+  render_apply_ingress "$host" "$ic" "$issuer"
+
+  log "Ожидание TLS-секрета stars-bot-tls (до 3 мин)..."
+  local cert_ready=0
+  for _ in $(seq 1 90); do
+    if kubectl get secret stars-bot-tls -n "$NAMESPACE" &>/dev/null; then
+      cert_ready=1
+      break
+    fi
+    sleep 2
+  done
+
+  if [[ "$cert_ready" -eq 1 ]]; then
+    ok "TLS-секрет stars-bot-tls создан"
+  else
+    warn "Секрет ещё не появился — проверь через минуту:"
+    warn "  kubectl get certificate,challenge -n ${NAMESPACE}"
+    warn "  kubectl get challenges.acme.cert-manager.io -A"
+  fi
+
+  ok "Ingress применён — проверка: curl -sS -o /dev/null -w '%{http_code}\\n' https://${host}/api/health/live"
 }
 
 # ─── Статус ──────────────────────────────────────────
@@ -266,6 +420,10 @@ show_status() {
 
   log "Services:"
   kubectl get svc -n "$NAMESPACE" 2>/dev/null || true
+  echo ""
+
+  log "Ingress / TLS:"
+  kubectl get ingress,certificate -n "$NAMESPACE" 2>/dev/null || true
   echo ""
 
   log "PVC:"
@@ -311,6 +469,7 @@ destroy() {
   kubectl delete configmap --all -n "$NAMESPACE" 2>/dev/null || true
   kubectl delete hpa --all -n "$NAMESPACE" 2>/dev/null || true
   kubectl delete pdb --all -n "$NAMESPACE" 2>/dev/null || true
+  kubectl delete ingress stars-bot -n "$NAMESPACE" 2>/dev/null || true
   kubectl delete namespace "$NAMESPACE" 2>/dev/null || true
 
   # Docker images
@@ -402,7 +561,16 @@ main() {
       check_env_file
       update_secrets
       restart_all_deployments
+      deploy_https_edge
       ok "Секреты обновлены, бот перезапущен"
+      ;;
+
+    # ─── Только HTTPS / Ingress ─────────────
+    --ingress)
+      check_tools
+      check_env_file
+      deploy_https_edge
+      ok "Ingress/TLS обновлены"
       ;;
 
     # ─── Логи ───────────────────────────────
@@ -523,6 +691,7 @@ main() {
       echo "  --update-db        Обновить код + prisma db push (если менялась схема)"
       echo "  --restart          Перезапустить бота без пересборки"
       echo "  --update-secrets   Обновить секреты из .env и перезапустить"
+      echo "  --ingress          Только cert-manager + Ingress + TLS (WEBHOOK_DOMAIN + ACME_EMAIL в .env)"
       echo ""
       echo "Мониторинг:"
       echo "  --status           Статус всех компонентов"

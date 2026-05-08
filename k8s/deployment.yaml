@@ -30,10 +30,9 @@ spec:
           image: stars-bot:latest
           imagePullPolicy: Never
           ports:
-            # hostPort 7001 = порт NEG / health check Google LB. Внутри контейнера — 3001 (APPLICATION_PORT).
+            # Внутренний порт приложения (SERVICE → targetPort http). Снаружи: Ingress Traefik + cert-manager (см. scripts/deploy.sh).
             - name: http
               containerPort: 3001
-              hostPort: 7001
               protocol: TCP
 
           # Graceful shutdown before SIGKILL
