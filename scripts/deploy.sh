@@ -21,6 +21,10 @@
 # Ветка для git pull на сервере (если на origin нет dev — задай свою):
 #   export DEPLOY_BRANCH=main
 #   ./scripts/deploy.sh --hotfix
+#
+# Если prisma db push отказывается из‑за удаления колонок с данными:
+#   PRISMA_ACCEPT_DATA_LOSS=1 ./scripts/deploy.sh --update-db
+#   (или полный деплой с шагом миграций)
 
 set -euo pipefail
 
@@ -183,13 +187,19 @@ run_migrations() {
   DB_URL=$(kubectl get secret stars-bot-secrets -n "$NAMESPACE" \
     -o jsonpath='{.data.DATABASE_URL}' | base64 -d)
 
+  local push_extra=()
+  if [[ "${PRISMA_ACCEPT_DATA_LOSS:-}" == "1" || "${PRISMA_ACCEPT_DATA_LOSS:-}" == "true" ]]; then
+    warn "PRISMA_ACCEPT_DATA_LOSS включён — prisma db push --accept-data-loss (данные в удаляемых колонках будут потеряны)"
+    push_extra=(--accept-data-loss)
+  fi
+
   kubectl run prisma-push \
     --namespace="$NAMESPACE" \
     --image="$FULL_IMAGE" \
     --image-pull-policy=Never \
     --restart=Never \
     --env="DATABASE_URL=${DB_URL}" \
-    --command -- npx prisma db push
+    --command -- npx prisma db push "${push_extra[@]}"
 
   log "  Ожидание завершения..."
   for _ in $(seq 1 60); do
@@ -770,7 +780,9 @@ main() {
       echo "  --destroy          Удалить всё (данные потеряются!)"
       echo ""
       echo "Переменные:"
-      echo "  DEPLOY_BRANCH      Ветка для git pull (по умолчанию: main). Пример: DEPLOY_BRANCH=master ./scripts/deploy.sh --hotfix"
+      echo "  DEPLOY_BRANCH           Ветка для git pull (по умолчанию: main)"
+      echo "  PRISMA_ACCEPT_DATA_LOSS Если prisma db push ругается на потерю данных в колонках: установи 1 или true"
+      echo "                          Пример: PRISMA_ACCEPT_DATA_LOSS=1 ./scripts/deploy.sh --update-db"
       ;;
 
     *)
