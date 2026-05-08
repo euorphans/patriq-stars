@@ -256,8 +256,28 @@ deploy_app() {
 read_env_var() {
   local key="$1"
   [[ -f "${PROJECT_DIR}/.env" ]] || return 0
-  grep -E "^${key}=" "${PROJECT_DIR}/.env" 2>/dev/null | tail -1 | cut -d= -f2- |
-    sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/"
+  # Поддержка: KEY=val, export KEY=val, пробелы в начале строки; снимаем CR (Windows)
+  grep -E "^[[:space:]]*(export[[:space:]]+)?${key}=" "${PROJECT_DIR}/.env" 2>/dev/null | tail -1 |
+    sed -E "s/^[[:space:]]*(export[[:space:]]+)?${key}=//" |
+    sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'$/\1/" |
+    tr -d '\r'
+}
+
+# Возвращает имя класса в stdout; предпочтительный — первый аргумент (например traefik).
+resolve_ingress_class() {
+  local preferred="$1"
+  if kubectl get ingressclass "$preferred" &>/dev/null; then
+    echo "$preferred"
+    return 0
+  fi
+  local first
+  first=$(kubectl get ingressclass -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+  if [[ -n "$first" ]]; then
+    warn "IngressClass «${preferred}» не найден — используется «${first}» (см. kubectl get ingressclass). При необходимости задай INGRESS_CLASS в .env."
+    echo "$first"
+    return 0
+  fi
+  return 1
 }
 
 normalize_public_host() {
@@ -347,7 +367,9 @@ render_apply_ingress() {
 }
 
 deploy_https_edge() {
-  local email raw_host host ic issuer staging
+  local email raw_host host ic issuer staging ic_resolved
+
+  log "HTTPS/Ingress: читаю ACME_EMAIL и WEBHOOK_DOMAIN из ${PROJECT_DIR}/.env …"
 
   email="$(read_env_var ACME_EMAIL)"
   raw_host="$(read_env_var WEBHOOK_DOMAIN)"
@@ -356,18 +378,26 @@ deploy_https_edge() {
   ic="${ic:-traefik}"
   staging="$(read_env_var USE_LETSENCRYPT_STAGING)"
 
+  if [[ -z "$email" ]]; then
+    warn "В .env не найден ACME_EMAIL (строка вида ACME_EMAIL=you@mail.ru или export ACME_EMAIL=...)."
+  fi
+  if [[ -z "$host" ]]; then
+    warn "В .env не найден WEBHOOK_DOMAIN или hostname пустой после разбора."
+  fi
+
   if [[ -z "$email" || -z "$host" ]]; then
-    warn "HTTPS/Ingress пропущен: в .env задай ACME_EMAIL=you@mail.ru и WEBHOOK_DOMAIN=https://домен (DNS A→этот сервер, порты 80/443 открыты)."
+    warn "HTTPS/Ingress пропущен. Добавь в .env, затем: ./scripts/deploy.sh --ingress"
+    warn "Пример: ACME_EMAIL=you@mail.ru и WEBHOOK_DOMAIN=https://patriq.lol"
     return 0
   fi
 
-  if ! kubectl get ingressclass "$ic" &>/dev/null; then
-    err "IngressClass «${ic}» не найден. k3s: обычно traefik. Проверь: kubectl get ingressclass"
-    err "Или задай INGRESS_CLASS=... в .env"
+  if ! ic_resolved="$(resolve_ingress_class "$ic")"; then
+    err "Нет ни одного IngressClass в кластере (kubectl get ingressclass). Для k3s включи Traefik или поставь ingress-nginx."
     exit 1
   fi
+  ic="$ic_resolved"
 
-  log "HTTPS: выпуск TLS (Let's Encrypt) и Ingress для https://${host}/ ..."
+  log "HTTPS: выпуск TLS (Let's Encrypt) и Ingress для https://${host}/ …"
   ensure_cert_manager
   apply_cluster_issuers "$email" "$ic"
 
@@ -423,7 +453,8 @@ show_status() {
   echo ""
 
   log "Ingress / TLS:"
-  kubectl get ingress,certificate -n "$NAMESPACE" 2>/dev/null || true
+  kubectl get ingress -n "$NAMESPACE" 2>/dev/null || true
+  kubectl get certificate -n "$NAMESPACE" 2>/dev/null || true
   echo ""
 
   log "PVC:"
@@ -569,8 +600,16 @@ main() {
     --ingress)
       check_tools
       check_env_file
+      echo ""
+      log "Режим: INGRESS / TLS"
+      echo ""
       deploy_https_edge
-      ok "Ingress/TLS обновлены"
+      echo ""
+      if kubectl get ingress stars-bot -n "$NAMESPACE" &>/dev/null; then
+        ok "Ingress/TLS настроены"
+      else
+        warn "Ingress stars-bot не создан — см. предупреждения выше (.env: ACME_EMAIL, WEBHOOK_DOMAIN; kubectl get ingressclass)."
+      fi
       ;;
 
     # ─── Логи ───────────────────────────────
