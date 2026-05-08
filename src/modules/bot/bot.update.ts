@@ -1084,26 +1084,10 @@ export class BotUpdate {
     }
   }
 
+  /** Старые клавиатуры с кнопкой «Франшизы» — ведём на тот же экран «Информация». */
   @Action('menu_info_franchises')
-  async showMenuInfoFranchises(@Ctx() ctx: BotContext): Promise<void> {
-    ctx.answerCbQuery().catch(() => {});
-    if (!(await this.checkSubscriptionMiddleware(ctx))) return;
-
-    const lang = this.getUserLanguage(ctx);
-    const text = this.i18n.t('menu.info.franchises.text', lang);
-    const keyboard = MainKeyboard.getBackButton('menu_info').reply_markup;
-
-    try {
-      await ctx.editMessageCaption(text, {
-        parse_mode: 'HTML',
-        reply_markup: keyboard,
-      });
-    } catch {
-      await ctx.reply(text, {
-        parse_mode: 'HTML',
-        reply_markup: keyboard,
-      });
-    }
+  async legacyMenuInfoFranchises(@Ctx() ctx: BotContext): Promise<void> {
+    return this.showMenuInfo(ctx);
   }
 
   /** Устаревшие callback с прошлых клавиатур */
@@ -1654,32 +1638,35 @@ export class BotUpdate {
         }
       }
     } else if (productType === 'stars') {
-      const productName = this.i18n.t('product.stars', lang) + ' ⭐️';
       const limits = await this.settingsService.getPurchaseLimits();
       const minAmount = limits.minStars;
       const maxAmount = limits.maxStars;
 
-      const emoji = '⭐️';
-      const text = this.i18n.t('product.quantity.enter', lang, {
-        product: productName,
-        min: minAmount.toString(),
-        max: maxAmount.toString(),
-        emoji,
+      const text = this.i18n.t('product.quantity.stars.caption', lang, {
+        min: minAmount.toLocaleString('ru-RU'),
+        max: maxAmount.toLocaleString('ru-RU'),
       });
 
       const imagePath = './images/new/starsIn5min.png';
+      const qtyKb = MainKeyboard.getStarsQuantityKeyboard(
+        this.i18n,
+        lang,
+        minAmount,
+        maxAmount,
+        'pick',
+      ).reply_markup;
 
       if (edit) {
         try {
           await this.editOrSendPhoto(ctx, imagePath, {
             caption: text,
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
+            reply_markup: qtyKb,
           });
         } catch {
           const sentMessage = await ctx.reply(text, {
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
+            reply_markup: qtyKb,
           });
           ctx.session.lastBotMessageId = sentMessage.message_id;
         }
@@ -1693,21 +1680,21 @@ export class BotUpdate {
             {
               caption: text,
               parse_mode: 'HTML',
-              reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
+              reply_markup: qtyKb,
             },
           );
           ctx.session.lastBotMessageId = sentMessage.message_id;
         } catch {
           const sentMessage = await ctx.reply(text, {
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
+            reply_markup: qtyKb,
           });
           ctx.session.lastBotMessageId = sentMessage.message_id;
         }
       }
 
       ctx.session.awaitingUsername = false;
-      ctx.session.awaitingQuantity = true;
+      ctx.session.awaitingQuantity = false;
     } else {
       ctx.session.productType = undefined;
       await this.showMainMenu(ctx, edit);
@@ -1771,7 +1758,18 @@ export class BotUpdate {
     if (!chatId || !messageId) return false;
 
     const lang = this.getUserLanguage(ctx);
-    const reply_markup = MainKeyboard.getBackButton('back_to_recipient').reply_markup;
+    let reply_markup = MainKeyboard.getBackButton('back_to_recipient').reply_markup;
+    if (ctx.session.productType === 'stars') {
+      const { minStars, maxStars } =
+        await this.settingsService.getPurchaseLimits();
+      reply_markup = MainKeyboard.getStarsQuantityKeyboard(
+        this.i18n,
+        lang,
+        minStars,
+        maxStars,
+        'manual',
+      ).reply_markup;
+    }
 
     try {
       await ctx.telegram.editMessageCaption(
@@ -1850,22 +1848,24 @@ export class BotUpdate {
       });
       ctx.session.lastBotMessageId = msg.message_id;
     } else if (productType === 'stars') {
-      const productName = this.i18n.t('product.stars', lang) + ' ⭐️';
       const limits = await this.settingsService.getPurchaseLimits();
       const minAmount = limits.minStars;
       const maxAmount = limits.maxStars;
 
-      const emoji = '⭐️';
-      const text = this.i18n.t('product.quantity.enter', lang, {
-        product: productName,
-        min: minAmount.toString(),
-        max: maxAmount.toString(),
-        emoji,
+      const text = this.i18n.t('product.quantity.stars.caption', lang, {
+        min: minAmount.toLocaleString('ru-RU'),
+        max: maxAmount.toLocaleString('ru-RU'),
       });
 
       const imagePath = './images/new/starsIn5min.png';
 
-      const keyboard = MainKeyboard.getBackButton('back_to_recipient');
+      const qtyKb = MainKeyboard.getStarsQuantityKeyboard(
+        this.i18n,
+        lang,
+        minAmount,
+        maxAmount,
+        'pick',
+      ).reply_markup;
       const media = await this.getMediaSource(imagePath);
 
       if (messageId && chatId) {
@@ -1880,11 +1880,11 @@ export class BotUpdate {
               caption: text,
               parse_mode: 'HTML',
             },
-            { reply_markup: keyboard.reply_markup },
+            { reply_markup: qtyKb },
           );
           ctx.session.currentImage = imagePath;
           ctx.session.awaitingUsername = false;
-          ctx.session.awaitingQuantity = true;
+          ctx.session.awaitingQuantity = false;
           this.cacheFileIdFromResult(imagePath, result);
           return;
         } catch (error) {
@@ -1895,11 +1895,11 @@ export class BotUpdate {
       const msg = await this.sendCachedPhoto(ctx, imagePath, {
         caption: text,
         parse_mode: 'HTML',
-        reply_markup: keyboard.reply_markup,
+        reply_markup: qtyKb,
       });
       ctx.session.lastBotMessageId = msg.message_id;
       ctx.session.awaitingUsername = false;
-      ctx.session.awaitingQuantity = true;
+      ctx.session.awaitingQuantity = false;
     }
   }
 
@@ -1924,6 +1924,115 @@ export class BotUpdate {
 
     ctx.session.quantity = months;
     await this.showPaymentMethods(ctx, true);
+  }
+
+  @Action('stars_qty_manual')
+  async starsQtyManual(@Ctx() ctx: BotContext): Promise<void> {
+    if (!this.tryAcquireActionLock(ctx, 'stars_qty_manual')) {
+      await ctx.answerCbQuery('⏳', { show_alert: false }).catch(() => {});
+      return;
+    }
+    ctx.answerCbQuery().catch(() => {});
+    if (!(await this.checkSubscriptionMiddleware(ctx))) return;
+
+    if (ctx.session.productType !== 'stars') {
+      await this.showMainMenu(ctx, true);
+      return;
+    }
+
+    const lang = this.getUserLanguage(ctx);
+    const limits = await this.settingsService.getPurchaseLimits();
+    const minAmount = limits.minStars;
+    const maxAmount = limits.maxStars;
+
+    const text = this.i18n.t('product.quantity.stars.manual_caption', lang, {
+      min: minAmount.toLocaleString('ru-RU'),
+      max: maxAmount.toLocaleString('ru-RU'),
+    });
+
+    const qtyKb = MainKeyboard.getStarsQuantityKeyboard(
+      this.i18n,
+      lang,
+      minAmount,
+      maxAmount,
+      'manual',
+    ).reply_markup;
+
+    const chatId = ctx.chat?.id;
+    const mq = ctx.callbackQuery?.message;
+    const messageId =
+      mq && 'message_id' in mq ? mq.message_id : ctx.session.lastBotMessageId;
+
+    if (chatId && messageId) {
+      try {
+        await ctx.telegram.editMessageCaption(
+          chatId,
+          messageId,
+          undefined,
+          text,
+          { parse_mode: 'HTML', reply_markup: qtyKb },
+        );
+        ctx.session.lastBotMessageId = messageId;
+      } catch (err: any) {
+        if (!BotUpdate.isMessageNotModifiedError(err)) {
+          try {
+            await ctx.telegram.editMessageText(
+              chatId,
+              messageId,
+              undefined,
+              text,
+              { parse_mode: 'HTML', reply_markup: qtyKb },
+            );
+            ctx.session.lastBotMessageId = messageId;
+          } catch {
+            /* fall through */
+          }
+        }
+      }
+    }
+
+    ctx.session.awaitingQuantity = true;
+  }
+
+  @Action(/^stars_qty_(\d+)$/)
+  async selectStarsQtyPreset(@Ctx() ctx: BotContext): Promise<void> {
+    const match = ctx.match;
+    if (!match) return;
+
+    const qty = parseInt(match[1], 10);
+    if (!this.tryAcquireActionLock(ctx, `stars_qty_${qty}`)) {
+      await ctx.answerCbQuery('⏳', { show_alert: false }).catch(() => {});
+      return;
+    }
+    ctx.answerCbQuery().catch(() => {});
+    if (!(await this.checkSubscriptionMiddleware(ctx))) return;
+
+    if (ctx.session.productType !== 'stars') {
+      await this.showMainMenu(ctx, true);
+      return;
+    }
+
+    const lang = this.getUserLanguage(ctx);
+    const { minStars, maxStars } = await this.settingsService.getPurchaseLimits();
+    if (qty < minStars || qty > maxStars) {
+      const errText = this.i18n.t('product.quantity.range', lang, {
+        min: minStars.toString(),
+        max: maxStars.toString(),
+        emoji: '⭐️',
+      });
+      await ctx.reply(errText, { parse_mode: 'HTML' }).catch(() => {});
+      return;
+    }
+
+    ctx.session.quantity = qty;
+    ctx.session.awaitingQuantity = false;
+
+    const mq = ctx.callbackQuery?.message;
+    if (mq && 'message_id' in mq) {
+      ctx.session.lastBotMessageId = mq.message_id;
+    }
+
+    await this.showPaymentMethodsByMessageId(ctx);
   }
 
   private async showPaymentMethods(

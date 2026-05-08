@@ -37,7 +37,23 @@ const MAIN_MENU_CUSTOM_EMOJI = {
   stars: '5438496463044752972',
   premium: '5217822164362739968',
   profile: '5416041192905265756',
+  info: '5334544901428229844',
 } as const;
+
+/** Кнопки экрана «Информация» (url + icon_custom_emoji_id). */
+const INFO_MENU_CUSTOM_EMOJI = {
+  /** Политика / правила */
+  rules: '5282843764451195532',
+  /** Конфиденциальность */
+  privacy: '5296369303661067030',
+  /** Поддержка */
+  support: '5395695537687123235',
+} as const;
+
+const STARS_QTY_PRESETS = [
+  50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000, 200000,
+  500000,
+] as const;
 
 function trimUrl(envVar: string | undefined): string | undefined {
   const s = envVar?.trim();
@@ -67,6 +83,7 @@ function mainMenuInlineRows(i18n: I18nService, lang: SupportedLanguage = 'ru') {
       {
         text: i18n.t('menu.main.info', lang),
         callback_data: 'menu_info',
+        icon_custom_emoji_id: MAIN_MENU_CUSTOM_EMOJI.info,
       },
     ],
   ];
@@ -112,7 +129,6 @@ export class MainKeyboard {
    * Экран «Информация».
    * Базовые ссылки: AGREEMENT_URL (правила / оферта), PRIVACY_POLICY_URL, SUPPORT_URL.
    * INFO_* — только если нужны другие URL именно для этого экрана (переопределение).
-   * FRANCHISE_URL — опционально; иначе callback «Франшизы».
    */
   static getInfoMenu(i18n: I18nService, lang: SupportedLanguage = 'ru') {
     const rulesUrl =
@@ -128,45 +144,39 @@ export class MainKeyboard {
     }
     const supportUrl =
       trimUrl(process.env.INFO_SUPPORT_URL) || trimUrl(process.env.SUPPORT_URL);
-    const franchiseUrl = trimUrl(process.env.FRANCHISE_URL);
 
     const rows: any[][] = [];
 
     const docRow: any[] = [];
     if (rulesUrl) {
-      docRow.push(
-        Markup.button.url(i18n.t('menu.info.btn.rules', lang), rulesUrl),
-      );
+      docRow.push({
+        text: i18n.t('menu.info.btn.rules', lang),
+        url: rulesUrl,
+        icon_custom_emoji_id: INFO_MENU_CUSTOM_EMOJI.rules,
+      });
     }
     if (privacyUrl) {
-      docRow.push(
-        Markup.button.url(i18n.t('menu.info.btn.privacy', lang), privacyUrl),
-      );
+      docRow.push({
+        text: i18n.t('menu.info.btn.privacy', lang),
+        url: privacyUrl,
+        icon_custom_emoji_id: INFO_MENU_CUSTOM_EMOJI.privacy,
+      });
     }
     if (docRow.length) rows.push(docRow);
 
-    const offerFranchiseRow: any[] = [];
     if (offerUrl) {
-      offerFranchiseRow.push(
+      rows.push([
         Markup.button.url(i18n.t('menu.info.btn.offer', lang), offerUrl),
-      );
+      ]);
     }
-    offerFranchiseRow.push(
-      franchiseUrl
-        ? Markup.button.url(
-            i18n.t('menu.info.btn.franchises', lang),
-            franchiseUrl,
-          )
-        : Markup.button.callback(
-            i18n.t('menu.info.btn.franchises', lang),
-            'menu_info_franchises',
-          ),
-    );
-    rows.push(offerFranchiseRow);
 
     if (supportUrl) {
       rows.push([
-        Markup.button.url(i18n.t('menu.info.btn.support', lang), supportUrl),
+        {
+          text: i18n.t('menu.info.btn.support', lang),
+          url: supportUrl,
+          icon_custom_emoji_id: INFO_MENU_CUSTOM_EMOJI.support,
+        },
       ]);
     }
 
@@ -266,6 +276,56 @@ export class MainKeyboard {
 
     setCachedKeyboard(cacheKey, keyboard);
     return keyboard;
+  }
+
+  /**
+   * Выбор количества Stars: пресеты (с тем же animated emoji, что «Купить звёзды»),
+   * «Свой ввод» или только «Назад» в режиме ручного ввода.
+   */
+  static getStarsQuantityKeyboard(
+    i18n: I18nService,
+    lang: SupportedLanguage = 'ru',
+    minStars: number,
+    maxStars: number,
+    mode: 'pick' | 'manual' = 'pick',
+  ) {
+    if (mode === 'manual') {
+      return Markup.inlineKeyboard([
+        [backInlineButton('back_to_recipient')],
+      ]);
+    }
+
+    const presetSet = new Set<number>();
+    for (const n of STARS_QTY_PRESETS) {
+      if (n >= minStars && n <= maxStars) presetSet.add(n);
+    }
+    if (minStars <= maxStars) presetSet.add(minStars);
+    if (maxStars >= minStars && maxStars !== minStars) presetSet.add(maxStars);
+
+    const merged = [...presetSet].sort((a, b) => a - b);
+    const rows: any[][] = [];
+
+    for (let i = 0; i < merged.length; i += 2) {
+      const chunk = merged.slice(i, i + 2);
+      rows.push(
+        chunk.map((n) => ({
+          text: n.toLocaleString('ru-RU'),
+          callback_data: `stars_qty_${n}`,
+          icon_custom_emoji_id: MAIN_MENU_CUSTOM_EMOJI.stars,
+        })),
+      );
+    }
+
+    rows.push([
+      {
+        text: i18n.t('product.quantity.stars.manual_btn', lang),
+        callback_data: 'stars_qty_manual',
+        icon_custom_emoji_id: MAIN_MENU_CUSTOM_EMOJI.stars,
+      },
+    ]);
+    rows.push([backInlineButton('back_to_recipient')]);
+
+    return Markup.inlineKeyboard(rows);
   }
 
   static getPremiumDurationKeyboard(

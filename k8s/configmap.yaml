@@ -29,7 +29,6 @@ data:
   SUPPORT_URL: "https://t.me/Mops_Support"
   # Опционально, если для экрана «Информация» нужны другие ссылки, чем для соглашения при старте:
   # INFO_RULES_URL, INFO_PRIVACY_URL, INFO_OFFER_URL, INFO_SUPPORT_URL
-  # FRANCHISE_URL — ссылка на кнопку «Франшизы» (иначе — текст в боте)
 
   # Скриншоты заказов: каталог внутри контейнера (см. volumeMount в deployment / screenshot-worker)
   LOCAL_STORAGE_PATH: "/data/local-storage"
