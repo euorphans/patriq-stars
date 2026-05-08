@@ -109,14 +109,25 @@ export class MainKeyboard {
   }
 
   /**
-   * Экран «Информация»: только переменные окружения (без подстановок из других URL).
-   * INFO_RULES_URL, INFO_PRIVACY_URL, INFO_OFFER_URL, INFO_SUPPORT_URL, FRANCHISE_URL (опц.).
+   * Экран «Информация».
+   * Базовые ссылки: AGREEMENT_URL (правила / оферта), PRIVACY_POLICY_URL, SUPPORT_URL.
+   * INFO_* — только если нужны другие URL именно для этого экрана (переопределение).
+   * FRANCHISE_URL — опционально; иначе callback «Франшизы».
    */
   static getInfoMenu(i18n: I18nService, lang: SupportedLanguage = 'ru') {
-    const rulesUrl = trimUrl(process.env.INFO_RULES_URL);
-    const privacyUrl = trimUrl(process.env.INFO_PRIVACY_URL);
-    const offerUrl = trimUrl(process.env.INFO_OFFER_URL);
-    const supportUrl = trimUrl(process.env.INFO_SUPPORT_URL);
+    const rulesUrl =
+      trimUrl(process.env.INFO_RULES_URL) ||
+      trimUrl(process.env.AGREEMENT_URL);
+    const privacyUrl =
+      trimUrl(process.env.INFO_PRIVACY_URL) ||
+      trimUrl(process.env.PRIVACY_POLICY_URL);
+    let offerUrl =
+      trimUrl(process.env.INFO_OFFER_URL) || trimUrl(process.env.AGREEMENT_URL);
+    if (offerUrl && offerUrl === rulesUrl) {
+      offerUrl = undefined;
+    }
+    const supportUrl =
+      trimUrl(process.env.INFO_SUPPORT_URL) || trimUrl(process.env.SUPPORT_URL);
     const franchiseUrl = trimUrl(process.env.FRANCHISE_URL);
 
     const rows: any[][] = [];
@@ -181,12 +192,6 @@ export class MainKeyboard {
         Markup.button.callback(
           i18n.t('profile.purchases', lang),
           'my_purchases',
-        ),
-      ],
-      [
-        Markup.button.callback(
-          i18n.t('profile.public_offer', lang),
-          'public_offer',
         ),
       ],
       [backInlineButton('back_to_main')],

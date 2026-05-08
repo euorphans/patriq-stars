@@ -21,19 +21,13 @@ data:
   # Webhook
   WEBHOOK_PATH: "/api/bot/webhook"
 
-  # Legal / Public offer links (профиль/старт и т.д.)
+  # Документы и поддержка: экран «Информация», старт/оферта, платежи (MainKeyboard.getInfoMenu берёт те же AGREEMENT / PRIVACY / SUPPORT)
   AGREEMENT_URL: "https://telegra.ph/Politika-konfidencialnosti-02-15-91"
   PRIVACY_POLICY_URL: "https://telegra.ph/Pravila-ispolzovaniya-02-15-2"
-
-  # Экран «Информация» в боте — только эти URL (MainKeyboard.getInfoMenu)
-  INFO_RULES_URL: "https://telegra.ph/Pravila-ispolzovaniya-02-15-2"
-  INFO_PRIVACY_URL: "https://telegra.ph/Politika-konfidencialnosti-02-15-91"
-  INFO_OFFER_URL: "https://telegra.ph/Politika-konfidencialnosti-02-15-91"
-  INFO_SUPPORT_URL: "https://t.me/Mops_Support"
-  # FRANCHISE_URL: при необходимости — ссылка для кнопки «Франшизы»
-
-  # Прочие сообщения об ошибках / доставке (не экран «Информация»)
   SUPPORT_URL: "https://t.me/Mops_Support"
+  # Опционально, если для экрана «Информация» нужны другие ссылки, чем для соглашения при старте:
+  # INFO_RULES_URL, INFO_PRIVACY_URL, INFO_OFFER_URL, INFO_SUPPORT_URL
+  # FRANCHISE_URL — ссылка на кнопку «Франшизы» (иначе — текст в боте)
 
   # Скриншоты заказов: каталог внутри контейнера (см. volumeMount в deployment / screenshot-worker)
   LOCAL_STORAGE_PATH: "/data/local-storage"
