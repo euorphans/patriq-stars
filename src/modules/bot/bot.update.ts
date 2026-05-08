@@ -1030,6 +1030,53 @@ export class BotUpdate {
     });
   }
 
+  @Action('menu_info')
+  async showMenuInfo(@Ctx() ctx: BotContext): Promise<void> {
+    ctx.answerCbQuery().catch(() => {});
+    if (!(await this.checkSubscriptionMiddleware(ctx))) return;
+
+    this.resetInputFlags(ctx);
+
+    const lang = this.getUserLanguage(ctx);
+    const caption = this.i18n.t('menu.info.text', lang);
+
+    try {
+      await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
+        caption,
+        parse_mode: 'HTML',
+        reply_markup: MainKeyboard.getInfoMenu(this.i18n, lang).reply_markup,
+      });
+    } catch {
+      await ctx.reply(caption, {
+        parse_mode: 'HTML',
+        reply_markup: MainKeyboard.getInfoMenu(this.i18n, lang).reply_markup,
+        link_preview_options: { is_disabled: true },
+      });
+    }
+  }
+
+  @Action('menu_info_franchises')
+  async showMenuInfoFranchises(@Ctx() ctx: BotContext): Promise<void> {
+    ctx.answerCbQuery().catch(() => {});
+    if (!(await this.checkSubscriptionMiddleware(ctx))) return;
+
+    const lang = this.getUserLanguage(ctx);
+    const text = this.i18n.t('menu.info.franchises.text', lang);
+    const keyboard = MainKeyboard.getBackButton('menu_info').reply_markup;
+
+    try {
+      await ctx.editMessageCaption(text, {
+        parse_mode: 'HTML',
+        reply_markup: keyboard,
+      });
+    } catch {
+      await ctx.reply(text, {
+        parse_mode: 'HTML',
+        reply_markup: keyboard,
+      });
+    }
+  }
+
   /** Устаревшие callback с прошлых клавиатур */
   @Action(
     /^(mops_balance|mops_daily_bonus|mops_coin_info|mops_referral|referral_program|buy_ton)$/,
@@ -1613,7 +1660,7 @@ export class BotUpdate {
         emoji,
       });
 
-      const imagePath = './images/enter_quantity.webp';
+      const imagePath = './images/new/starsIn5min.png';
 
       if (edit) {
         try {
@@ -1809,7 +1856,7 @@ export class BotUpdate {
         emoji,
       });
 
-      const imagePath = './images/enter_quantity.webp';
+      const imagePath = './images/new/starsIn5min.png';
 
       const keyboard = MainKeyboard.getBackButton('back_to_recipient');
       const media = await this.getMediaSource(imagePath);

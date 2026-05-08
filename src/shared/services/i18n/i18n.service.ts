@@ -80,6 +80,7 @@ export class I18nService {
         'menu.main.stars',
         'menu.main.premium',
         'menu.main.profile',
+        'menu.main.info',
       ];
       const missingKeys = criticalKeys.filter((key) => !flattened[key]);
       if (missingKeys.length > 0) {

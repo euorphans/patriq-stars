@@ -39,6 +39,11 @@ const MAIN_MENU_CUSTOM_EMOJI = {
   profile: '5416041192905265756',
 } as const;
 
+function trimUrl(envVar: string | undefined): string | undefined {
+  const s = envVar?.trim();
+  return s && s !== '#' ? s : undefined;
+}
+
 function mainMenuInlineRows(i18n: I18nService, lang: SupportedLanguage = 'ru') {
   return [
     [
@@ -58,6 +63,10 @@ function mainMenuInlineRows(i18n: I18nService, lang: SupportedLanguage = 'ru') {
         text: i18n.t('menu.main.profile', lang),
         callback_data: 'my_profile',
         icon_custom_emoji_id: MAIN_MENU_CUSTOM_EMOJI.profile,
+      },
+      {
+        text: i18n.t('menu.main.info', lang),
+        callback_data: 'menu_info',
       },
     ],
   ];
@@ -97,6 +106,62 @@ export class MainKeyboard {
     };
     setCachedKeyboard(cacheKey, keyboard);
     return keyboard;
+  }
+
+  /**
+   * Экран «Информация»: только переменные окружения (без подстановок из других URL).
+   * INFO_RULES_URL, INFO_PRIVACY_URL, INFO_OFFER_URL, INFO_SUPPORT_URL, FRANCHISE_URL (опц.).
+   */
+  static getInfoMenu(i18n: I18nService, lang: SupportedLanguage = 'ru') {
+    const rulesUrl = trimUrl(process.env.INFO_RULES_URL);
+    const privacyUrl = trimUrl(process.env.INFO_PRIVACY_URL);
+    const offerUrl = trimUrl(process.env.INFO_OFFER_URL);
+    const supportUrl = trimUrl(process.env.INFO_SUPPORT_URL);
+    const franchiseUrl = trimUrl(process.env.FRANCHISE_URL);
+
+    const rows: any[][] = [];
+
+    const docRow: any[] = [];
+    if (rulesUrl) {
+      docRow.push(
+        Markup.button.url(i18n.t('menu.info.btn.rules', lang), rulesUrl),
+      );
+    }
+    if (privacyUrl) {
+      docRow.push(
+        Markup.button.url(i18n.t('menu.info.btn.privacy', lang), privacyUrl),
+      );
+    }
+    if (docRow.length) rows.push(docRow);
+
+    const offerFranchiseRow: any[] = [];
+    if (offerUrl) {
+      offerFranchiseRow.push(
+        Markup.button.url(i18n.t('menu.info.btn.offer', lang), offerUrl),
+      );
+    }
+    offerFranchiseRow.push(
+      franchiseUrl
+        ? Markup.button.url(
+            i18n.t('menu.info.btn.franchises', lang),
+            franchiseUrl,
+          )
+        : Markup.button.callback(
+            i18n.t('menu.info.btn.franchises', lang),
+            'menu_info_franchises',
+          ),
+    );
+    rows.push(offerFranchiseRow);
+
+    if (supportUrl) {
+      rows.push([
+        Markup.button.url(i18n.t('menu.info.btn.support', lang), supportUrl),
+      ]);
+    }
+
+    rows.push([backInlineButton('back_to_main')]);
+
+    return Markup.inlineKeyboard(rows);
   }
 
   static getPurchaseFollowUpKeyboard(

@@ -4,6 +4,8 @@ import {
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 import { createClient, RedisClientType } from 'redis';
 
 @Injectable()
@@ -569,13 +571,31 @@ export class RedisLockService implements OnModuleInit, OnModuleDestroy {
   private readonly IMAGE_FILE_ID_PREFIX = 'img_fid:';
   private readonly IMAGE_FILE_ID_TTL = 86400 * 30;
 
+  /**
+   * Ключ кеша включает mtime/size файла: после замены картинки на том же пути Redis не отдаёт старый Telegram file_id.
+   */
+  private buildImageFileIdStorageKey(imagePath: string): string {
+    const relative = imagePath.startsWith('./')
+      ? imagePath.slice(2)
+      : imagePath;
+    const resolved = path.join(process.cwd(), relative);
+    try {
+      const st = fs.statSync(resolved);
+      return `${imagePath}#${st.mtimeMs}#${st.size}`;
+    } catch {
+      return imagePath;
+    }
+  }
+
   async getImageFileId(imagePath: string): Promise<string | null> {
-    return this.get(this.IMAGE_FILE_ID_PREFIX + imagePath);
+    return this.get(
+      this.IMAGE_FILE_ID_PREFIX + this.buildImageFileIdStorageKey(imagePath),
+    );
   }
 
   async setImageFileId(imagePath: string, fileId: string): Promise<boolean> {
     return this.setWithTTL(
-      this.IMAGE_FILE_ID_PREFIX + imagePath,
+      this.IMAGE_FILE_ID_PREFIX + this.buildImageFileIdStorageKey(imagePath),
       fileId,
       this.IMAGE_FILE_ID_TTL,
     );
