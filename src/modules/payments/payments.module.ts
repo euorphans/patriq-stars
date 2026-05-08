@@ -6,8 +6,6 @@ import { PaymentsController } from './payments.controller';
 import { PlategaService } from './providers/platega.service';
 import { HeleketService } from './providers/heleket.service';
 import { TonPaymentService } from './providers/ton-payment.service';
-import { Sbp2Service } from './providers/sbp2.service';
-import { AurapayService } from './providers/aurapay.service';
 import { PaymentHealthService } from './payment-health.service';
 import { PrismaModule } from '@/shared/services/prisma/prisma.module';
 import { SettingsModule } from '@/modules/settings/settings.module';
@@ -33,8 +31,6 @@ import { I18nModule } from '@/shared/services/i18n/i18n.module';
     PlategaService,
     HeleketService,
     TonPaymentService,
-    Sbp2Service,
-    AurapayService,
     PaymentHealthService,
     WebhookGuard,
     IpWhitelistGuard,
@@ -45,8 +41,6 @@ import { I18nModule } from '@/shared/services/i18n/i18n.module';
     PlategaService,
     HeleketService,
     TonPaymentService,
-    Sbp2Service,
-    AurapayService,
     PaymentHealthService,
   ],
 })

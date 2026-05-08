@@ -1,37 +1,4 @@
 import './patches/ton-crypto-patch';
-import * as Sentry from '@sentry/nestjs';
-import {
-  SentryTelegramIntegration,
-  configureSentryTelegram,
-  isIgnorableTelegramUserError,
-  isIgnorableCorsOriginError,
-} from '@shared/services/sentry/sentry-telegram.integration';
-
-if (process.env.SENTRY_DSN) {
-  Sentry.init({
-    dsn: process.env.SENTRY_DSN,
-    environment: process.env.NODE_ENV || 'production',
-    tracesSampleRate: 0,
-    integrations: [new SentryTelegramIntegration()],
-    beforeSend(event, hint) {
-      if (isIgnorableTelegramUserError(hint?.originalException)) {
-        return null;
-      }
-      if (isIgnorableCorsOriginError(hint?.originalException)) {
-        return null;
-      }
-      const v = event.exception?.values?.[0]?.value;
-      if (v && isIgnorableTelegramUserError(new Error(v))) {
-        return null;
-      }
-      if (v && isIgnorableCorsOriginError(new Error(v))) {
-        return null;
-      }
-      return event;
-    },
-  });
-}
-
 import * as express from 'express';
 import * as path from 'path';
 import * as cookieParser from 'cookie-parser';
@@ -40,8 +7,6 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
-import { SettingsService } from './modules/settings/settings.service';
-
 (BigInt.prototype as any).toJSON = function () {
   return this.toString();
 };
@@ -62,6 +27,19 @@ async function bootstrap() {
   app.set('trust proxy', 1);
   app.setGlobalPrefix('api');
   app.use(cookieParser());
+
+  const localStorageRoot = path.resolve(
+    process.env.LOCAL_STORAGE_PATH ||
+      path.join(process.cwd(), 'data', 'local-storage'),
+  );
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.use(
+    '/api/local-snapshots',
+    express.static(localStorageRoot, {
+      index: false,
+      maxAge: process.env.NODE_ENV === 'production' ? '1y' : 0,
+    }),
+  );
 
   const normalizeCorsOrigin = (raw: string): string | null => {
     try {
@@ -167,13 +145,6 @@ async function bootstrap() {
     }),
   );
   app.use(express.urlencoded({ limit: '1mb', extended: true }));
-
-  if (process.env.SENTRY_DSN && process.env.BOT_ADMIN_TOKEN) {
-    const settingsService = app.get(SettingsService);
-    configureSentryTelegram(process.env.BOT_ADMIN_TOKEN, () =>
-      settingsService.getInsufficientFundsChannels(),
-    );
-  }
 
   const handleShutdown = async (signal: string) => {
     console.log(`${signal} received, starting graceful shutdown...`);

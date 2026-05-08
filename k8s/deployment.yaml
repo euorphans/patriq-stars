@@ -157,78 +157,6 @@ spec:
                   name: stars-bot-secrets
                   key: HELEKET_IP_WHITELIST
                   optional: true
-            - name: SBP2_IP_WHITELIST
-              valueFrom:
-                secretKeyRef:
-                  name: stars-bot-secrets
-                  key: SBP2_IP_WHITELIST
-                  optional: true
-            - name: AURAPAY_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: stars-bot-secrets
-                  key: AURAPAY_API_KEY
-                  optional: true
-            - name: AURAPAY_SHOP_ID
-              valueFrom:
-                secretKeyRef:
-                  name: stars-bot-secrets
-                  key: AURAPAY_SHOP_ID
-                  optional: true
-            - name: AURAPAY_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: stars-bot-secrets
-                  key: AURAPAY_SECRET_KEY
-                  optional: true
-            - name: AURAPAY_CALLBACK_URL
-              valueFrom:
-                secretKeyRef:
-                  name: stars-bot-secrets
-                  key: AURAPAY_CALLBACK_URL
-                  optional: true
-            - name: AURAPAY_IP_WHITELIST
-              valueFrom:
-                secretKeyRef:
-                  name: stars-bot-secrets
-                  key: AURAPAY_IP_WHITELIST
-                  optional: true
-            - name: SBP2_PARTNER_ID
-              valueFrom:
-                secretKeyRef:
-                  name: stars-bot-secrets
-                  key: SBP2_PARTNER_ID
-                  optional: true
-            - name: SBP2_PROJECT_ID
-              valueFrom:
-                secretKeyRef:
-                  name: stars-bot-secrets
-                  key: SBP2_PROJECT_ID
-                  optional: true
-            - name: SBP2_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: stars-bot-secrets
-                  key: SBP2_API_KEY
-                  optional: true
-            - name: SENTRY_DSN
-              valueFrom:
-                secretKeyRef:
-                  name: stars-bot-secrets
-                  key: SENTRY_DSN
-                  optional: true
-            - name: S3_ACCESS_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: stars-bot-secrets
-                  key: S3_ACCESS_KEY_ID
-                  optional: true
-            - name: S3_SECRET_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: stars-bot-secrets
-                  key: S3_SECRET_ACCESS_KEY
-                  optional: true
             - name: TELEGRAM_API_ID
               valueFrom:
                 secretKeyRef:
@@ -298,6 +226,14 @@ spec:
             capabilities:
               drop:
                 - ALL
+
+          volumeMounts:
+            - name: local-snapshots
+              mountPath: /data/local-storage
+
+      volumes:
+        - name: local-snapshots
+          emptyDir: {}
 
       # Pull secrets if using private registry
       # imagePullSecrets:

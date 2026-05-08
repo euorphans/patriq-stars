@@ -35,10 +35,8 @@ export class PaymentHealthService implements OnModuleInit {
     recoveryInProgress: new Map<string, boolean>(),
   };
 
-  private readonly FAILOVER_PAIRS: Record<string, string> = {
-    PLATEGA: 'AURAPAY_SBP',
-    AURAPAY_SBP: 'PLATEGA',
-  };
+  /** Резервный способ оплаты для failover сейчас не задан. */
+  private readonly FAILOVER_PAIRS: Record<string, string> = {};
 
   private loggedFailoverStates = new Set<string>();
 
@@ -416,6 +414,7 @@ export class PaymentHealthService implements OnModuleInit {
   async manualRecovery(method: string): Promise<boolean> {
     const key = method.toUpperCase();
     const backup = this.FAILOVER_PAIRS[key];
+    if (!backup) return false;
 
     if (this.redisLock.isAvailable()) {
       const active = await this.redisLock.get(`${this.R}failover:${key}`);

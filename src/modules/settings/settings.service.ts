@@ -311,14 +311,7 @@ export class SettingsService implements OnModuleInit {
       }
     }
 
-    const methods = [
-      'PLATEGA',
-      'HELEKET',
-      'TON',
-      'SBP2',
-      'AURAPAY_SBP',
-      'AURAPAY_CARD',
-    ];
+    const methods = ['PLATEGA', 'HELEKET', 'TON'];
     for (const method of methods) {
       const key = `payment_method_enabled_${method}`;
       const existing = await this.getSetting(key);
@@ -351,11 +344,7 @@ export class SettingsService implements OnModuleInit {
     const value = await this.getSetting(key);
 
     if (value === null) {
-      return (
-        method.toUpperCase() !== 'SBP2' &&
-        method.toUpperCase() !== 'AURAPAY_SBP' &&
-        method.toUpperCase() !== 'AURAPAY_CARD'
-      );
+      return true;
     }
     return value === 'true';
   }
@@ -384,14 +373,20 @@ export class SettingsService implements OnModuleInit {
   }
 
   async getPaymentMethodsOrder(): Promise<string[]> {
+    const validMethods = ['PLATEGA', 'HELEKET', 'TON'];
     const value = await this.getSetting('payment_methods_order');
     if (!value) {
-      return ['PLATEGA', 'HELEKET', 'TON', 'SBP2'];
+      return validMethods;
     }
     try {
-      return JSON.parse(value);
+      const parsed: string[] = JSON.parse(value);
+      const filtered = parsed.filter((m) => validMethods.includes(m));
+      return [
+        ...filtered,
+        ...validMethods.filter((m) => !filtered.includes(m)),
+      ];
     } catch {
-      return ['PLATEGA', 'HELEKET', 'TON', 'SBP2'];
+      return validMethods;
     }
   }
 

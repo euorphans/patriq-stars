@@ -22,7 +22,7 @@ export class IpWhitelistGuard implements CanActivate {
       if (process.env.NODE_ENV === 'production') {
         this.logger.error(
           `SECURITY: IP whitelist not configured for ${path}. ` +
-            `Blocking all requests. Set PLATEGA_IP_WHITELIST, HELEKET_IP_WHITELIST, or SBP2_IP_WHITELIST.`,
+            `Blocking all requests. Set PLATEGA_IP_WHITELIST or HELEKET_IP_WHITELIST.`,
         );
         throw new ServiceUnavailableException(
           'Payment webhook not configured properly',
@@ -79,16 +79,6 @@ export class IpWhitelistGuard implements CanActivate {
 
     if (path.includes('/heleket/')) {
       const env = process.env.HELEKET_IP_WHITELIST || '';
-      return env ? env.split(',').map((ip) => ip.trim()) : [];
-    }
-
-    if (path.includes('/sbp2/')) {
-      const env = process.env.SBP2_IP_WHITELIST || '';
-      return env ? env.split(',').map((ip) => ip.trim()) : [];
-    }
-
-    if (path.includes('/aurapay/')) {
-      const env = process.env.AURAPAY_IP_WHITELIST || '';
       return env ? env.split(',').map((ip) => ip.trim()) : [];
     }
 

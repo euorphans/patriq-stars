@@ -369,12 +369,6 @@ ${rubProfitLine(stats.ton.profit)}
 ${t('goods_block')}
 ${this.formatProductsBlock(stats.ton.products, lang, loc)}
 
-${rubMethodBlock('section_sbp2', stats.sbp2)}
-
-${rubMethodBlock('section_sbp3', stats.aurapaySbp)}
-
-${rubMethodBlock('section_cards', stats.aurapayCard)}
-
 ${t('section_totals')}
 ${t('totals_net_profit', { amount: fmtRubAmt(stats.totals.profit) })}
 ${t('totals_goods')}
@@ -510,7 +504,7 @@ ${t('premium_12', { n: products.premium['12'] })}`;
       SELECT
         payment_method,
         -- Turnover per method
-        COALESCE(SUM(CASE WHEN payment_method IN ('PLATEGA', 'SBP2', 'AURAPAY_SBP', 'AURAPAY_CARD') THEN amount_rub ELSE 0 END), 0)::float AS turnover_rub,
+        COALESCE(SUM(CASE WHEN payment_method = 'PLATEGA' THEN amount_rub ELSE 0 END), 0)::float AS turnover_rub,
         COALESCE(SUM(CASE WHEN payment_method = 'HELEKET' THEN amount_usd ELSE 0 END), 0)::float AS turnover_usd,
         COALESCE(SUM(CASE WHEN payment_method = 'TON' THEN COALESCE(amount_ton, 0) ELSE 0 END), 0)::float AS turnover_ton,
         -- Fees
@@ -518,7 +512,6 @@ ${t('premium_12', { n: products.premium['12'] })}`;
           CASE
             WHEN payment_method = 'PLATEGA' THEN amount_rub * COALESCE(NULLIF(payment_system_fee_percent, 0), 6) / 100
             WHEN payment_method = 'HELEKET' THEN amount_usd * COALESCE(NULLIF(payment_system_fee_percent, 0), 2) / 100
-            WHEN payment_method IN ('SBP2', 'AURAPAY_SBP', 'AURAPAY_CARD') THEN amount_rub * COALESCE(NULLIF(payment_system_fee_percent, 0), 0) / 100
             ELSE 0
           END
         ), 0)::float AS fees,
@@ -569,13 +562,7 @@ ${t('premium_12', { n: products.premium['12'] })}`;
         };
 
       let turnover = 0;
-      if (
-        method === 'PLATEGA' ||
-        method === 'SBP2' ||
-        method === 'AURAPAY_SBP' ||
-        method === 'AURAPAY_CARD'
-      )
-        turnover = row.turnover_rub;
+      if (method === 'PLATEGA') turnover = row.turnover_rub;
       else if (method === 'HELEKET') turnover = row.turnover_usd;
       else if (method === 'TON') turnover = row.turnover_ton;
 
@@ -599,17 +586,10 @@ ${t('premium_12', { n: products.premium['12'] })}`;
     const plategaStats = getStatsByMethod('PLATEGA');
     const heleketStats = getStatsByMethod('HELEKET');
     const tonStats = getStatsByMethod('TON');
-    const sbp2Stats = getStatsByMethod('SBP2');
-    const aurapaySbpStats = getStatsByMethod('AURAPAY_SBP');
-    const aurapayCardStats = getStatsByMethod('AURAPAY_CARD');
-
     const totalProfitRub =
       plategaStats.profit +
       heleketStats.profit +
-      tonStats.profit +
-      sbp2Stats.profit +
-      aurapaySbpStats.profit +
-      aurapayCardStats.profit;
+      tonStats.profit;
 
     return {
       users: {
@@ -642,70 +622,34 @@ ${t('premium_12', { n: products.premium['12'] })}`;
         profit: tonStats.profit,
         products: tonStats.products,
       },
-      sbp2: {
-        turnover: sbp2Stats.turnover,
-        fees: sbp2Stats.fees,
-        profit: sbp2Stats.profit,
-        products: sbp2Stats.products,
-      },
-      aurapaySbp: {
-        turnover: aurapaySbpStats.turnover,
-        fees: aurapaySbpStats.fees,
-        profit: aurapaySbpStats.profit,
-        products: aurapaySbpStats.products,
-      },
-      aurapayCard: {
-        turnover: aurapayCardStats.turnover,
-        fees: aurapayCardStats.fees,
-        profit: aurapayCardStats.profit,
-        products: aurapayCardStats.products,
-      },
       totals: {
         profit: totalProfitRub,
         products: {
           stars:
             plategaStats.products.stars +
             heleketStats.products.stars +
-            tonStats.products.stars +
-            sbp2Stats.products.stars +
-            aurapaySbpStats.products.stars +
-            aurapayCardStats.products.stars,
+            tonStats.products.stars,
           ton:
             plategaStats.products.ton +
             heleketStats.products.ton +
-            tonStats.products.ton +
-            sbp2Stats.products.ton +
-            aurapaySbpStats.products.ton +
-            aurapayCardStats.products.ton,
+            tonStats.products.ton,
           gifts:
             plategaStats.products.gifts +
             heleketStats.products.gifts +
-            tonStats.products.gifts +
-            sbp2Stats.products.gifts +
-            aurapaySbpStats.products.gifts +
-            aurapayCardStats.products.gifts,
+            tonStats.products.gifts,
           premium: {
             '3':
               plategaStats.products.premium['3'] +
               heleketStats.products.premium['3'] +
-              tonStats.products.premium['3'] +
-              sbp2Stats.products.premium['3'] +
-              aurapaySbpStats.products.premium['3'] +
-              aurapayCardStats.products.premium['3'],
+              tonStats.products.premium['3'],
             '6':
               plategaStats.products.premium['6'] +
               heleketStats.products.premium['6'] +
-              tonStats.products.premium['6'] +
-              sbp2Stats.products.premium['6'] +
-              aurapaySbpStats.products.premium['6'] +
-              aurapayCardStats.products.premium['6'],
+              tonStats.products.premium['6'],
             '12':
               plategaStats.products.premium['12'] +
               heleketStats.products.premium['12'] +
-              tonStats.products.premium['12'] +
-              sbp2Stats.products.premium['12'] +
-              aurapaySbpStats.products.premium['12'] +
-              aurapayCardStats.products.premium['12'],
+              tonStats.products.premium['12'],
           },
         },
       },

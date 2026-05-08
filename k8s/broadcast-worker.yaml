@@ -93,13 +93,6 @@ spec:
                 secretKeyRef:
                   name: stars-bot-secrets
                   key: WALLET_ADDRESS
-            - name: SENTRY_DSN
-              valueFrom:
-                secretKeyRef:
-                  name: stars-bot-secrets
-                  key: SENTRY_DSN
-                  optional: true
-
           startupProbe:
             httpGet:
               path: /api/health/startup

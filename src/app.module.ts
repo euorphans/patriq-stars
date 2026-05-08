@@ -1,13 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { SentryModule } from '@/shared/services/sentry/sentry.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from '@/shared/services/prisma/prisma.module';
 import { TonWalletModule } from '@/shared/services/ton-wallet/ton-wallet.module';
 import { FragmentModule } from '@/shared/services/fragment/fragment.module';
-import { S3Module } from '@/shared/services/s3/s3.module';
+import { LocalSnapshotStorageModule } from '@/shared/services/local-storage/local-snapshot-storage.module';
 import { RapiraModule } from '@/shared/services/rapira/rapira.module';
 import { RedisLockModule } from '@/shared/services/redis/redis-lock.module';
 import { BotModule } from '@/modules/bot/bot.module';
@@ -58,7 +57,7 @@ const isScreenshotEnabled = process.env.ENABLE_SCREENSHOT === 'true' || isDev;
     PricingModule,
     PaymentsModule,
     FragmentModule,
-    S3Module,
+    LocalSnapshotStorageModule,
     SettingsModule,
     BotModule,
     BotAdminModule,
@@ -66,7 +65,6 @@ const isScreenshotEnabled = process.env.ENABLE_SCREENSHOT === 'true' || isDev;
     ...(isCronEnabled ? [CronModule] : []),
     ...(isScreenshotEnabled ? [ScreenshotModule] : []),
     HealthModule,
-    SentryModule,
   ],
 })
 export class AppModule {}

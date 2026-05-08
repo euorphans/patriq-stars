@@ -307,7 +307,7 @@ export class MainKeyboard {
     const isEnabled = (method: string) =>
       !enabledMethods || enabledMethods.includes(method);
 
-    const methodOrder = enabledMethods || ['PLATEGA', 'SBP2', 'HELEKET', 'TON'];
+    const methodOrder = enabledMethods || ['PLATEGA', 'HELEKET', 'TON'];
 
     for (const method of methodOrder) {
       if (!isEnabled(method)) continue;
@@ -319,39 +319,6 @@ export class MainKeyboard {
               Markup.button.callback(
                 `${i18n.t('payment.method.platega', lang)} — ${prices.platega.rub.toFixed(2)} ₽`,
                 `${actionPrefix}_platega`,
-              ),
-            ]);
-          }
-          break;
-
-        case 'SBP2':
-          if (prices.sbp2) {
-            buttons.push([
-              Markup.button.callback(
-                `${i18n.t('payment.method.sbp2', lang)} — ${prices.sbp2.rub.toFixed(2)} ₽`,
-                `${actionPrefix}_sbp2`,
-              ),
-            ]);
-          }
-          break;
-
-        case 'AURAPAY_SBP':
-          if (prices.aurapay_sbp) {
-            buttons.push([
-              Markup.button.callback(
-                `🏦 СБП 3 РФ — ${prices.aurapay_sbp.rub.toFixed(2)} ₽`,
-                `${actionPrefix}_aurapay_sbp`,
-              ),
-            ]);
-          }
-          break;
-
-        case 'AURAPAY_CARD':
-          if (prices.aurapay_card) {
-            buttons.push([
-              Markup.button.callback(
-                `💳 Карты РФ — ${prices.aurapay_card.rub.toFixed(2)} ₽`,
-                `${actionPrefix}_aurapay_card`,
               ),
             ]);
           }

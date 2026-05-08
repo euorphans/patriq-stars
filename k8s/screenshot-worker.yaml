@@ -91,24 +91,6 @@ spec:
                 secretKeyRef:
                   name: stars-bot-secrets
                   key: WALLET_ADDRESS
-            - name: SENTRY_DSN
-              valueFrom:
-                secretKeyRef:
-                  name: stars-bot-secrets
-                  key: SENTRY_DSN
-                  optional: true
-            - name: S3_ACCESS_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: stars-bot-secrets
-                  key: S3_ACCESS_KEY_ID
-                  optional: true
-            - name: S3_SECRET_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: stars-bot-secrets
-                  key: S3_SECRET_ACCESS_KEY
-                  optional: true
 
           startupProbe:
             httpGet:
@@ -160,9 +142,13 @@ spec:
           volumeMounts:
             - name: dshm
               mountPath: /dev/shm
+            - name: local-snapshots
+              mountPath: /data/local-storage
 
       volumes:
         - name: dshm
           emptyDir:
             medium: Memory
             sizeLimit: 512Mi
+        - name: local-snapshots
+          emptyDir: {}

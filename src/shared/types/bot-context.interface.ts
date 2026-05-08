@@ -125,13 +125,7 @@ export interface SessionData {
 
   captchaCorrectKey?: string;
   captchaOptions?: string[];
-  pendingPaymentMethod?:
-    | 'platega'
-    | 'heleket'
-    | 'ton'
-    | 'sbp2'
-    | 'aurapay_sbp'
-    | 'aurapay_card';
+  pendingPaymentMethod?: 'platega' | 'heleket' | 'ton';
   awaitingCaptchaUnban?: boolean;
 
   // Broadcast target audience (Task 71)

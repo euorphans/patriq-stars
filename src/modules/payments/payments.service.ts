@@ -3,8 +3,6 @@ import { PrismaService } from '@/shared/services/prisma/prisma.service';
 import { PlategaService } from './providers/platega.service';
 import { HeleketService } from './providers/heleket.service';
 import { TonPaymentService } from './providers/ton-payment.service';
-import { Sbp2Service } from './providers/sbp2.service';
-import { AurapayService } from './providers/aurapay.service';
 import { PaymentHealthService } from './payment-health.service';
 import { FraudService } from '@/modules/fraud/fraud.service';
 import {
@@ -31,8 +29,6 @@ export class PaymentsService {
     private readonly plategaService: PlategaService,
     private readonly heleketService: HeleketService,
     private readonly tonPaymentService: TonPaymentService,
-    private readonly sbp2Service: Sbp2Service,
-    private readonly aurapayService: AurapayService,
     private readonly paymentHealthService: PaymentHealthService,
     private readonly eventEmitter: EventEmitter2,
     private readonly fraudService: FraudService,
@@ -286,61 +282,6 @@ export class PaymentsService {
               onRetry: (attempt, error) => {
                 this.logger.warn(
                   `Retry attempt ${attempt} for Heleket payment ${payment.id}: ${error.message}`,
-                );
-              },
-            },
-          );
-          break;
-
-        case PaymentMethod.SBP2:
-          externalPaymentData = await withRetry(
-            () =>
-              this.sbp2Service.createPayment({
-                order_id: payment.id,
-                amount: parseFloat(data.amount_rub),
-                user_id: String(data.user_telegram_id || ''),
-              }),
-            {
-              maxAttempts: 2,
-              delayMs: 500,
-              exponentialBackoff: false,
-              shouldRetry: isRetryableError,
-              onRetry: (attempt, error) => {
-                this.logger.warn(
-                  `Retry attempt ${attempt} for SBP2 payment ${payment.id}: ${error.message}`,
-                );
-              },
-            },
-          );
-          break;
-
-        case PaymentMethod.AURAPAY_SBP:
-        case PaymentMethod.AURAPAY_CARD:
-          externalPaymentData = await withRetry(
-            () =>
-              this.aurapayService.createPayment({
-                order_id: payment.order_number.toString(),
-                amount: parseFloat(data.amount_rub),
-                service:
-                  data.payment_method === PaymentMethod.AURAPAY_SBP
-                    ? 'sbp'
-                    : 'card',
-                description: this.getPlategaPaymentDescription({
-                  product_type: data.product_type,
-                  product_quantity: data.product_quantity,
-                  recipient: data.recipient,
-                  recipient_username: data.recipient_username,
-                  user_telegram_id: data.user_telegram_id,
-                }).substring(0, 255),
-              }),
-            {
-              maxAttempts: 2,
-              delayMs: 500,
-              exponentialBackoff: false,
-              shouldRetry: isRetryableError,
-              onRetry: (attempt, error) => {
-                this.logger.warn(
-                  `Retry attempt ${attempt} for Aurapay payment ${payment.id}: ${error.message}`,
                 );
               },
             },
@@ -622,43 +563,6 @@ export class PaymentsService {
         return map[normalized] ?? `❓ ${status}`;
       }
 
-      if (payment.payment_method === PaymentMethod.SBP2) {
-        if (!payment.external_payment_id) return null;
-        const status = await this.sbp2Service.getTransactionStatus(
-          payment.external_payment_id,
-        );
-
-        const map: Record<string, string> = {
-          SUCCESS: '✅ Подтверждена',
-          CONFIRMED: '✅ Подтверждена',
-          NEW: '⏳ В ожидании',
-          PENDING: '⏳ В ожидании',
-          FAILED: '❌ Ошибка',
-          CANCELLED: '❌ Отменена',
-          REFUND: '↩️ Возврат',
-        };
-
-        if (status === 'UNKNOWN') return '⚠️ Не найдена в 1payment';
-        return map[status] ?? `❓ ${status}`;
-      }
-
-      if (
-        payment.payment_method === PaymentMethod.AURAPAY_SBP ||
-        payment.payment_method === PaymentMethod.AURAPAY_CARD
-      ) {
-        if (!payment.external_payment_id) return null;
-        const status = await this.aurapayService.getInvoiceStatus(
-          payment.external_payment_id,
-        );
-        const map: Record<string, string> = {
-          PAID: '✅ Оплачен',
-          PENDING: '⏳ Ожидает оплаты',
-          EXPIRED: '🕐 Истёк срок оплаты',
-          NOT_FOUND: '⚠️ Не найден в Aurapay',
-        };
-        return map[status] ?? `❓ ${status}`;
-      }
-
       if (payment.payment_method === PaymentMethod.HELEKET) {
         if (!payment.external_payment_id) return null;
         const status = await this.heleketService.getPaymentInfo(
@@ -823,64 +727,6 @@ export class PaymentsService {
         } catch (error: any) {
           this.logger.error(
             `Error checking Heleket payment ${payment.id}: ${error.message}`,
-          );
-          throw error;
-        }
-        break;
-
-      case PaymentMethod.SBP2:
-        if (!payment.external_payment_id) {
-          return payment.status;
-        }
-        try {
-          isPaid = await withRetry(
-            () =>
-              this.sbp2Service.checkPaymentStatus(payment.external_payment_id!),
-            {
-              maxAttempts: 2,
-              delayMs: 500,
-              exponentialBackoff: false,
-              shouldRetry: isRetryableError,
-            },
-          );
-        } catch (error: any) {
-          if (
-            error.message?.includes('400') ||
-            error.message?.includes('not found')
-          ) {
-            this.logger.warn(
-              `Payment ${payment.id} check returned 400/not found from SBP2 - treating as pending. Error: ${error.message}`,
-            );
-            return PaymentStatus.PENDING;
-          }
-          this.logger.error(
-            `Error checking SBP2 payment ${payment.id}: ${error.message}`,
-          );
-          throw error;
-        }
-        break;
-
-      case PaymentMethod.AURAPAY_SBP:
-      case PaymentMethod.AURAPAY_CARD:
-        if (!payment.external_payment_id) {
-          return payment.status;
-        }
-        try {
-          isPaid = await withRetry(
-            () =>
-              this.aurapayService.checkPaymentStatus(
-                payment.external_payment_id!,
-              ),
-            {
-              maxAttempts: 2,
-              delayMs: 500,
-              exponentialBackoff: false,
-              shouldRetry: isRetryableError,
-            },
-          );
-        } catch (error: any) {
-          this.logger.error(
-            `Error checking Aurapay payment ${payment.id}: ${error.message}`,
           );
           throw error;
         }

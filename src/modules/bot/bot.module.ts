@@ -14,7 +14,7 @@ import { I18nModule } from '@/shared/services/i18n/i18n.module';
 import { SubscriptionMiddleware } from './middleware/subscription.middleware';
 import { createTelegrafConfig } from '@/shared/utils/telegraf-config.factory';
 import { HealthTrackerService } from '@/modules/health/health-tracker.service';
-import { isIgnorableTelegramUserError } from '@/shared/services/sentry/sentry-telegram.integration';
+import { isIgnorableTelegramUserError } from '@/shared/utils/telegram-errors';
 
 @Module({
   imports: [

@@ -149,10 +149,7 @@
     "method": {
       "platega": "💵 СБП РФ",
       "heleket": "🪙 Криптовалюта",
-      "ton": "💎 TON",
-      "sbp2": "🏦 СБП 2 РФ",
-      "aurapay_sbp": "🏦 СБП 3 РФ",
-      "aurapay_card": "💳 Карта РФ"
+      "ton": "💎 TON"
     },
     "expired": {
       "title": "⏱ <b>Время на оплату истекло</b>\n\n❌ Платеж <code>#{order}</code> отменен.\n💳 Способ оплаты: {method}\n⏰ Время на оплату: 30 минут\n\nВы можете создать новый заказ."
@@ -270,9 +267,6 @@
       "section_platega": "💳 <b>PLATEGA (СБП)</b>",
       "section_heleket": "🪙 <b>HELEKET (CRYPTO)</b>",
       "section_ton": "💎 <b>TON</b>",
-      "section_sbp2": "🏦 <b>СБП 2</b>",
-      "section_sbp3": "🏦 <b>СБП 3</b>",
-      "section_cards": "💳 <b>Карты</b>",
       "section_totals": "💰 <b>ОБЩИЕ ИТОГИ</b>",
       "line_turnover_rub": "├ Оборот: {amount} ₽",
       "line_turnover_usd": "├ Оборот: {amount} $",

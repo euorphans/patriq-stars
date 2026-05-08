@@ -1,5 +1,5 @@
 # Kubernetes Job for running Prisma migrations.
-# Run after deploying infrastructure (PostgreSQL) and before deploying the app,
+# Run after PostgreSQL StatefulSet is ready and before deploying the app,
 # or any time the schema changes.
 #
 # Usage:

@@ -27,11 +27,6 @@ export class WebhookGuard implements CanActivate {
         await this.verifyPlategaWebhook(request);
       } else if (path.includes('/heleket/')) {
         await this.verifyHeleketWebhook(request);
-      } else if (path.includes('/sbp2/')) {
-        await this.verifySbp2Webhook(request);
-      } else if (path.includes('/aurapay/')) {
-        request.webhookVerified = true;
-        request.webhookProvider = 'aurapay';
       } else {
         this.logger.warn(`Unknown webhook path: ${path}`);
         return false;
@@ -116,23 +111,6 @@ export class WebhookGuard implements CanActivate {
 
     request.webhookVerified = true;
     request.webhookProvider = 'heleket';
-  }
-
-  private async verifySbp2Webhook(request: WebhookRequest): Promise<void> {
-    const body = request.body;
-    const expectedProjectId = process.env.SBP2_PROJECT_ID;
-
-    if (expectedProjectId && body?.project_id) {
-      if (String(body.project_id) !== expectedProjectId) {
-        this.logger.error(
-          `1payment webhook: project_id mismatch. Expected: ${expectedProjectId}, got: ${body.project_id}`,
-        );
-        throw new UnauthorizedException('Invalid project ID');
-      }
-    }
-
-    request.webhookVerified = true;
-    request.webhookProvider = 'sbp2';
   }
 
   private verifyHeleketSignature(

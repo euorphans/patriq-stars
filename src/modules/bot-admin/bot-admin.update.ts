@@ -186,11 +186,6 @@ export class BotAdminUpdate {
         return 'Platega';
       case 'HELEKET':
         return 'Heleket';
-      case 'SBP2':
-        return 'СБП 2';
-      case 'AURAPAY_SBP':
-      case 'AURAPAY_CARD':
-        return 'СБП 3 / Карта (Aurapay)';
       case 'TON':
         return 'TON';
       default:
@@ -2071,29 +2066,18 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
       await ctx.deleteMessage();
     } catch {}
 
-    const [
-      plategaFeeRecord,
-      heleketFeeRecord,
-      tonFeeRecord,
-      sbp2FeeRecord,
-      aurapayFeeRecord,
-    ] = await Promise.all([
-      this.prisma.paymentFee.findUnique({
-        where: { payment_system: 'PLATEGA' },
-      }),
-      this.prisma.paymentFee.findUnique({
-        where: { payment_system: 'HELEKET' },
-      }),
-      this.prisma.paymentFee.findUnique({
-        where: { payment_system: 'TON' },
-      }),
-      this.prisma.paymentFee.findUnique({
-        where: { payment_system: 'SBP2' },
-      }),
-      this.prisma.paymentFee.findUnique({
-        where: { payment_system: 'AURAPAY_SBP' },
-      }),
-    ]);
+    const [plategaFeeRecord, heleketFeeRecord, tonFeeRecord] =
+      await Promise.all([
+        this.prisma.paymentFee.findUnique({
+          where: { payment_system: 'PLATEGA' },
+        }),
+        this.prisma.paymentFee.findUnique({
+          where: { payment_system: 'HELEKET' },
+        }),
+        this.prisma.paymentFee.findUnique({
+          where: { payment_system: 'TON' },
+        }),
+      ]);
 
     const plategaFee = plategaFeeRecord
       ? Number(plategaFeeRecord.fee_percent)
@@ -2102,11 +2086,6 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
       ? Number(heleketFeeRecord.fee_percent)
       : 0;
     const tonFee = tonFeeRecord ? Number(tonFeeRecord.fee_percent) : 0;
-    const sbp2Fee = sbp2FeeRecord ? Number(sbp2FeeRecord.fee_percent) : 0;
-    const aurapayFee = aurapayFeeRecord
-      ? Number(aurapayFeeRecord.fee_percent)
-      : 0;
-
     const text = `
 💳 <b>Платежные системы</b>
 
@@ -2114,8 +2093,6 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
 • Platega: ${plategaFee.toFixed(1)}%
 • Heleket: ${heleketFee.toFixed(1)}%
 • TON: ${tonFee.toFixed(1)}%
-• СБП 2: ${sbp2Fee.toFixed(1)}%
-• СБП 3 / Карта (Aurapay): ${aurapayFee.toFixed(1)}%
 
 Выберите систему для изменения:
 `;
@@ -2126,8 +2103,6 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
         plategaFee,
         heleketFee,
         tonFee,
-        sbp2Fee,
-        aurapayFee,
       ).reply_markup,
     });
   }
@@ -2148,22 +2123,6 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
   async feeTon(@Ctx() ctx: BotContext): Promise<void> {
     if (!(await this.checkAccess(ctx))) return;
     await this.handleFeeSelection(ctx, 'TON', 'TON');
-  }
-
-  @Action('fee_sbp2')
-  async feeSbp2(@Ctx() ctx: BotContext): Promise<void> {
-    if (!(await this.checkAccess(ctx))) return;
-    await this.handleFeeSelection(ctx, 'SBP2', 'СБП 2');
-  }
-
-  @Action('fee_aurapay')
-  async feeAurapay(@Ctx() ctx: BotContext): Promise<void> {
-    if (!(await this.checkAccess(ctx))) return;
-    await this.handleFeeSelection(
-      ctx,
-      'AURAPAY_SBP',
-      'СБП 3 / Карта (Aurapay)',
-    );
   }
 
   private async handleFeeSelection(
@@ -2206,29 +2165,18 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
       await ctx.deleteMessage();
     } catch {}
 
-    const [
-      plategaMarkupRecord,
-      heleketMarkupRecord,
-      tonMarkupRecord,
-      sbp2MarkupRecord,
-      aurapayMarkupRecord,
-    ] = await Promise.all([
-      this.prisma.serviceMarkup.findUnique({
-        where: { payment_system: 'PLATEGA' },
-      }),
-      this.prisma.serviceMarkup.findUnique({
-        where: { payment_system: 'HELEKET' },
-      }),
-      this.prisma.serviceMarkup.findUnique({
-        where: { payment_system: 'TON' },
-      }),
-      this.prisma.serviceMarkup.findUnique({
-        where: { payment_system: 'SBP2' },
-      }),
-      this.prisma.serviceMarkup.findUnique({
-        where: { payment_system: 'AURAPAY_SBP' },
-      }),
-    ]);
+    const [plategaMarkupRecord, heleketMarkupRecord, tonMarkupRecord] =
+      await Promise.all([
+        this.prisma.serviceMarkup.findUnique({
+          where: { payment_system: 'PLATEGA' },
+        }),
+        this.prisma.serviceMarkup.findUnique({
+          where: { payment_system: 'HELEKET' },
+        }),
+        this.prisma.serviceMarkup.findUnique({
+          where: { payment_system: 'TON' },
+        }),
+      ]);
 
     const plategaMarkup = plategaMarkupRecord
       ? Number(plategaMarkupRecord.markup_percent)
@@ -2239,13 +2187,6 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
     const tonMarkup = tonMarkupRecord
       ? Number(tonMarkupRecord.markup_percent)
       : 0;
-    const sbp2Markup = sbp2MarkupRecord
-      ? Number(sbp2MarkupRecord.markup_percent)
-      : 0;
-    const aurapayMarkup = aurapayMarkupRecord
-      ? Number(aurapayMarkupRecord.markup_percent)
-      : 0;
-
     const text = `
 💰 <b>Наша наценка</b>
 
@@ -2253,8 +2194,6 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
 • Platega: ${plategaMarkup.toFixed(1)}%
 • Heleket: ${heleketMarkup.toFixed(1)}%
 • TON: ${tonMarkup.toFixed(1)}%
-• СБП 2: ${sbp2Markup.toFixed(1)}%
-• СБП 3 / Карта (Aurapay): ${aurapayMarkup.toFixed(1)}%
 
 Выберите систему для изменения наценки:
 `;
@@ -2265,22 +2204,17 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
         plategaMarkup,
         heleketMarkup,
         tonMarkup,
-        sbp2Markup,
-        aurapayMarkup,
       ).reply_markup,
     });
   }
 
-  @Action(/^markup_(platega|heleket|ton|sbp2|aurapay)$/)
+  @Action(/^markup_(platega|heleket|ton)$/)
   async selectMarkupSystem(@Ctx() ctx: BotContext): Promise<void> {
     if (!(await this.checkAccess(ctx))) return;
     const match = ctx.match;
     if (!match) return;
 
-    const system =
-      match[1].toUpperCase() === 'AURAPAY'
-        ? 'AURAPAY_SBP'
-        : match[1].toUpperCase();
+    const system = match[1].toUpperCase();
     const systemName = this.paymentSystemAdminLabel(system);
 
     ctx.answerCbQuery().catch(() => {});
@@ -2332,7 +2266,6 @@ ${methods
       PLATEGA: 'СБП (Platega)',
       HELEKET: 'Криптовалюта',
       TON: 'TON',
-      SBP2: 'СБП 2',
     };
     return `${m.enabled ? '🟢' : '🔴'} ${names[m.method] || m.method}`;
   })
@@ -2364,7 +2297,6 @@ ${methods
       PLATEGA: 'СБП (Platega)',
       HELEKET: 'Криптовалюта',
       TON: 'TON',
-      SBP2: 'СБП 2',
     };
     const name = METHOD_NAMES[method] || method;
 
@@ -2384,7 +2316,6 @@ ${methods
       PLATEGA: 'СБП (Platega)',
       HELEKET: 'Криптовалюта',
       TON: 'TON',
-      SBP2: 'СБП 2',
     };
     return `${m.enabled ? '🟢' : '🔴'} ${names[m.method] || m.method}`;
   })
@@ -2424,7 +2355,6 @@ ${methods
       PLATEGA: 'СБП (Platega)',
       HELEKET: 'Криптовалюта',
       TON: 'TON',
-      SBP2: 'СБП 2',
     };
     return `${m.enabled ? '🟢' : '🔴'} ${names[m.method] || m.method}`;
   })
@@ -2464,7 +2394,6 @@ ${methods
       PLATEGA: 'СБП (Platega)',
       HELEKET: 'Криптовалюта',
       TON: 'TON',
-      SBP2: 'СБП 2',
     };
     return `${m.enabled ? '🟢' : '🔴'} ${names[m.method] || m.method}`;
   })
@@ -2485,9 +2414,6 @@ ${methods
 
   private async buildFailoverText(): Promise<string> {
     const plategaHealth = this.paymentHealthService.getHealthStatus('PLATEGA');
-    const sbp2Health = this.paymentHealthService.getHealthStatus('SBP2');
-    const aurapayHealth =
-      this.paymentHealthService.getHealthStatus('AURAPAY_SBP');
     const failoverEnabled = await this.paymentHealthService.isFailoverEnabled();
     const autoRecovery =
       await this.paymentHealthService.isAutoRecoveryEnabled();
@@ -2504,13 +2430,7 @@ ${methods
 
     const plategaStatus = fmt(plategaHealth, threshold);
 
-    const aurapayStatus = plategaHealth.failoverActive
-      ? '✅ Активен (failover от Platega)'
-      : fmt(aurapayHealth, threshold);
-
-    const anyRecovery =
-      plategaHealth.recoveryInProgress || aurapayHealth.recoveryInProgress;
-    const recoveryStatus = anyRecovery
+    const recoveryStatus = plategaHealth.recoveryInProgress
       ? '\n🔄 Восстановление в процессе...'
       : '';
 
@@ -2518,20 +2438,15 @@ ${methods
       ? plategaHealth.failoverTriggeredAt.toLocaleString('ru-RU', {
           timeZone: 'Europe/Moscow',
         })
-      : aurapayHealth.failoverTriggeredAt
-        ? aurapayHealth.failoverTriggeredAt.toLocaleString('ru-RU', {
-            timeZone: 'Europe/Moscow',
-          })
-        : 'никогда';
+      : 'никогда';
 
     return (
-      `🔄 <b>АВТОПЕРЕКЛЮЧЕНИЕ СБП</b>\n\n` +
-      `📊 <b>Цепочка:</b> PLATEGA → СБП 3 → PLATEGA\n\n` +
+      `🔄 <b>PLATEGA (СБП)</b>\n\n` +
+      `Резервный способ оплаты не подключён — автопереключение при сбоях отключено.\n\n` +
       `📊 <b>Статус:</b>\n` +
       `├ PLATEGA: ${plategaStatus}\n` +
-      `├ СБП 3 (Aurapay): ${aurapayStatus}\n` +
       `└ Последнее переключение: ${lastSwitch}${recoveryStatus}\n\n` +
-      `⚙️ <b>Настройки:</b>\n` +
+      `⚙️ <b>Настройки (на будущее):</b>\n` +
       `├ Авто-переключение: ${failoverEnabled ? '✅ Вкл' : '❌ Выкл'}\n` +
       `├ Порог ошибок: ${threshold}\n` +
       `├ Откат через: ${cooldown} мин\n` +
@@ -4134,13 +4049,7 @@ ${methods
             ? 'СБП РФ'
             : payment.payment_method === 'HELEKET'
               ? 'Криптовалюта'
-              : payment.payment_method === 'SBP2'
-                ? 'СБП 2 РФ'
-                : payment.payment_method === 'AURAPAY_SBP'
-                  ? 'СБП 3 РФ'
-                  : payment.payment_method === 'AURAPAY_CARD'
-                    ? 'Карты РФ'
-                    : escapeHtml(String(payment.payment_method));
+              : escapeHtml(String(payment.payment_method));
 
       const formattedDate = new Date(payment.created_at)
         .toLocaleString('ru-RU', {
@@ -4184,10 +4093,7 @@ ${methods
       const serviceMarkupPercent = Number(payment.service_markup_percent || 0);
 
       let paymentFeeSum = 0;
-      if (
-        payment.payment_method === 'PLATEGA' ||
-        payment.payment_method === 'SBP2'
-      ) {
+      if (payment.payment_method === 'PLATEGA') {
         paymentFeeSum = amountRub * (paymentFeePercent / 100);
       } else if (payment.payment_method === 'HELEKET') {
         paymentFeeSum = amountUsd * (paymentFeePercent / 100);
@@ -5994,14 +5900,6 @@ ${productDetailBlock}${feeDisplay}
           },
         });
 
-        if (system === 'AURAPAY_SBP') {
-          await this.prisma.paymentFee.upsert({
-            where: { payment_system: 'AURAPAY_CARD' },
-            update: { fee_percent: feeValue },
-            create: { payment_system: 'AURAPAY_CARD', fee_percent: feeValue },
-          });
-        }
-
         const systemName = this.paymentSystemAdminLabel(system);
 
         await ctx.reply(
@@ -6143,17 +6041,6 @@ ${productDetailBlock}${feeDisplay}
             markup_percent: markupValue,
           },
         });
-
-        if (system === 'AURAPAY_SBP') {
-          await this.prisma.serviceMarkup.upsert({
-            where: { payment_system: 'AURAPAY_CARD' },
-            update: { markup_percent: markupValue },
-            create: {
-              payment_system: 'AURAPAY_CARD',
-              markup_percent: markupValue,
-            },
-          });
-        }
 
         const systemName = this.paymentSystemAdminLabel(system);
 

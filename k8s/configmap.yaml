@@ -16,7 +16,7 @@ data:
   REDIS_DB: "0"
   USE_REDIS_SESSION: "true"
 
-  # PostgreSQL: внешняя БД. URL задаётся в .env → DATABASE_URL в секретах.
+  # PostgreSQL: в кластере (Service postgresql-master), полный URL — DATABASE_URL в Secret stars-bot-secrets.
 
   # Webhook
   WEBHOOK_PATH: "/api/bot/webhook"
@@ -25,15 +25,12 @@ data:
   AGREEMENT_URL: "https://telegra.ph/Politika-konfidencialnosti-02-15-91"
   PRIVACY_POLICY_URL: "https://telegra.ph/Pravila-ispolzovaniya-02-15-2"
 
-  # Google Cloud Storage (S3 interoperability)
-  S3_BUCKET: "mopsstars-snapshots-gcp"
-  S3_REGION: "auto"
-  S3_ENDPOINT: "https://storage.googleapis.com"
+  # Скриншоты заказов: каталог внутри контейнера (см. volumeMount в deployment / screenshot-worker)
+  LOCAL_STORAGE_PATH: "/data/local-storage"
 
   # Frontend (CORS allowed origins, comma-separated)
   FRONTEND_URL: "https://fh34hfhfw9efhjsdhkjsfd.lol"
-  # Static admin on GCS sends Origin: https://storage.googleapis.com (same for any bucket path)
-  CORS_EXTRA_ORIGINS: "https://storage.googleapis.com"
+  CORS_EXTRA_ORIGINS: ""
 
   # Pricing defaults
   STAR_PRICE_USD: "0.015"

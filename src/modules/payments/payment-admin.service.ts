@@ -440,9 +440,6 @@ export class PaymentAdminService {
         PLATEGA: '🏦 СБП РФ',
         HELEKET: '🪙 Криптовалюта',
         TON: '💎 TON',
-        SBP2: '🏦 СБП 2 РФ',
-        AURAPAY_SBP: '🏦 СБП 3 РФ',
-        AURAPAY_CARD: '💳 Карты РФ',
       };
 
       const productNames: Record<string, string> = {

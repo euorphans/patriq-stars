@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/shared/services/prisma/prisma.service';
-import { S3Service } from '@/shared/services/s3/s3.service';
+import { LocalSnapshotStorageService } from '@/shared/services/local-storage/local-snapshot-storage.service';
 import * as fs from 'fs';
 import * as path from 'path';
 import puppeteer from 'puppeteer-core';
@@ -42,7 +42,7 @@ export class FragmentScreenshotService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly s3: S3Service,
+    private readonly snapshotStorage: LocalSnapshotStorageService,
   ) {}
 
   private async getBrowser(): Promise<
@@ -131,7 +131,7 @@ export class FragmentScreenshotService {
       let stored: string;
       if (screenshot) {
         const key = `snapshots/payments/${params.paymentId}.png`;
-        const url = await this.s3.upload(key, screenshot, 'image/png');
+        const url = await this.snapshotStorage.upload(key, screenshot, 'image/png');
         stored = url;
       } else {
         stored = 'html:' + html;

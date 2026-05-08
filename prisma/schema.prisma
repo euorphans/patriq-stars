@@ -33,9 +33,6 @@ enum PaymentMethod {
   PLATEGA
   HELEKET
   TON
-  SBP2
-  AURAPAY_SBP
-  AURAPAY_CARD
 }
 
 enum FragmentQueueStatus {

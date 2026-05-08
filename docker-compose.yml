@@ -1,3 +1,6 @@
+# Локальная БД и Redis для разработки.
+# Запуск: docker compose up -d
+# Или: npm run db:up
 version: '3.8'
 
 services:

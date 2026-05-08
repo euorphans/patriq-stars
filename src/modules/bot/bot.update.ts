@@ -1656,13 +1656,7 @@ export class BotUpdate {
             ? this.i18n.t('payment.method.platega', lang)
             : payment.payment_method === 'HELEKET'
               ? this.i18n.t('payment.method.heleket', lang)
-              : payment.payment_method === 'SBP2'
-                ? this.i18n.t('payment.method.sbp2', lang)
-                : payment.payment_method === 'AURAPAY_SBP'
-                  ? 'СБП 3 РФ'
-                  : payment.payment_method === 'AURAPAY_CARD'
-                    ? 'Карты РФ'
-                    : payment.payment_method;
+              : payment.payment_method;
 
       let recipientText: string;
       if (payment.recipient_username) {
@@ -2806,36 +2800,24 @@ export class BotUpdate {
     }
   }
 
-  @Action(/^retry_captcha_(platega|heleket|ton|sbp2|aurapay_sbp|aurapay_card)$/)
+  @Action(/^retry_captcha_(platega|heleket|ton)$/)
   async onRetryCaptcha(@Ctx() ctx: BotContext): Promise<void> {
     const match = ctx.match as RegExpExecArray | null;
     if (!match) return;
 
     ctx.answerCbQuery().catch(() => {});
 
-    const paymentMethod = match[1] as
-      | 'platega'
-      | 'heleket'
-      | 'ton'
-      | 'sbp2'
-      | 'aurapay_sbp'
-      | 'aurapay_card';
+    const paymentMethod = match[1] as 'platega' | 'heleket' | 'ton';
     ctx.session.pendingPaymentMethod = paymentMethod;
     await this.showCaptcha(ctx);
   }
 
-  @Action(/^payment_(platega|heleket|ton|sbp2|aurapay_sbp|aurapay_card)$/)
+  @Action(/^payment_(platega|heleket|ton)$/)
   async selectPaymentMethod(@Ctx() ctx: BotContext): Promise<void> {
     const match = ctx.match;
     if (!match) return;
 
-    const paymentMethod = match[1] as
-      | 'platega'
-      | 'heleket'
-      | 'ton'
-      | 'sbp2'
-      | 'aurapay_sbp'
-      | 'aurapay_card';
+    const paymentMethod = match[1] as 'platega' | 'heleket' | 'ton';
     const userId = ctx.from?.id;
 
     if (
@@ -2902,13 +2884,7 @@ export class BotUpdate {
 
   private async processPaymentCreation(
     ctx: BotContext,
-    paymentMethod:
-      | 'platega'
-      | 'heleket'
-      | 'ton'
-      | 'sbp2'
-      | 'aurapay_sbp'
-      | 'aurapay_card',
+    paymentMethod: 'platega' | 'heleket' | 'ton',
   ): Promise<void> {
     const userId = ctx.from?.id;
 
@@ -2928,13 +2904,7 @@ export class BotUpdate {
 
   private async doProcessPaymentCreation(
     ctx: BotContext,
-    paymentMethod:
-      | 'platega'
-      | 'heleket'
-      | 'ton'
-      | 'sbp2'
-      | 'aurapay_sbp'
-      | 'aurapay_card',
+    paymentMethod: 'platega' | 'heleket' | 'ton',
   ): Promise<void> {
     const { productType, quantity, recipientUsername, recipientName } =
       ctx.session;
@@ -2971,11 +2941,7 @@ export class BotUpdate {
       if (!userId) return;
 
       const limits = await this.settingsService.getPurchaseLimits();
-      const isSbpOrCard =
-        paymentMethod === 'platega' ||
-        paymentMethod === 'sbp2' ||
-        paymentMethod === 'aurapay_sbp' ||
-        paymentMethod === 'aurapay_card';
+      const isSbpOrCard = paymentMethod === 'platega';
 
       let effectiveQuantity = quantity;
       let showSbpStarsCapNotice = false;
@@ -3112,15 +3078,9 @@ export class BotUpdate {
         const paymentMethodDisplay =
           paymentMethod === 'platega'
             ? this.i18n.t('payment.method.platega', lang)
-            : paymentMethod === 'sbp2'
-              ? this.i18n.t('payment.method.sbp2', lang)
-              : paymentMethod === 'aurapay_sbp'
-                ? 'СБП 3 РФ'
-                : paymentMethod === 'aurapay_card'
-                  ? 'Карты РФ'
-                  : paymentMethod === 'heleket'
-                    ? this.i18n.t('payment.method.heleket', lang)
-                    : this.i18n.t('payment.method.platega', lang);
+            : paymentMethod === 'heleket'
+              ? this.i18n.t('payment.method.heleket', lang)
+              : this.i18n.t('payment.method.platega', lang);
 
         let recipientDisplay: string;
         if (payment.recipient_username && payment.recipient_name) {

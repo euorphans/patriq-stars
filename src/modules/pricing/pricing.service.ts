@@ -16,9 +16,6 @@ interface PriceBreakdown {
   platega: { rub: number; usd: number; rate: number };
   heleket: { rub: number; usd: number; rate: number };
   ton: { rub: number; usd: number; rate: number };
-  sbp2: { rub: number; usd: number; rate: number };
-  aurapay_sbp: { rub: number; usd: number; rate: number };
-  aurapay_card: { rub: number; usd: number; rate: number };
 }
 
 @Injectable()
@@ -107,29 +104,6 @@ export class PricingService implements OnModuleInit {
     };
   }
 
-  private calculateSbp2Price(
-    basePriceUsd: number,
-    serviceMarkupPercent: number,
-    paymentFeePercent: number,
-    usdRate: number,
-  ): { rub: number; usd: number; rate: number } {
-    const usdRateWith2Percent = usdRate * 1.02;
-
-    const purchasePriceRub = basePriceUsd * usdRateWith2Percent;
-
-    const withMarkupRub = purchasePriceRub * (1 + serviceMarkupPercent / 100);
-
-    const finalRub = withMarkupRub * (1 + paymentFeePercent / 100);
-
-    const finalUsd = basePriceUsd * (1 + serviceMarkupPercent / 100);
-
-    return {
-      rub: Math.round(finalRub * 100) / 100,
-      usd: Math.round(finalUsd * 100) / 100,
-      rate: usdRateWith2Percent,
-    };
-  }
-
   private calculateTonPrice(
     basePriceUsd: number,
     serviceMarkupPercent: number,
@@ -212,16 +186,6 @@ export class PricingService implements OnModuleInit {
           usdRate,
         );
 
-      case 'sbp2':
-      case 'aurapay_sbp':
-      case 'aurapay_card':
-        return this.calculateSbp2Price(
-          basePriceUsd,
-          serviceMarkup,
-          paymentFee,
-          usdRate,
-        );
-
       case 'heleket':
       case 'crypto':
         return this.calculateHeleketPrice(
@@ -259,17 +223,6 @@ export class PricingService implements OnModuleInit {
       case 'platega':
       case 'sbp':
         result = this.calculatePlategaPrice(
-          basePriceUsd,
-          serviceMarkup,
-          paymentFee,
-          usdRate,
-        );
-        break;
-
-      case 'sbp2':
-      case 'aurapay_sbp':
-      case 'aurapay_card':
-        result = this.calculateSbp2Price(
           basePriceUsd,
           serviceMarkup,
           paymentFee,
@@ -316,25 +269,13 @@ export class PricingService implements OnModuleInit {
     productType: string,
     quantity: number,
   ): Promise<PriceBreakdown> {
-    const [platega, heleket, ton, sbp2, aurapay_sbp, aurapay_card] =
-      await Promise.all([
-        this.calculatePriceForPaymentSystem(productType, quantity, 'platega'),
-        this.calculatePriceForPaymentSystem(productType, quantity, 'heleket'),
-        this.calculatePriceForPaymentSystem(productType, quantity, 'ton'),
-        this.calculatePriceForPaymentSystem(productType, quantity, 'sbp2'),
-        this.calculatePriceForPaymentSystem(
-          productType,
-          quantity,
-          'aurapay_sbp',
-        ),
-        this.calculatePriceForPaymentSystem(
-          productType,
-          quantity,
-          'aurapay_card',
-        ),
-      ]);
+    const [platega, heleket, ton] = await Promise.all([
+      this.calculatePriceForPaymentSystem(productType, quantity, 'platega'),
+      this.calculatePriceForPaymentSystem(productType, quantity, 'heleket'),
+      this.calculatePriceForPaymentSystem(productType, quantity, 'ton'),
+    ]);
 
-    return { platega, heleket, ton, sbp2, aurapay_sbp, aurapay_card };
+    return { platega, heleket, ton };
   }
 
   async initializeDefaultSettings(): Promise<void> {
@@ -342,18 +283,12 @@ export class PricingService implements OnModuleInit {
       platega: 6.0,
       heleket: 2.0,
       ton: 0.0,
-      sbp2: 0.0,
-      aurapay_sbp: 0.0,
-      aurapay_card: 0.0,
     };
 
     const defaultMarkups = {
       platega: 13.0,
       heleket: 13.0,
       ton: 13.0,
-      sbp2: 13.0,
-      aurapay_sbp: 13.0,
-      aurapay_card: 13.0,
     };
 
     for (const [system, fee] of Object.entries(defaultFees)) {

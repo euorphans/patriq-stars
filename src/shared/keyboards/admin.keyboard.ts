@@ -317,8 +317,6 @@ export class AdminKeyboard {
     plategaFee: number,
     heleketFee: number,
     tonFee: number,
-    sbp2Fee: number = 0,
-    aurapayFee: number = 0,
   ) {
     return Markup.inlineKeyboard([
       [
@@ -334,13 +332,6 @@ export class AdminKeyboard {
         ),
       ],
       [Markup.button.callback(`TON (${tonFee.toFixed(1)}%)`, 'fee_ton')],
-      [Markup.button.callback(`СБП 2 (${sbp2Fee.toFixed(1)}%)`, 'fee_sbp2')],
-      [
-        Markup.button.callback(
-          `СБП 3 / Карта (${aurapayFee.toFixed(1)}%)`,
-          'fee_aurapay',
-        ),
-      ],
       [Markup.button.callback('🔙 Назад', 'admin_back')],
     ]);
   }
@@ -349,8 +340,6 @@ export class AdminKeyboard {
     plategaMarkup: number,
     heleketMarkup: number,
     tonMarkup: number,
-    sbp2Markup: number = 0,
-    aurapayMarkup: number = 0,
   ) {
     return Markup.inlineKeyboard([
       [
@@ -366,18 +355,6 @@ export class AdminKeyboard {
         ),
       ],
       [Markup.button.callback(`TON (${tonMarkup.toFixed(1)}%)`, 'markup_ton')],
-      [
-        Markup.button.callback(
-          `СБП 2 (${sbp2Markup.toFixed(1)}%)`,
-          'markup_sbp2',
-        ),
-      ],
-      [
-        Markup.button.callback(
-          `СБП 3 / Карта (${aurapayMarkup.toFixed(1)}%)`,
-          'markup_aurapay',
-        ),
-      ],
       [Markup.button.callback('🔙 Назад', 'admin_back')],
     ]);
   }
@@ -389,7 +366,6 @@ export class AdminKeyboard {
       PLATEGA: '💵 СБП (Platega)',
       HELEKET: '🪙 Криптовалюта',
       TON: '💎 TON',
-      SBP2: '🏦 СБП 2',
     };
 
     const buttons = methods.map((m, index) => {
@@ -435,22 +411,6 @@ export class AdminKeyboard {
     failoverActive: boolean;
   }) {
     const buttons: any[][] = [];
-
-    if (config.failoverActive) {
-      buttons.push([
-        Markup.button.callback(
-          '🟢 Восстановить PLATEGA',
-          'failover_manual_recovery',
-        ),
-      ]);
-    } else {
-      buttons.push([
-        Markup.button.callback(
-          '⚡ Переключить на СБП 2',
-          'failover_manual_switch',
-        ),
-      ]);
-    }
 
     buttons.push([
       Markup.button.callback(

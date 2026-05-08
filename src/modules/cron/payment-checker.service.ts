@@ -563,13 +563,7 @@ export class PaymentCheckerService {
             ? 'payment.method.platega'
             : payment.payment_method === 'HELEKET'
               ? 'payment.method.heleket'
-              : payment.payment_method === 'SBP2'
-                ? 'СБП 2 РФ'
-                : payment.payment_method === 'AURAPAY_SBP'
-                  ? 'СБП 3 РФ'
-                  : payment.payment_method === 'AURAPAY_CARD'
-                    ? 'Карты РФ'
-                    : payment.payment_method;
+              : payment.payment_method;
 
       const paymentMethod =
         typeof paymentMethodKey === 'string' &&
@@ -668,9 +662,6 @@ export class PaymentCheckerService {
         PLATEGA: '🏦 СБП РФ',
         HELEKET: '🪙 Криптовалюта',
         TON: '💎 TON',
-        SBP2: '🏦 СБП 2 РФ',
-        AURAPAY_SBP: '🏦 СБП 3 РФ',
-        AURAPAY_CARD: '💳 Карты РФ',
       };
 
       const productNames: Record<string, string> = {
