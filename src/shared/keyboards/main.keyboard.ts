@@ -50,21 +50,11 @@ export class MainKeyboard {
     /** Аккаунт и помощь сверху, затем каталог столбцом — другой порядок, чем типичная «витрина». */
     const rows: any[] = [
       [{ text: i18n.t('menu.main.profile', lang), callback_data: 'my_profile' }],
-      [
-        {
-          text: i18n.t('menu.main.support', lang),
-          url: 'https://t.me/Mops_Support',
-        },
-      ],
       [{ text: i18n.t('menu.main.stars', lang), callback_data: 'buy_stars' }],
       [
-        { text: i18n.t('menu.main.premium', lang), callback_data: 'buy_premium' },
-        { text: i18n.t('menu.main.ton', lang), callback_data: 'buy_ton' },
-      ],
-      [
         {
-          text: i18n.t('menu.main.referral', lang),
-          callback_data: 'referral_program',
+          text: i18n.t('menu.main.premium', lang),
+          callback_data: 'buy_premium',
         },
       ],
     ];
@@ -82,21 +72,11 @@ export class MainKeyboard {
 
     const rows: any[] = [
       [{ text: i18n.t('menu.main.profile', lang), callback_data: 'my_profile' }],
-      [
-        {
-          text: i18n.t('menu.main.support', lang),
-          url: 'https://t.me/Mops_Support',
-        },
-      ],
       [{ text: i18n.t('menu.main.stars', lang), callback_data: 'buy_stars' }],
       [
-        { text: i18n.t('menu.main.premium', lang), callback_data: 'buy_premium' },
-        { text: i18n.t('menu.main.ton', lang), callback_data: 'buy_ton' },
-      ],
-      [
         {
-          text: i18n.t('menu.main.referral', lang),
-          callback_data: 'referral_program',
+          text: i18n.t('menu.main.premium', lang),
+          callback_data: 'buy_premium',
         },
       ],
     ];
@@ -111,24 +91,7 @@ export class MainKeyboard {
     lang: SupportedLanguage = 'ru',
   ) {
     return Markup.inlineKeyboard([
-      [
-        Markup.button.callback(
-          i18n.t('referral.button', lang),
-          'referral_program',
-        ),
-      ],
       [Markup.button.callback(i18n.t('common.back', lang), 'back_to_main')],
-    ]);
-  }
-
-  static getReferralMenu(i18n: I18nService, lang: SupportedLanguage = 'ru') {
-    return Markup.inlineKeyboard([
-      [
-        Markup.button.callback(
-          i18n.t('common.back', lang),
-          'back_to_main',
-        ),
-      ],
     ]);
   }
 
@@ -509,24 +472,14 @@ export class MainKeyboard {
   static getPaymentDetailsKeyboard(
     i18n: I18nService,
     lang: SupportedLanguage = 'ru',
-    withSupport: boolean = true,
   ) {
-    const buttons: any[] = [
+    return Markup.inlineKeyboard([
       [
         Markup.button.callback(
           i18n.t('purchases.details.back', lang),
           'my_purchases',
         ),
       ],
-    ];
-
-    if (withSupport) {
-      const supportUrl = process.env.SUPPORT_URL || 'https://t.me/Mops_Support';
-      buttons.push([
-        Markup.button.url(i18n.t('menu.main.support', lang), supportUrl),
-      ]);
-    }
-
-    return Markup.inlineKeyboard(buttons);
+    ]);
   }
 }

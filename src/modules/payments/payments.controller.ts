@@ -596,16 +596,10 @@ export class PaymentsController {
       const lang = await this.userService.getUserLanguage(
         payment.user_telegram_id,
       );
-      const caption = await buildPurchaseFollowUpCaption(
-        this.prisma,
-        this.i18n,
-        lang,
-        {
-          product_type: payment.product_type,
-          product_quantity: payment.product_quantity,
-        },
-        payment.user_telegram_id,
-      );
+      const caption = await buildPurchaseFollowUpCaption(this.i18n, lang, {
+        product_type: payment.product_type,
+        product_quantity: payment.product_quantity,
+      });
       const reply_markup = MainKeyboard.getPurchaseFollowUpKeyboard(
         this.i18n,
         lang,

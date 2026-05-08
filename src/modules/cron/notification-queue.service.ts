@@ -503,11 +503,9 @@ export class NotificationQueueService {
           notification.user_telegram_id,
         );
         const caption = await buildPurchaseFollowUpCaption(
-          this.prisma,
           this.i18n,
           lang,
           payment,
-          notification.user_telegram_id,
         );
         const reply_markup = MainKeyboard.getPurchaseFollowUpKeyboard(
           this.i18n,

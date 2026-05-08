@@ -487,60 +487,13 @@ export class BotUpdate {
       '';
 
     try {
-      let { user: dbUser, isNew } =
-        await this.userService.createOrUpdateFromTelegram({
+      let { user: dbUser } = await this.userService.createOrUpdateFromTelegram({
           id: user.id,
           first_name: user.first_name,
           last_name: user.last_name,
           username: user.username,
           is_premium: (user as any).is_premium ?? false,
         });
-
-      if (
-        isNew &&
-        startPayload &&
-        startPayload.length > 0 &&
-        startPayload.length <= 50
-      ) {
-        if (startPayload.startsWith('ref_')) {
-          const referrerTgId = startPayload.slice(4);
-          if (referrerTgId && /^\d+$/.test(referrerTgId)) {
-            this.userService
-              .setReferrer(user.id.toString(), referrerTgId)
-              .catch((err) => {
-                this.logger.debug(
-                  `Failed to set referrer for ${user.id}: ${err.message}`,
-                );
-              });
-          }
-        }
-      }
-
-      if (isNew && startPayload) {
-        const refMatch = startPayload.match(/^ref(\d+)$/);
-        if (refMatch) {
-          const referrerTelegramId = refMatch[1];
-          if (referrerTelegramId !== user.id.toString()) {
-            const existing = dbUser?.referred_by;
-            if (!existing) {
-              this.userService
-                .setReferrer(user.id.toString(), referrerTelegramId)
-                .then((ok) => {
-                  if (ok) {
-                    this.logger.log(
-                      `Referrer set: user ${user.id} referred by tg ${referrerTelegramId}`,
-                    );
-                  }
-                })
-                .catch((err) => {
-                  this.logger.debug(
-                    `Failed to set referrer for ${user.id}: ${err.message}`,
-                  );
-                });
-            }
-          }
-        }
-      }
 
       if (!dbUser?.language || dbUser.language === '') {
         await this.userService.setUserLanguage(user.id.toString(), 'ru');
@@ -689,50 +642,7 @@ export class BotUpdate {
         break;
 
       case 'ton':
-        ctx.session.productType = 'ton';
-        if (edit) {
-          try {
-            await this.editOrSendPhoto(
-              ctx,
-              './images/where_delivery_ton.webp',
-              {
-                caption: this.i18n.t('product.delivery.ton', lang),
-                parse_mode: 'HTML',
-                reply_markup: MainKeyboard.getRecipientSelection(
-                  this.i18n,
-                  lang,
-                ).reply_markup,
-              },
-            );
-          } catch {
-            await ctx.reply(this.i18n.t('product.delivery.ton', lang), {
-              parse_mode: 'HTML',
-              reply_markup: MainKeyboard.getRecipientSelection(this.i18n, lang)
-                .reply_markup,
-            });
-          }
-        } else {
-          try {
-            await ctx.replyWithPhoto(
-              { source: './images/where_delivery_ton.webp' },
-              {
-                caption: this.i18n.t('product.delivery.ton', lang),
-                parse_mode: 'HTML',
-                reply_markup: MainKeyboard.getRecipientSelection(
-                  this.i18n,
-                  lang,
-                ).reply_markup,
-              },
-            );
-            ctx.session.currentImage = './images/where_delivery_ton.webp';
-          } catch {
-            await ctx.reply(this.i18n.t('product.delivery.ton', lang), {
-              parse_mode: 'HTML',
-              reply_markup: MainKeyboard.getRecipientSelection(this.i18n, lang)
-                .reply_markup,
-            });
-          }
-        }
+        await this.showMainMenu(ctx, edit);
         break;
 
       case 'premium':
@@ -938,7 +848,8 @@ export class BotUpdate {
     ctx.session.isForSelf = undefined;
 
     const productType = ctx.session.productType;
-    if (!productType) {
+    if (!productType || productType === 'ton') {
+      ctx.session.productType = undefined;
       await this.showMainMenu(ctx, true);
       return;
     }
@@ -947,13 +858,11 @@ export class BotUpdate {
 
     const imageMap: Record<string, string> = {
       stars: './images/where_delivery_stars.webp',
-      ton: './images/where_delivery_ton.webp',
       premium: './images/where_delivery_premium.webp',
     };
 
     const textMap: Record<string, string> = {
       stars: 'product.delivery.stars',
-      ton: 'product.delivery.ton',
       premium: 'product.delivery.premium',
     };
 
@@ -1068,45 +977,6 @@ export class BotUpdate {
     this.perfLog(uid, 'buy_stars', 'TOTAL', Date.now() - t0);
   }
 
-  @Action('buy_ton')
-  async buyTon(@Ctx() ctx: BotContext): Promise<void> {
-    const t0 = Date.now();
-    const uid = ctx.from?.id;
-
-    if (!this.tryAcquireActionLock(ctx, 'buy_ton')) {
-      await ctx.answerCbQuery('⏳', { show_alert: false }).catch(() => {});
-      return;
-    }
-    ctx.answerCbQuery().catch(() => {});
-    this.perfLog(uid, 'buy_ton', 'answerCbQuery', Date.now() - t0);
-
-    const t1 = Date.now();
-    if (!(await this.checkSubscriptionMiddleware(ctx))) return;
-    this.perfLog(uid, 'buy_ton', 'checkSubscription', Date.now() - t1);
-
-    ctx.session.productType = 'ton';
-    const lang = this.getUserLanguage(ctx);
-    const text = this.i18n.t('product.delivery.ton', lang);
-
-    const t2 = Date.now();
-    try {
-      await this.editOrSendPhoto(ctx, './images/where_delivery_ton.webp', {
-        caption: text,
-        parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getRecipientSelection(this.i18n, lang)
-          .reply_markup,
-      });
-    } catch {
-      await ctx.reply(text, {
-        parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getRecipientSelection(this.i18n, lang)
-          .reply_markup,
-      });
-    }
-    this.perfLog(uid, 'buy_ton', 'editOrSendPhoto', Date.now() - t2);
-    this.perfLog(uid, 'buy_ton', 'TOTAL', Date.now() - t0);
-  }
-
   @Action('buy_premium')
   async buyPremium(@Ctx() ctx: BotContext): Promise<void> {
     const t0 = Date.now();
@@ -1163,46 +1033,13 @@ export class BotUpdate {
     });
   }
 
-  /** Старые inline-кнопки после удаления бонусной системы */
-  @Action(/^(mops_balance|mops_daily_bonus|mops_coin_info|mops_referral)$/)
-  async legacyMopsRoutes(@Ctx() ctx: BotContext): Promise<void> {
-    await this.showReferralProgram(ctx);
-  }
-
-  @Action('referral_program')
-  async showReferralProgram(@Ctx() ctx: BotContext): Promise<void> {
+  /** Устаревшие callback с прошлых клавиатур */
+  @Action(
+    /^(mops_balance|mops_daily_bonus|mops_coin_info|mops_referral|referral_program|buy_ton)$/,
+  )
+  async removedOrLegacyRoutes(@Ctx() ctx: BotContext): Promise<void> {
     ctx.answerCbQuery().catch(() => {});
-    if (!(await this.checkSubscriptionMiddleware(ctx))) return;
-
-    const tg = ctx.from;
-    if (!tg) return;
-
-    const lang = this.getUserLanguage(ctx);
-    const botUrl = process.env.BOT_URL || 'https://t.me/MopsStarsBot';
-    const referralLink = `${botUrl}?start=ref_${tg.id}`;
-
-    const stats = await this.userService.getReferralStats(tg.id.toString());
-
-    const text = this.i18n.t('referral.title', lang, {
-      link: referralLink,
-      count: stats.count.toString(),
-    });
-
-    try {
-      await this.editOrSendPhoto(ctx, './images/referral.webp', {
-        caption: text,
-        parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getReferralMenu(this.i18n, lang)
-          .reply_markup,
-      });
-    } catch {
-      await ctx.reply(text, {
-        parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getReferralMenu(this.i18n, lang)
-          .reply_markup,
-        link_preview_options: { is_disabled: true },
-      });
-    }
+    await this.showMainMenu(ctx, true);
   }
 
   @Action('public_offer')
@@ -1473,7 +1310,6 @@ export class BotUpdate {
         reply_markup: MainKeyboard.getPaymentDetailsKeyboard(
           this.i18n,
           lang,
-          true,
         ).reply_markup,
       });
     } catch (error) {
@@ -1497,6 +1333,12 @@ export class BotUpdate {
       ctx.session.lastBotMessageId = ctx.callbackQuery.message.message_id;
     }
 
+    if (ctx.session.productType === 'ton') {
+      ctx.session.productType = undefined;
+      await this.showMainMenu(ctx, true);
+      return;
+    }
+
     const user = ctx.from;
     if (!user?.username || user.username.trim() === '') {
       const lang = this.getUserLanguage(ctx);
@@ -1517,7 +1359,6 @@ export class BotUpdate {
       const productType = ctx.session.productType || 'stars';
       const imageMap: Record<string, string> = {
         stars: './images/where_delivery_stars.webp',
-        ton: './images/where_delivery_ton.webp',
         premium: './images/where_delivery_premium.webp',
       };
       const imagePath = imageMap[productType] || './images/main_menu.webp';
@@ -1547,7 +1388,6 @@ export class BotUpdate {
 
     const imageMap: Record<string, string> = {
       stars: './images/where_delivery_stars.webp',
-      ton: './images/where_delivery_ton.webp',
       premium: './images/where_delivery_premium.webp',
     };
     const imagePath = imageMap[productType] || './images/main_menu.webp';
@@ -1685,13 +1525,17 @@ export class BotUpdate {
       return;
     }
 
+    if (productType === 'ton') {
+      ctx.session.productType = undefined;
+      await this.showMainMenu(ctx, true);
+      return;
+    }
+
     const productEmoji = getProductEmoji(productType.toUpperCase());
     const productName =
       productType === 'stars'
         ? this.i18n.t('product.stars_recipient', lang)
-        : productType === 'ton'
-          ? this.i18n.t('product.ton', lang)
-          : this.i18n.t('product.premium', lang);
+        : this.i18n.t('product.premium', lang);
 
     const text = this.i18n.t('product.recipient.enter_username', lang, {
       product: productName,
@@ -1736,6 +1580,13 @@ export class BotUpdate {
   ): Promise<void> {
     const productType = ctx.session.productType;
     if (!productType) return;
+
+    if (productType === 'ton') {
+      ctx.session.productType = undefined;
+      ctx.session.quantity = undefined;
+      await this.showMainMenu(ctx, edit);
+      return;
+    }
 
     const lang = this.getUserLanguage(ctx);
 
@@ -1787,18 +1638,13 @@ export class BotUpdate {
           });
         }
       }
-    } else {
-      const productName =
-        productType === 'stars'
-          ? this.i18n.t('product.stars', lang) + ' ⭐️'
-          : 'TON 💎';
+    } else if (productType === 'stars') {
+      const productName = this.i18n.t('product.stars', lang) + ' ⭐️';
       const limits = await this.settingsService.getPurchaseLimits();
-      const minAmount =
-        productType === 'stars' ? limits.minStars : limits.minTon;
-      const maxAmount =
-        productType === 'stars' ? limits.maxStars : limits.maxTon;
+      const minAmount = limits.minStars;
+      const maxAmount = limits.maxStars;
 
-      const emoji = productType === 'stars' ? '⭐️' : '💎';
+      const emoji = '⭐️';
       const text = this.i18n.t('product.quantity.enter', lang, {
         product: productName,
         min: minAmount.toString(),
@@ -1806,10 +1652,7 @@ export class BotUpdate {
         emoji,
       });
 
-      const imagePath =
-        productType === 'ton'
-          ? './images/ton_enter_quantity.webp'
-          : './images/enter_quantity.webp';
+      const imagePath = './images/enter_quantity.webp';
 
       if (edit) {
         try {
@@ -1866,6 +1709,9 @@ export class BotUpdate {
 
       ctx.session.awaitingUsername = false;
       ctx.session.awaitingQuantity = true;
+    } else {
+      ctx.session.productType = undefined;
+      await this.showMainMenu(ctx, edit);
     }
   }
 
@@ -1967,6 +1813,13 @@ export class BotUpdate {
     const productType = ctx.session.productType;
     if (!productType) return;
 
+    if (productType === 'ton') {
+      ctx.session.productType = undefined;
+      ctx.session.quantity = undefined;
+      await this.showMainMenu(ctx, false);
+      return;
+    }
+
     const lang = this.getUserLanguage(ctx);
     const chatId = ctx.chat?.id;
     const messageId = ctx.session.lastBotMessageId;
@@ -2005,18 +1858,13 @@ export class BotUpdate {
         reply_markup: keyboard.reply_markup,
       });
       ctx.session.lastBotMessageId = msg.message_id;
-    } else {
-      const productName =
-        productType === 'stars'
-          ? this.i18n.t('product.stars', lang) + ' ⭐️'
-          : 'TON 💎';
+    } else if (productType === 'stars') {
+      const productName = this.i18n.t('product.stars', lang) + ' ⭐️';
       const limits = await this.settingsService.getPurchaseLimits();
-      const minAmount =
-        productType === 'stars' ? limits.minStars : limits.minTon;
-      const maxAmount =
-        productType === 'stars' ? limits.maxStars : limits.maxTon;
+      const minAmount = limits.minStars;
+      const maxAmount = limits.maxStars;
 
-      const emoji = productType === 'stars' ? '⭐️' : '💎';
+      const emoji = '⭐️';
       const text = this.i18n.t('product.quantity.enter', lang, {
         product: productName,
         min: minAmount.toString(),
@@ -2024,10 +1872,7 @@ export class BotUpdate {
         emoji,
       });
 
-      const imagePath =
-        productType === 'ton'
-          ? './images/ton_enter_quantity.webp'
-          : './images/enter_quantity.webp';
+      const imagePath = './images/enter_quantity.webp';
 
       const keyboard = MainKeyboard.getBackButton(
         'back_to_recipient',
@@ -2104,6 +1949,13 @@ export class BotUpdate {
 
     if (!productType || !quantity) {
       await ctx.reply(this.i18n.t('payment.restart', lang));
+      return;
+    }
+
+    if (productType === 'ton') {
+      ctx.session.productType = undefined;
+      ctx.session.quantity = undefined;
+      await this.showMainMenu(ctx, edit);
       return;
     }
 
@@ -2300,6 +2152,13 @@ export class BotUpdate {
 
     if (!productType || !quantity || !chatId) {
       await ctx.reply(this.i18n.t('payment.restart', lang));
+      return;
+    }
+
+    if (productType === 'ton') {
+      ctx.session.productType = undefined;
+      ctx.session.quantity = undefined;
+      await this.showMainMenu(ctx, false);
       return;
     }
 
@@ -2519,20 +2378,11 @@ export class BotUpdate {
         await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
           caption: this.i18n.t('captcha.banned', lang),
           parse_mode: 'HTML',
-          reply_markup: Markup.inlineKeyboard([
-            [
-              Markup.button.url(
-                this.i18n.t('captcha.support', lang),
-                'https://t.me/mops_support',
-              ),
-            ],
-            [
-              Markup.button.callback(
-                this.i18n.t('common.back', lang),
-                'back_to_main',
-              ),
-            ],
-          ]).reply_markup,
+          reply_markup: MainKeyboard.getBackButton(
+            'back_to_main',
+            this.i18n,
+            lang,
+          ).reply_markup,
         });
       } else {
         const remaining = 3 - result.failedCount;
@@ -2609,20 +2459,11 @@ export class BotUpdate {
           await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
             caption: this.i18n.t('captcha.banned', lang),
             parse_mode: 'HTML',
-            reply_markup: Markup.inlineKeyboard([
-              [
-                Markup.button.url(
-                  this.i18n.t('captcha.support', lang),
-                  'https://t.me/mops_support',
-                ),
-              ],
-              [
-                Markup.button.callback(
-                  this.i18n.t('common.back', lang),
-                  'back_to_main',
-                ),
-              ],
-            ]).reply_markup,
+            reply_markup: MainKeyboard.getBackButton(
+              'back_to_main',
+              this.i18n,
+              lang,
+            ).reply_markup,
           });
           return;
         }
@@ -2676,16 +2517,17 @@ export class BotUpdate {
       return;
     }
 
+    if (productType === 'ton') {
+      ctx.session.productType = undefined;
+      ctx.session.quantity = undefined;
+      await this.showMainMenu(ctx, true);
+      return;
+    }
+
     if (productType === 'stars') {
       const { minStars, maxStars } =
         await this.settingsService.getPurchaseLimits();
       if (quantity < minStars || quantity > maxStars) {
-        await ctx.reply(this.i18n.t('payment.restart', lang));
-        return;
-      }
-    } else if (productType === 'ton') {
-      const { minTon, maxTon } = await this.settingsService.getPurchaseLimits();
-      if (quantity < minTon || quantity > maxTon) {
         await ctx.reply(this.i18n.t('payment.restart', lang));
         return;
       }
@@ -2694,6 +2536,9 @@ export class BotUpdate {
         await ctx.reply(this.i18n.t('payment.restart', lang));
         return;
       }
+    } else {
+      await this.showMainMenu(ctx, true);
+      return;
     }
 
     try {
@@ -3068,6 +2913,12 @@ export class BotUpdate {
 
       ctx.deleteMessage().catch(() => {});
 
+      if (ctx.session.productType === 'ton') {
+        ctx.session.productType = undefined;
+        await this.showMainMenu(ctx, false);
+        return;
+      }
+
       let username = text.trim();
 
       if (username.startsWith('@')) {
@@ -3088,7 +2939,6 @@ export class BotUpdate {
           const productType = ctx.session.productType || 'stars';
           const imageMap: Record<string, string> = {
             stars: './images/where_delivery_stars.webp',
-            ton: './images/where_delivery_ton.webp',
             premium: './images/where_delivery_premium.webp',
           };
           const imagePath = imageMap[productType] || './images/main_menu.webp';
@@ -3113,7 +2963,6 @@ export class BotUpdate {
           const productType = ctx.session.productType || 'stars';
           const imageMap: Record<string, string> = {
             stars: './images/where_delivery_stars.webp',
-            ton: './images/where_delivery_ton.webp',
             premium: './images/where_delivery_premium.webp',
           };
           const imagePath = imageMap[productType] || './images/main_menu.webp';
@@ -3142,7 +2991,6 @@ export class BotUpdate {
           if (!edited) {
             const imageMap2: Record<string, string> = {
               stars: './images/where_delivery_stars.webp',
-              ton: './images/where_delivery_ton.webp',
               premium: './images/where_delivery_premium.webp',
             };
             const errImage =
@@ -3163,7 +3011,7 @@ export class BotUpdate {
         const { recipient, info } = await this.fragmentService.getUser(
           fragmentAccount,
           username,
-          productType as 'stars' | 'premium' | 'ton',
+          productType as 'stars' | 'premium',
         );
 
         if (!recipient || !recipient.recipient) {
@@ -3176,7 +3024,6 @@ export class BotUpdate {
           if (!edited) {
             const imageMap: Record<string, string> = {
               stars: './images/where_delivery_stars.webp',
-              ton: './images/where_delivery_ton.webp',
               premium: './images/where_delivery_premium.webp',
             };
             const imagePath =
@@ -3210,7 +3057,6 @@ export class BotUpdate {
           if (!edited) {
             const imageMap: Record<string, string> = {
               stars: './images/where_delivery_stars.webp',
-              ton: './images/where_delivery_ton.webp',
               premium: './images/where_delivery_premium.webp',
             };
             const imagePath =
@@ -3323,26 +3169,12 @@ export class BotUpdate {
         }
         ctx.session.quantity = q;
       } else if (productType === 'ton') {
-        const { minTon: minAmount, maxTon: maxAmount } =
-          await this.settingsService.getPurchaseLimits();
-        const q = Math.floor(quantity);
-
-        if (q < minAmount || q > maxAmount) {
-          ctx.deleteMessage().catch(() => {});
-          const errorText = this.i18n.t('product.quantity.range', lang, {
-            min: minAmount.toString(),
-            max: maxAmount.toString(),
-            emoji: '💎',
-          });
-          const edited = await this.editQuantityMessageWithError(
-            ctx,
-            errorText,
-          );
-          if (!edited) await ctx.reply(errorText);
-          ctx.session.awaitingQuantity = true;
-          return;
-        }
-        ctx.session.quantity = q;
+        ctx.session.awaitingQuantity = false;
+        ctx.session.productType = undefined;
+        ctx.session.quantity = undefined;
+        ctx.deleteMessage().catch(() => {});
+        await this.showMainMenu(ctx, false);
+        return;
       } else if (productType === 'premium') {
         const q = Math.floor(quantity);
         if (![3, 6, 12].includes(q)) {
