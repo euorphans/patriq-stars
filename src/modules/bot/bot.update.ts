@@ -1086,32 +1086,10 @@ export class BotUpdate {
     await this.showMainMenu(ctx, true);
   }
 
+  /** Старые клавиатуры с «Оферта и политика» → тот же экран, что «Информация». */
   @Action('public_offer')
   async showPublicOffer(@Ctx() ctx: BotContext): Promise<void> {
-    ctx.answerCbQuery().catch(() => {});
-    if (!(await this.checkSubscriptionMiddleware(ctx))) return;
-
-    const lang = this.getUserLanguage(ctx);
-    const text = this.i18n.t('profile.public_offer.text', lang, {
-      agreementUrl: process.env.AGREEMENT_URL || '#',
-      privacyUrl: process.env.PRIVACY_POLICY_URL || '#',
-    });
-
-    try {
-      await this.editOrSendPhoto(ctx, './images/public_offer.webp', {
-        caption: text,
-        parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getBackButton('my_profile')
-          .reply_markup,
-      });
-    } catch {
-      await ctx.reply(text, {
-        parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getBackButton('my_profile')
-          .reply_markup,
-        link_preview_options: { is_disabled: true },
-      });
-    }
+    return this.showMenuInfo(ctx);
   }
 
   @Action('my_purchases')
