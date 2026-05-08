@@ -31,6 +31,37 @@ export function clearMainMenuCache(): void {
   }
 }
 
+/** Анимированные custom emoji (Bot API: InlineKeyboardButton.icon_custom_emoji_id). */
+const MAIN_MENU_CUSTOM_EMOJI = {
+  stars: '5438496463044752972',
+  premium: '5217822164362739968',
+  profile: '5416041192905265756',
+} as const;
+
+function mainMenuInlineRows(i18n: I18nService, lang: SupportedLanguage = 'ru') {
+  return [
+    [
+      {
+        text: i18n.t('menu.main.stars', lang),
+        callback_data: 'buy_stars',
+        icon_custom_emoji_id: MAIN_MENU_CUSTOM_EMOJI.stars,
+      },
+      {
+        text: i18n.t('menu.main.premium', lang),
+        callback_data: 'buy_premium',
+        icon_custom_emoji_id: MAIN_MENU_CUSTOM_EMOJI.premium,
+      },
+    ],
+    [
+      {
+        text: i18n.t('menu.main.profile', lang),
+        callback_data: 'my_profile',
+        icon_custom_emoji_id: MAIN_MENU_CUSTOM_EMOJI.profile,
+      },
+    ],
+  ];
+}
+
 export class MainKeyboard {
   static getPersistentKeyboard(
     i18n?: I18nService,
@@ -47,19 +78,9 @@ export class MainKeyboard {
     i18n: I18nService,
     lang: SupportedLanguage = 'ru',
   ) {
-    /** Аккаунт и помощь сверху, затем каталог столбцом — другой порядок, чем типичная «витрина». */
-    const rows: any[] = [
-      [{ text: i18n.t('menu.main.profile', lang), callback_data: 'my_profile' }],
-      [{ text: i18n.t('menu.main.stars', lang), callback_data: 'buy_stars' }],
-      [
-        {
-          text: i18n.t('menu.main.premium', lang),
-          callback_data: 'buy_premium',
-        },
-      ],
-    ];
-
-    return { reply_markup: { inline_keyboard: rows } };
+    return {
+      reply_markup: { inline_keyboard: mainMenuInlineRows(i18n, lang) },
+    };
   }
 
   static getMainMenu(
@@ -70,18 +91,9 @@ export class MainKeyboard {
     const cached = getCachedKeyboard(cacheKey);
     if (cached) return cached;
 
-    const rows: any[] = [
-      [{ text: i18n.t('menu.main.profile', lang), callback_data: 'my_profile' }],
-      [{ text: i18n.t('menu.main.stars', lang), callback_data: 'buy_stars' }],
-      [
-        {
-          text: i18n.t('menu.main.premium', lang),
-          callback_data: 'buy_premium',
-        },
-      ],
-    ];
-
-    const keyboard = { reply_markup: { inline_keyboard: rows } };
+    const keyboard = {
+      reply_markup: { inline_keyboard: mainMenuInlineRows(i18n, lang) },
+    };
     setCachedKeyboard(cacheKey, keyboard);
     return keyboard;
   }
