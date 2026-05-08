@@ -135,6 +135,15 @@ deploy_infra() {
   kubectl apply -f "${K8S_DIR}/redis/statefulset.yaml"
   kubectl rollout status statefulset/redis-master -n "$NAMESPACE" --timeout=120s
 
+  # PostgreSQL (секрет stars-bot-secrets уже должен содержать POSTGRES_* и DATABASE_URL)
+  if [ -f "${K8S_DIR}/postgresql/statefulset.yaml" ]; then
+    log "  PostgreSQL..."
+    kubectl apply -f "${K8S_DIR}/postgresql/statefulset.yaml"
+    kubectl rollout status statefulset/postgresql-master -n "$NAMESPACE" --timeout=300s
+  else
+    warn "Нет ${K8S_DIR}/postgresql/statefulset.yaml — миграции должны ходить во внешнюю БД"
+  fi
+
   ok "Инфраструктура готова"
 }
 
