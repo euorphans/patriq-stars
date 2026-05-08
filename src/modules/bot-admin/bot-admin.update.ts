@@ -5,6 +5,7 @@ import { UserService } from '@/modules/user/user.service';
 import { SettingsService } from '@/modules/settings/settings.service';
 import { AdminHandlers } from '@/shared/handlers/admin.handlers';
 import { AdminKeyboard } from '@/shared/keyboards/admin.keyboard';
+import { backInlineButton } from '@/shared/keyboards/back-inline-button';
 import { BotContext } from '@/shared/types/bot-context.interface';
 import { PrismaService } from '@/shared/services/prisma/prisma.service';
 import { PaymentAdminService } from '@/modules/payments/payment-admin.service';
@@ -314,7 +315,7 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
                 `broadcast_stop_${active.id}`,
               ),
             ],
-            [Markup.button.callback('◀️ Назад', 'admin_back')],
+            [backInlineButton('admin_back')],
           ]).reply_markup,
         });
         return;
@@ -633,10 +634,7 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
         parse_mode: 'HTML',
         reply_markup: Markup.inlineKeyboard([
           [
-            Markup.button.callback(
-              '🔙 Назад к кнопкам',
-              isTemplateMode ? 'btn_tpl_create' : 'broadcast_back_to_buttons',
-            ),
+            backInlineButton(isTemplateMode ? 'btn_tpl_create' : 'broadcast_back_to_buttons'),
           ],
         ]).reply_markup,
       },
@@ -1393,7 +1391,7 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
     const message = await ctx.reply(text, {
       parse_mode: 'HTML',
       reply_markup: Markup.inlineKeyboard([
-        [Markup.button.callback('🔙 Назад', 'admin_channels')],
+        [backInlineButton('admin_channels')],
       ]).reply_markup,
     });
     ctx.session.lastBotMessageId = message.message_id;
@@ -4346,20 +4344,14 @@ ${productDetailBlock}${feeDisplay}
 
       if (fromFailedDeliveries) {
         buttons.push([
-          Markup.button.callback(
-            '🔙 К застрявшим платежам',
-            'back_to_failed_deliveries',
-          ),
+          backInlineButton('back_to_failed_deliveries'),
         ]);
       } else if (payments.length > 0) {
         buttons.push([
-          Markup.button.callback(
-            '🔙 К списку платежей',
-            'payments_back_to_list',
-          ),
+          backInlineButton('payments_back_to_list'),
         ]);
       } else {
-        buttons.push([Markup.button.callback('🔙 Назад', 'admin_search')]);
+        buttons.push([backInlineButton('admin_search')]);
       }
 
       const backKeyboard = Markup.inlineKeyboard(buttons);
@@ -4597,10 +4589,7 @@ ${productDetailBlock}${feeDisplay}
                 parse_mode: 'HTML',
                 reply_markup: Markup.inlineKeyboard([
                   [
-                    Markup.button.callback(
-                      '🔙 Назад к кнопкам',
-                      'broadcast_back_to_buttons',
-                    ),
+                    backInlineButton('broadcast_back_to_buttons'),
                   ],
                 ]).reply_markup,
               },
@@ -4617,10 +4606,7 @@ ${productDetailBlock}${feeDisplay}
                 parse_mode: 'HTML',
                 reply_markup: Markup.inlineKeyboard([
                   [
-                    Markup.button.callback(
-                      '🔙 Назад к кнопкам',
-                      'broadcast_back_to_buttons',
-                    ),
+                    backInlineButton('broadcast_back_to_buttons'),
                   ],
                 ]).reply_markup,
               },
@@ -4843,10 +4829,7 @@ ${productDetailBlock}${feeDisplay}
             parse_mode: 'HTML',
             reply_markup: Markup.inlineKeyboard([
               [
-                Markup.button.callback(
-                  '🔙 Назад к кнопкам',
-                  'broadcast_back_to_buttons',
-                ),
+                backInlineButton('broadcast_back_to_buttons'),
               ],
             ]).reply_markup,
           },
@@ -5102,7 +5085,7 @@ ${productDetailBlock}${feeDisplay}
           {
             parse_mode: 'HTML',
             reply_markup: Markup.inlineKeyboard([
-              [Markup.button.callback('🔙 Назад', 'admin_channels')],
+              [backInlineButton('admin_channels')],
             ]).reply_markup,
           },
         );
@@ -7686,7 +7669,7 @@ ${errors.length > 0 ? `\n❌ Ошибки: ${errors.length}` : ''}
       try {
         await ctx.editMessageText('❌ Нет аккаунтов для проверки', {
           reply_markup: Markup.inlineKeyboard([
-            [Markup.button.callback('🔙 Назад', 'fragment_accounts')],
+            [backInlineButton('fragment_accounts')],
           ]).reply_markup,
         });
       } catch {
@@ -7772,7 +7755,7 @@ ${errors.length > 0 ? `\n❌ Ошибки: ${errors.length}` : ''}
     }
 
     const keyboard = Markup.inlineKeyboard([
-      [Markup.button.callback('🔙 К списку аккаунтов', 'fragment_accounts')],
+      [backInlineButton('fragment_accounts')],
     ]);
 
     try {
@@ -7823,7 +7806,7 @@ ${errors.length > 0 ? `\n❌ Ошибки: ${errors.length}` : ''}
       if (!account) {
         await ctx.editMessageText('❌ Аккаунт не найден', {
           reply_markup: Markup.inlineKeyboard([
-            [Markup.button.callback('🔙 Назад', 'fragment_accounts')],
+            [backInlineButton('fragment_accounts')],
           ]).reply_markup,
         });
         return;
@@ -7927,7 +7910,7 @@ ${errors.length > 0 ? `\n❌ Ошибки: ${errors.length}` : ''}
         {
           parse_mode: 'HTML',
           reply_markup: Markup.inlineKeyboard([
-            [Markup.button.callback('🔙 Назад', 'fragment_accounts')],
+            [backInlineButton('fragment_accounts')],
           ]).reply_markup,
         },
       );
@@ -7957,10 +7940,7 @@ ${errors.length > 0 ? `\n❌ Ошибки: ${errors.length}` : ''}
           parse_mode: 'HTML',
           reply_markup: Markup.inlineKeyboard([
             [
-              Markup.button.callback(
-                '🧩 К списку аккаунтов',
-                'fragment_accounts',
-              ),
+              backInlineButton('fragment_accounts'),
             ],
           ]).reply_markup,
         },
@@ -7969,7 +7949,7 @@ ${errors.length > 0 ? `\n❌ Ошибки: ${errors.length}` : ''}
       this.logger.error(`Error adding fragment account: ${error.message}`);
       await ctx.reply('❌ Ошибка при добавлении аккаунта: ' + error.message, {
         reply_markup: Markup.inlineKeyboard([
-          [Markup.button.callback('🔙 Назад', 'fragment_accounts')],
+          [backInlineButton('fragment_accounts')],
         ]).reply_markup,
       });
     }
@@ -8156,7 +8136,7 @@ ${errors.length > 0 ? `\n❌ Ошибки: ${errors.length}` : ''}
         {
           parse_mode: 'HTML',
           reply_markup: Markup.inlineKeyboard([
-            [Markup.button.callback('🔙 Назад', `frag_acc_${accountId}`)],
+            [backInlineButton(`frag_acc_${accountId}`)],
           ]).reply_markup,
         },
       );
@@ -8184,17 +8164,14 @@ ${errors.length > 0 ? `\n❌ Ошибки: ${errors.length}` : ''}
           parse_mode: 'HTML',
           reply_markup: Markup.inlineKeyboard([
             [
-              Markup.button.callback(
-                '🧩 К списку аккаунтов',
-                'fragment_accounts',
-              ),
+              backInlineButton('fragment_accounts'),
             ],
           ]).reply_markup,
         });
       } else {
         await ctx.reply('❌ Не удалось обновить токены', {
           reply_markup: Markup.inlineKeyboard([
-            [Markup.button.callback('🔙 Назад', 'fragment_accounts')],
+            [backInlineButton('fragment_accounts')],
           ]).reply_markup,
         });
       }

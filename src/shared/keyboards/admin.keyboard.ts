@@ -3,6 +3,7 @@ import {
   formatShortDateTimeMoscow,
   formatShortDateMoscow,
 } from '@/shared/utils';
+import { backInlineButton } from '@/shared/keyboards/back-inline-button';
 
 export class AdminKeyboard {
   static getMainMenu(showCloseButton: boolean = false) {
@@ -52,7 +53,7 @@ export class AdminKeyboard {
     return Markup.inlineKeyboard([
       [Markup.button.callback('📤 Отправить рассылку', 'broadcast_start')],
       [Markup.button.callback('📋 Шаблоны кнопок', 'btn_tpl_list')],
-      [Markup.button.callback('🔙 Назад', 'admin_back')],
+      [backInlineButton('admin_back')],
     ]);
   }
 
@@ -97,7 +98,7 @@ export class AdminKeyboard {
         ),
       ],
       [Markup.button.callback('🚨 Канал мошенников', 'fraud_channels')],
-      [Markup.button.callback('🔙 Назад', 'admin_back')],
+      [backInlineButton('admin_back')],
     ];
     return Markup.inlineKeyboard(buttons);
   }
@@ -106,7 +107,7 @@ export class AdminKeyboard {
     return Markup.inlineKeyboard([
       [Markup.button.callback('📅 Статистика за период', 'stats_period')],
       [Markup.button.callback('🔄 Обновить', 'stats_refresh')],
-      [Markup.button.callback('🔙 Назад', 'admin_back')],
+      [backInlineButton('admin_back')],
     ]);
   }
 
@@ -126,7 +127,7 @@ export class AdminKeyboard {
       ]);
     }
 
-    buttons.push([Markup.button.callback('🔙 Назад', 'channels_menu')]);
+    buttons.push([backInlineButton('channels_menu')]);
 
     return Markup.inlineKeyboard(buttons);
   }
@@ -138,7 +139,7 @@ export class AdminKeyboard {
         `channel_delete_${channel.channel_id}`,
       ),
     ]);
-    buttons.push([Markup.button.callback('🔙 Назад', 'admin_channels')]);
+    buttons.push([backInlineButton('admin_channels')]);
     return Markup.inlineKeyboard(buttons);
   }
 
@@ -227,7 +228,7 @@ export class AdminKeyboard {
     buttons.push([
       Markup.button.callback('➕ Создать шаблон', 'btn_tpl_create'),
     ]);
-    buttons.push([Markup.button.callback('🔙 Назад', 'admin_broadcast')]);
+    buttons.push([backInlineButton('admin_broadcast')]);
 
     return Markup.inlineKeyboard(buttons);
   }
@@ -240,7 +241,7 @@ export class AdminKeyboard {
           `btn_tpl_delete_${templateId}`,
         ),
       ],
-      [Markup.button.callback('🔙 Назад', 'btn_tpl_list')],
+      [backInlineButton('btn_tpl_list')],
     ]);
   }
 
@@ -259,7 +260,7 @@ export class AdminKeyboard {
     }
 
     buttons.push([
-      Markup.button.callback('🔙 Назад к кнопкам', 'broadcast_back_to_buttons'),
+      backInlineButton('broadcast_back_to_buttons'),
     ]);
 
     return Markup.inlineKeyboard(buttons);
@@ -276,7 +277,7 @@ export class AdminKeyboard {
       ],
       [Markup.button.callback('🚫 Массовая блокировка', 'mass_block_user')],
       [Markup.button.callback('🔓 Снять ограничения капчи', 'captcha_unban')],
-      [Markup.button.callback('🔙 Назад', 'admin_back')],
+      [backInlineButton('admin_back')],
     ]);
   }
 
@@ -308,7 +309,7 @@ export class AdminKeyboard {
       ]);
     }
 
-    buttons.push([Markup.button.callback('🔙 Назад', 'admin_back')]);
+    buttons.push([backInlineButton('admin_back')]);
 
     return Markup.inlineKeyboard(buttons);
   }
@@ -332,7 +333,7 @@ export class AdminKeyboard {
         ),
       ],
       [Markup.button.callback(`TON (${tonFee.toFixed(1)}%)`, 'fee_ton')],
-      [Markup.button.callback('🔙 Назад', 'admin_back')],
+      [backInlineButton('admin_back')],
     ]);
   }
 
@@ -355,7 +356,7 @@ export class AdminKeyboard {
         ),
       ],
       [Markup.button.callback(`TON (${tonMarkup.toFixed(1)}%)`, 'markup_ton')],
-      [Markup.button.callback('🔙 Назад', 'admin_back')],
+      [backInlineButton('admin_back')],
     ]);
   }
 
@@ -398,7 +399,7 @@ export class AdminKeyboard {
       ];
     });
 
-    buttons.push([Markup.button.callback('🔙 Назад', 'admin_back')]);
+    buttons.push([backInlineButton('admin_back')]);
 
     return Markup.inlineKeyboard(buttons);
   }
@@ -437,7 +438,7 @@ export class AdminKeyboard {
       ),
     ]);
 
-    buttons.push([Markup.button.callback('🔙 Назад', 'admin_back')]);
+    buttons.push([backInlineButton('admin_back')]);
 
     return Markup.inlineKeyboard(buttons);
   }
@@ -456,7 +457,7 @@ export class AdminKeyboard {
           'search_user_purchases',
         ),
       ],
-      [Markup.button.callback('🔙 Назад', 'admin_back')],
+      [backInlineButton('admin_back')],
     ]);
   }
 
@@ -528,10 +529,7 @@ export class AdminKeyboard {
       const navButtons = [];
       if (currentPage > 0) {
         navButtons.push(
-          Markup.button.callback(
-            '◀️ Назад',
-            `payments_page_${currentPage - 1}`,
-          ),
+          backInlineButton(`payments_page_${currentPage - 1}`),
         );
       }
       navButtons.push(
@@ -551,7 +549,7 @@ export class AdminKeyboard {
       buttons.push(navButtons);
     }
 
-    buttons.push([Markup.button.callback('🔙 Назад', 'admin_search')]);
+    buttons.push([backInlineButton('admin_search')]);
 
     return Markup.inlineKeyboard(buttons);
   }
@@ -566,7 +564,7 @@ export class AdminKeyboard {
           'sales_notification_min_rub',
         ),
       ],
-      [Markup.button.callback('🔙 Назад', 'channels_menu')],
+      [backInlineButton('channels_menu')],
     ]);
   }
 
@@ -584,7 +582,7 @@ export class AdminKeyboard {
           'insufficient_funds_channel_remove',
         ),
       ],
-      [Markup.button.callback('🔙 Назад', 'channels_menu')],
+      [backInlineButton('channels_menu')],
     ]);
   }
 
@@ -595,9 +593,7 @@ export class AdminKeyboard {
         `delete_insufficient_funds_channel:${ch.channel_id}`,
       ),
     ]);
-    buttons.push([
-      Markup.button.callback('🔙 Назад', 'insufficient_funds_channels'),
-    ]);
+    buttons.push([backInlineButton('insufficient_funds_channels')]);
     return Markup.inlineKeyboard(buttons);
   }
 
@@ -605,7 +601,7 @@ export class AdminKeyboard {
     return Markup.inlineKeyboard([
       [Markup.button.callback('➕ Добавить канал', 'fraud_channel_add')],
       [Markup.button.callback('🗑 Удалить канал', 'fraud_channel_remove')],
-      [Markup.button.callback('🔙 Назад', 'channels_menu')],
+      [backInlineButton('channels_menu')],
     ]);
   }
 
@@ -616,7 +612,7 @@ export class AdminKeyboard {
         `delete_fraud_channel:${ch.channel_id}`,
       ),
     ]);
-    buttons.push([Markup.button.callback('🔙 Назад', 'fraud_channels')]);
+    buttons.push([backInlineButton('fraud_channels')]);
     return Markup.inlineKeyboard(buttons);
   }
 
@@ -627,7 +623,7 @@ export class AdminKeyboard {
         `delete_sales_channel:${ch.channel_id}`,
       ),
     ]);
-    buttons.push([Markup.button.callback('🔙 Назад', 'sales_channels')]);
+    buttons.push([backInlineButton('sales_channels')]);
     return Markup.inlineKeyboard(buttons);
   }
 
@@ -650,7 +646,7 @@ export class AdminKeyboard {
           'set_min_usdt_rate',
         ),
       ],
-      [Markup.button.callback('🔙 Назад', 'admin_back')],
+      [backInlineButton('admin_back')],
     ]);
   }
 
@@ -689,61 +685,61 @@ export class AdminKeyboard {
           'set_sbp_limit_stars',
         ),
       ],
-      [Markup.button.callback('🔙 Назад', 'admin_back')],
+      [backInlineButton('admin_back')],
     ]);
   }
 
   static getBackToAdmin() {
     return Markup.inlineKeyboard([
-      [Markup.button.callback('🔙 В админ панель', 'admin_back')],
+      [backInlineButton('admin_back')],
     ]);
   }
 
   static getBackToBlocking() {
     return Markup.inlineKeyboard([
-      [Markup.button.callback('🔙 Назад', 'admin_blocking')],
+      [backInlineButton('admin_blocking')],
     ]);
   }
 
   static getBackToFraud() {
     return Markup.inlineKeyboard([
-      [Markup.button.callback('🔙 Назад', 'admin_fraud')],
+      [backInlineButton('admin_fraud')],
     ]);
   }
 
   static getBackToSearch() {
     return Markup.inlineKeyboard([
-      [Markup.button.callback('🔙 Назад', 'admin_search')],
+      [backInlineButton('admin_search')],
     ]);
   }
 
   static getBackToPaymentSystems() {
     return Markup.inlineKeyboard([
-      [Markup.button.callback('🔙 Назад', 'payment_systems')],
+      [backInlineButton('payment_systems')],
     ]);
   }
 
   static getBackToServiceMarkup() {
     return Markup.inlineKeyboard([
-      [Markup.button.callback('🔙 Назад', 'service_markup')],
+      [backInlineButton('service_markup')],
     ]);
   }
 
   static getBackToFailover() {
     return Markup.inlineKeyboard([
-      [Markup.button.callback('🔙 Назад', 'failover_settings')],
+      [backInlineButton('failover_settings')],
     ]);
   }
 
   static getBackToRateProtection() {
     return Markup.inlineKeyboard([
-      [Markup.button.callback('🔙 Назад', 'rate_protection')],
+      [backInlineButton('rate_protection')],
     ]);
   }
 
   static getBackToStats() {
     return Markup.inlineKeyboard([
-      [Markup.button.callback('🔙 Назад', 'admin_stats')],
+      [backInlineButton('admin_stats')],
     ]);
   }
 
@@ -753,7 +749,7 @@ export class AdminKeyboard {
       [Markup.button.callback('➖ Убрать из мошенников', 'fraud_unban')],
       [Markup.button.callback('📋 Список мошенников', 'fraud_list')],
       [Markup.button.callback('⚙️ Настройки автоловли', 'fraud_settings')],
-      [Markup.button.callback('🔙 Назад', 'admin_back')],
+      [backInlineButton('admin_back')],
     ]);
   }
 
@@ -808,7 +804,7 @@ export class AdminKeyboard {
           'set_cancellation_fraud_amount',
         ),
       ],
-      [Markup.button.callback('🔙 Назад', 'admin_fraud')],
+      [backInlineButton('admin_fraud')],
     ]);
   }
 
@@ -876,10 +872,7 @@ export class AdminKeyboard {
       const navButtons = [];
       if (currentPage > 0) {
         navButtons.push(
-          Markup.button.callback(
-            '◀️ Назад',
-            `failed_deliveries_page_${currentPage - 1}`,
-          ),
+          backInlineButton(`failed_deliveries_page_${currentPage - 1}`),
         );
       }
       navButtons.push(
@@ -905,7 +898,7 @@ export class AdminKeyboard {
     buttons.push([
       Markup.button.callback('🔄 Обновить', 'admin_failed_deliveries'),
     ]);
-    buttons.push([Markup.button.callback('🔙 Назад', 'admin_back')]);
+    buttons.push([backInlineButton('admin_back')]);
 
     return Markup.inlineKeyboard(buttons);
   }
@@ -939,7 +932,7 @@ export class AdminKeyboard {
       const navButtons = [];
       if (currentPage > 0) {
         navButtons.push(
-          Markup.button.callback('◀️ Назад', `fraud_page_${currentPage - 1}`),
+          backInlineButton(`fraud_page_${currentPage - 1}`),
         );
       }
       navButtons.push(
@@ -957,7 +950,7 @@ export class AdminKeyboard {
     }
 
     buttons.push([Markup.button.callback('📥 Скачать список', 'fraud_export')]);
-    buttons.push([Markup.button.callback('🔙 Назад', 'admin_fraud')]);
+    buttons.push([backInlineButton('admin_fraud')]);
 
     return Markup.inlineKeyboard(buttons);
   }
@@ -989,7 +982,7 @@ export class AdminKeyboard {
     buttons.push([
       Markup.button.callback('🔍 Проверить все аккаунты', 'frag_acc_check_all'),
     ]);
-    buttons.push([Markup.button.callback('🔙 Назад', 'admin_back')]);
+    buttons.push([backInlineButton('admin_back')]);
 
     return Markup.inlineKeyboard(buttons);
   }
@@ -1006,7 +999,7 @@ export class AdminKeyboard {
         ),
       ],
       [Markup.button.callback('🗑 Удалить', `frag_acc_delete_${accountId}`)],
-      [Markup.button.callback('🔙 Назад', 'fragment_accounts')],
+      [backInlineButton('fragment_accounts')],
     ]);
   }
 }

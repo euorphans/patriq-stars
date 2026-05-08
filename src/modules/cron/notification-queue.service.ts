@@ -6,6 +6,7 @@ import { EventLoopMonitorService } from '@/modules/health/event-loop-monitor.ser
 import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf, Markup } from 'telegraf';
 import { MainKeyboard } from '@/shared/keyboards/main.keyboard';
+import { backInlineButton } from '@/shared/keyboards/back-inline-button';
 import * as QRCode from 'qrcode';
 import { UserService } from '@/modules/user/user.service';
 import { I18nService } from '@/shared/services/i18n/i18n.service';
@@ -697,7 +698,7 @@ export class NotificationQueueService {
 
     const keyboard = Markup.inlineKeyboard([
       [Markup.button.url(`💳 Доплатить ${shortfallTon} TON`, tonLink)],
-      [MainKeyboard.getBackButton().reply_markup.inline_keyboard[0][0]],
+      [backInlineButton('back_to_main')],
     ]);
 
     let qrBuffer: Buffer | undefined;

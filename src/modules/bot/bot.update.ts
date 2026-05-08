@@ -9,6 +9,7 @@ import { PaymentsService } from '@/modules/payments/payments.service';
 import { SettingsService } from '@/modules/settings/settings.service';
 import { BOT_STARS_TOPUP_PAYLOAD_PREFIX } from '@/shared/constants/bot-stars-topup.constant';
 import { MainKeyboard } from '@/shared/keyboards/main.keyboard';
+import { backInlineButton } from '@/shared/keyboards/back-inline-button';
 import { BotContext } from '@/shared/types/bot-context.interface';
 import { withRetry } from '@/shared/utils';
 import {
@@ -722,11 +723,7 @@ export class BotUpdate {
       }
 
       const disabledText = this.i18n.t('start.bot.disabled', lang);
-      const backKeyboard = MainKeyboard.getBackButton(
-        'back_to_main',
-        this.i18n,
-        lang,
-      ).reply_markup;
+      const backKeyboard = MainKeyboard.getBackButton('back_to_main').reply_markup;
       try {
         ctx.answerCbQuery().catch(() => {});
         const msg = ctx.callbackQuery?.message;
@@ -1057,13 +1054,13 @@ export class BotUpdate {
       await this.editOrSendPhoto(ctx, './images/public_offer.webp', {
         caption: text,
         parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getBackButton('my_profile', this.i18n, lang)
+        reply_markup: MainKeyboard.getBackButton('my_profile')
           .reply_markup,
       });
     } catch {
       await ctx.reply(text, {
         parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getBackButton('my_profile', this.i18n, lang)
+        reply_markup: MainKeyboard.getBackButton('my_profile')
           .reply_markup,
         link_preview_options: { is_disabled: true },
       });
@@ -1367,11 +1364,7 @@ export class BotUpdate {
         await this.editOrSendPhoto(ctx, imagePath, {
           caption: noUsernameText,
           parse_mode: 'HTML',
-          reply_markup: MainKeyboard.getBackButton(
-            'back_to_recipient',
-            this.i18n,
-            lang,
-          ).reply_markup,
+          reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
         });
       } catch (error: any) {
         if (error?.response?.error_code !== 403) {
@@ -1401,11 +1394,7 @@ export class BotUpdate {
           await this.editOrSendPhoto(ctx, imagePath, {
             caption: this.i18n.t('product.username.check_error', lang),
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton(
-              'back_to_recipient',
-              this.i18n,
-              lang,
-            ).reply_markup,
+            reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
           });
           return;
         }
@@ -1423,11 +1412,7 @@ export class BotUpdate {
           await this.editOrSendPhoto(ctx, imagePath, {
             caption: this.i18n.t('product.username.check_error', lang),
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton(
-              'back_to_recipient',
-              this.i18n,
-              lang,
-            ).reply_markup,
+            reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
           });
           return;
         }
@@ -1444,33 +1429,21 @@ export class BotUpdate {
                   username: `@${user.username}`,
                 }),
                 parse_mode: 'HTML',
-                reply_markup: MainKeyboard.getBackButton(
-                  'back_to_recipient',
-                  this.i18n,
-                  lang,
-                ).reply_markup,
+                reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
               });
               return;
             case 'GIFTS_CLOSED':
               await this.editOrSendPhoto(ctx, imagePath, {
                 caption: this.i18n.t('product.username.not_found', lang),
                 parse_mode: 'HTML',
-                reply_markup: MainKeyboard.getBackButton(
-                  'back_to_recipient',
-                  this.i18n,
-                  lang,
-                ).reply_markup,
+                reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
               });
               return;
             default:
               await this.editOrSendPhoto(ctx, imagePath, {
                 caption: this.i18n.t('product.username.check_error', lang),
                 parse_mode: 'HTML',
-                reply_markup: MainKeyboard.getBackButton(
-                  'back_to_recipient',
-                  this.i18n,
-                  lang,
-                ).reply_markup,
+                reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
               });
               return;
           }
@@ -1478,11 +1451,7 @@ export class BotUpdate {
           await this.editOrSendPhoto(ctx, imagePath, {
             caption: this.i18n.t('product.username.check_error', lang),
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton(
-              'back_to_recipient',
-              this.i18n,
-              lang,
-            ).reply_markup,
+            reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
           });
           return;
         }
@@ -1553,20 +1522,12 @@ export class BotUpdate {
       await this.editOrSendPhoto(ctx, imagePath, {
         caption: text,
         parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getBackButton(
-          'back_to_recipient',
-          this.i18n,
-          lang,
-        ).reply_markup,
+        reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
       });
     } catch {
       const message = await ctx.reply(text, {
         parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getBackButton(
-          'back_to_recipient',
-          this.i18n,
-          lang,
-        ).reply_markup,
+        reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
       });
       ctx.session.lastBotMessageId = message.message_id;
     }
@@ -1659,20 +1620,12 @@ export class BotUpdate {
           await this.editOrSendPhoto(ctx, imagePath, {
             caption: text,
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton(
-              'back_to_recipient',
-              this.i18n,
-              lang,
-            ).reply_markup,
+            reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
           });
         } catch {
           const sentMessage = await ctx.reply(text, {
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton(
-              'back_to_recipient',
-              this.i18n,
-              lang,
-            ).reply_markup,
+            reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
           });
           ctx.session.lastBotMessageId = sentMessage.message_id;
         }
@@ -1686,22 +1639,14 @@ export class BotUpdate {
             {
               caption: text,
               parse_mode: 'HTML',
-              reply_markup: MainKeyboard.getBackButton(
-                'back_to_recipient',
-                this.i18n,
-                lang,
-              ).reply_markup,
+              reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
             },
           );
           ctx.session.lastBotMessageId = sentMessage.message_id;
         } catch {
           const sentMessage = await ctx.reply(text, {
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton(
-              'back_to_recipient',
-              this.i18n,
-              lang,
-            ).reply_markup,
+            reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
           });
           ctx.session.lastBotMessageId = sentMessage.message_id;
         }
@@ -1734,11 +1679,7 @@ export class BotUpdate {
     if (!chatId || !messageId) return false;
 
     const lang = this.getUserLanguage(ctx);
-    const reply_markup = MainKeyboard.getBackButton(
-      backCallback,
-      this.i18n,
-      lang,
-    ).reply_markup;
+    const reply_markup = MainKeyboard.getBackButton(backCallback).reply_markup;
 
     try {
       await ctx.telegram.editMessageCaption(
@@ -1776,11 +1717,7 @@ export class BotUpdate {
     if (!chatId || !messageId) return false;
 
     const lang = this.getUserLanguage(ctx);
-    const reply_markup = MainKeyboard.getBackButton(
-      'back_to_recipient',
-      this.i18n,
-      lang,
-    ).reply_markup;
+    const reply_markup = MainKeyboard.getBackButton('back_to_recipient').reply_markup;
 
     try {
       await ctx.telegram.editMessageCaption(
@@ -1874,11 +1811,7 @@ export class BotUpdate {
 
       const imagePath = './images/enter_quantity.webp';
 
-      const keyboard = MainKeyboard.getBackButton(
-        'back_to_recipient',
-        this.i18n,
-        lang,
-      );
+      const keyboard = MainKeyboard.getBackButton('back_to_recipient');
       const media = await this.getMediaSource(imagePath);
 
       if (messageId && chatId) {
@@ -1987,11 +1920,7 @@ export class BotUpdate {
           await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
             caption: errorText,
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton(
-              'back_to_main',
-              this.i18n,
-              lang,
-            ).reply_markup,
+            reply_markup: MainKeyboard.getBackButton('back_to_main').reply_markup,
           });
         } else {
           try {
@@ -1999,11 +1928,7 @@ export class BotUpdate {
           } catch {}
           await ctx.reply(errorText, {
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton(
-              'back_to_main',
-              this.i18n,
-              lang,
-            ).reply_markup,
+            reply_markup: MainKeyboard.getBackButton('back_to_main').reply_markup,
           });
         }
         return;
@@ -2183,11 +2108,7 @@ export class BotUpdate {
         });
         await ctx.reply(errorText, {
           parse_mode: 'HTML',
-          reply_markup: MainKeyboard.getBackButton(
-            'back_to_main',
-            this.i18n,
-            lang,
-          ).reply_markup,
+          reply_markup: MainKeyboard.getBackButton('back_to_main').reply_markup,
         });
         return;
       }
@@ -2378,11 +2299,7 @@ export class BotUpdate {
         await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
           caption: this.i18n.t('captcha.banned', lang),
           parse_mode: 'HTML',
-          reply_markup: MainKeyboard.getBackButton(
-            'back_to_main',
-            this.i18n,
-            lang,
-          ).reply_markup,
+          reply_markup: MainKeyboard.getBackButton('back_to_main').reply_markup,
         });
       } else {
         const remaining = 3 - result.failedCount;
@@ -2398,12 +2315,7 @@ export class BotUpdate {
                 `retry_captcha_${pendingMethod}`,
               ),
             ],
-            [
-              Markup.button.callback(
-                this.i18n.t('common.back', lang),
-                'back_to_main',
-              ),
-            ],
+            [backInlineButton('back_to_main')],
           ]).reply_markup,
         });
       }
@@ -2459,11 +2371,7 @@ export class BotUpdate {
           await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
             caption: this.i18n.t('captcha.banned', lang),
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton(
-              'back_to_main',
-              this.i18n,
-              lang,
-            ).reply_markup,
+            reply_markup: MainKeyboard.getBackButton('back_to_main').reply_markup,
           });
           return;
         }
@@ -2582,11 +2490,7 @@ export class BotUpdate {
           `❌ Сумма (${priceDetails.amount_rub.toFixed(2)} ₽) превышает лимит СБП/карты.\n\nВыберите другой способ оплаты.`;
         await ctx.reply(errorText, {
           parse_mode: 'HTML',
-          reply_markup: MainKeyboard.getBackButton(
-            'back_to_main',
-            this.i18n,
-            lang,
-          ).reply_markup,
+          reply_markup: MainKeyboard.getBackButton('back_to_main').reply_markup,
         });
         return;
       }
@@ -2617,11 +2521,7 @@ export class BotUpdate {
         });
         await ctx.reply(errorText, {
           parse_mode: 'HTML',
-          reply_markup: MainKeyboard.getBackButton(
-            'back_to_main',
-            this.i18n,
-            lang,
-          ).reply_markup,
+          reply_markup: MainKeyboard.getBackButton('back_to_main').reply_markup,
         });
         return;
       }
@@ -2945,11 +2845,7 @@ export class BotUpdate {
           await this.editOrSendPhoto(ctx, imagePath, {
             caption: errorText,
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton(
-              'back_to_recipient',
-              this.i18n,
-              lang,
-            ).reply_markup,
+            reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
           });
         }
         ctx.session.awaitingUsername = true;
@@ -2969,11 +2865,7 @@ export class BotUpdate {
           await this.editOrSendPhoto(ctx, imagePath, {
             caption: errorText,
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton(
-              'back_to_recipient',
-              this.i18n,
-              lang,
-            ).reply_markup,
+            reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
           });
         }
         ctx.session.awaitingUsername = true;
@@ -2998,11 +2890,7 @@ export class BotUpdate {
             await this.editOrSendPhoto(ctx, errImage, {
               caption: errorText,
               parse_mode: 'HTML',
-              reply_markup: MainKeyboard.getBackButton(
-                'back_to_recipient',
-                this.i18n,
-                lang,
-              ).reply_markup,
+              reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
             });
           }
           ctx.session.awaitingUsername = true;
@@ -3031,11 +2919,7 @@ export class BotUpdate {
             await this.editOrSendPhoto(ctx, imagePath, {
               caption: errorText,
               parse_mode: 'HTML',
-              reply_markup: MainKeyboard.getBackButton(
-                'back_to_recipient',
-                this.i18n,
-                lang,
-              ).reply_markup,
+              reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
             });
           }
           ctx.session.awaitingUsername = true;
@@ -3064,11 +2948,7 @@ export class BotUpdate {
             await this.editOrSendPhoto(ctx, imagePath, {
               caption: errorText,
               parse_mode: 'HTML',
-              reply_markup: MainKeyboard.getBackButton(
-                'back_to_recipient',
-                this.i18n,
-                lang,
-              ).reply_markup,
+              reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
             });
           }
           ctx.session.awaitingUsername = true;
@@ -3110,11 +2990,7 @@ export class BotUpdate {
           await this.editOrSendPhoto(ctx, imagePath, {
             caption: errorText,
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton(
-              'back_to_recipient',
-              this.i18n,
-              lang,
-            ).reply_markup,
+            reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
           });
         }
 

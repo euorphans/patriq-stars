@@ -4,6 +4,7 @@ import {
   I18nService,
   SupportedLanguage,
 } from '@/shared/services/i18n/i18n.service';
+import { backInlineButton } from '@/shared/keyboards/back-inline-button';
 
 const keyboardCache = new Map<string, { keyboard: any; expires: number }>();
 const KEYBOARD_CACHE_TTL = 300000;
@@ -102,9 +103,7 @@ export class MainKeyboard {
     i18n: I18nService,
     lang: SupportedLanguage = 'ru',
   ) {
-    return Markup.inlineKeyboard([
-      [Markup.button.callback(i18n.t('common.back', lang), 'back_to_main')],
-    ]);
+    return Markup.inlineKeyboard([[backInlineButton('back_to_main')]]);
   }
 
   static getProfileMenu(i18n: I18nService, lang: SupportedLanguage = 'ru') {
@@ -125,7 +124,7 @@ export class MainKeyboard {
           'public_offer',
         ),
       ],
-      [Markup.button.callback(i18n.t('common.back', lang), 'back_to_main')],
+      [backInlineButton('back_to_main')],
     ]);
 
     setCachedKeyboard(cacheKey, keyboard);
@@ -167,15 +166,8 @@ export class MainKeyboard {
     return keyboard;
   }
 
-  static getBackButton(
-    callbackData: string = 'back_to_main',
-    i18n?: I18nService,
-    lang: SupportedLanguage = 'ru',
-  ) {
-    const backText = i18n ? i18n.t('common.back', lang) : '◀ Выйти';
-    return Markup.inlineKeyboard([
-      [Markup.button.callback(backText, callbackData)],
-    ]);
+  static getBackButton(callbackData: string = 'back_to_main') {
+    return Markup.inlineKeyboard([[backInlineButton(callbackData)]]);
   }
 
   static getRecipientSelection(
@@ -199,7 +191,7 @@ export class MainKeyboard {
           'recipient_self',
         ),
       ],
-      [Markup.button.callback(i18n.t('common.back', lang), 'back_to_main')],
+      [backInlineButton('back_to_main')],
     ]);
 
     setCachedKeyboard(cacheKey, keyboard);
@@ -226,12 +218,7 @@ export class MainKeyboard {
       [Markup.button.callback(getDurationLabel(3), 'premium_duration_3')],
       [Markup.button.callback(getDurationLabel(6), 'premium_duration_6')],
       [Markup.button.callback(getDurationLabel(12), 'premium_duration_12')],
-      [
-        Markup.button.callback(
-          i18n.t('common.back', lang),
-          'back_to_recipient',
-        ),
-      ],
+      [backInlineButton('back_to_recipient')],
     ]);
 
     setCachedKeyboard(cacheKey, keyboard);
@@ -292,9 +279,7 @@ export class MainKeyboard {
       }
     }
 
-    buttons.push([
-      Markup.button.callback(i18n.t('common.back', lang), backAction),
-    ]);
+    buttons.push([backInlineButton(backAction)]);
 
     return Markup.inlineKeyboard(buttons);
   }
@@ -398,10 +383,7 @@ export class MainKeyboard {
       const navRow = [];
       if (page > 0) {
         navRow.push(
-          Markup.button.callback(
-            '⬅️ Назад',
-            `purchases_page_${filter}_${page - 1}`,
-          ),
+          backInlineButton(`purchases_page_${filter}_${page - 1}`),
         );
       }
       if (hasMore) {
@@ -419,7 +401,7 @@ export class MainKeyboard {
       ...paymentButtons,
       filterButtons,
       ...navigationButtons,
-      [Markup.button.callback(i18n.t('common.back', lang), 'my_profile')],
+      [backInlineButton('my_profile')],
     ]);
   }
 
@@ -434,7 +416,7 @@ export class MainKeyboard {
         [Markup.button.url(i18n.t('payment.ton.wallets', lang), tonLink)],
         [Markup.button.url(i18n.t('payment.ton.tonkeeper', lang), tonLink)],
         [Markup.button.url(i18n.t('payment.ton.tonhub', lang), tonLink)],
-        [Markup.button.callback(i18n.t('common.back', lang), 'back_to_main')],
+        [backInlineButton('back_to_main')],
       ]);
     }
 
@@ -466,7 +448,7 @@ export class MainKeyboard {
       [Markup.button.url(i18n.t('payment.ton.wallets', lang), tonLink)],
       [Markup.button.url(i18n.t('payment.ton.tonkeeper', lang), tonkeeperLink)],
       [Markup.button.url(i18n.t('payment.ton.tonhub', lang), tonhubLink)],
-      [Markup.button.callback(i18n.t('common.back', lang), 'back_to_main')],
+      [backInlineButton('back_to_main')],
     ]);
   }
 
@@ -477,7 +459,7 @@ export class MainKeyboard {
   ) {
     return Markup.inlineKeyboard([
       [Markup.button.url(i18n.t('payment.pay', lang), paymentUrl)],
-      [Markup.button.callback(i18n.t('common.back', lang), 'back_to_main')],
+      [backInlineButton('back_to_main')],
     ]);
   }
 
@@ -485,13 +467,6 @@ export class MainKeyboard {
     i18n: I18nService,
     lang: SupportedLanguage = 'ru',
   ) {
-    return Markup.inlineKeyboard([
-      [
-        Markup.button.callback(
-          i18n.t('purchases.details.back', lang),
-          'my_purchases',
-        ),
-      ],
-    ]);
+    return Markup.inlineKeyboard([[backInlineButton('my_purchases')]]);
   }
 }
