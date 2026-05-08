@@ -409,6 +409,18 @@ export class BotUpdate {
     return './images/main_menu.webp';
   }
 
+  /** Шапка экрана «Способ оплаты»: арт «в течение 5 минут» для Stars / Premium. */
+  private paymentMethodsHeroImage(productType: string | undefined): string {
+    const t = productType?.toLowerCase();
+    if (t === 'stars') {
+      return './images/new/starsIn5min.png';
+    }
+    if (t === 'premium') {
+      return './images/new/premIn5min.png';
+    }
+    return './images/main_menu.webp';
+  }
+
   private getMenuInfoCaptionHtmlFallback(lang: 'ru'): {
     caption: string;
     parse_mode: 'HTML';
@@ -2282,9 +2294,11 @@ export class BotUpdate {
 
       const text = `${this.i18n.t('payment.title', lang)}\n${productText}\n${this.i18n.t('payment.recipient', lang, { recipient: recipientDisplay })}\n\n${this.i18n.t('payment.username_warning', lang, { product: productNameForWarning })}\n\n${this.i18n.t('payment.methods', lang)}`;
 
+      const paymentHero = this.paymentMethodsHeroImage(productType);
+
       if (edit) {
         try {
-          await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
+          await this.editOrSendPhoto(ctx, paymentHero, {
             caption: text,
             parse_mode: 'HTML',
             reply_markup: MainKeyboard.getPaymentMethodKeyboard(
@@ -2315,7 +2329,7 @@ export class BotUpdate {
         } catch {}
         try {
           await ctx.replyWithPhoto(
-            { source: './images/main_menu.webp' },
+            { source: paymentHero },
             {
               caption: text,
               parse_mode: 'HTML',
@@ -2467,7 +2481,7 @@ export class BotUpdate {
         enabledMethods,
         sbpLimitRub,
       );
-      const imagePath = './images/main_menu.webp';
+      const imagePath = this.paymentMethodsHeroImage(productType);
       const media = await this.getMediaSource(imagePath);
 
       if (messageId) {
