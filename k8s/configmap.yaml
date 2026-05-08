@@ -10,6 +10,8 @@ data:
   # Application
   NODE_ENV: "production"
   APPLICATION_PORT: "3001"
+  # Сессия бота в Redis: по умолчанию в коде 30 суток + продление при каждом апдейте (см. telegraf-config.factory)
+  # TELEGRAF_SESSION_TTL_SECONDS: "2592000"
 
   # Redis (internal cluster DNS)
   REDIS_URL: "redis://redis-master.stars-bot.svc.cluster.local:6379"

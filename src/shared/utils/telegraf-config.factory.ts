@@ -31,7 +31,7 @@ function buildRedisUrl(
 function createRedisSessionStore(
   client: ReturnType<typeof createClient>,
   prefix = 'telegraf:session:',
-  ttlSeconds = 86400,
+  ttlSeconds: number,
 ) {
   return {
     async get(key: string) {
@@ -106,7 +106,15 @@ export async function createTelegrafConfig(
 
       await client.connect();
 
-      const store = createRedisSessionStore(client);
+      const sessionTtl = parseInt(
+        process.env.TELEGRAF_SESSION_TTL_SECONDS || '2592000',
+        10,
+      );
+      const store = createRedisSessionStore(
+        client,
+        'telegraf:session:',
+        Number.isFinite(sessionTtl) && sessionTtl > 60 ? sessionTtl : 2592000,
+      );
       sessionMiddleware = session({ store });
       logger.log('Using Redis session storage (USE_REDIS_SESSION=true)');
     } catch (err) {
@@ -131,6 +139,14 @@ export async function createTelegrafConfig(
   const ensureSession = (ctx: any, next: () => Promise<void>) => {
     if (ctx.session === undefined || ctx.session === null) {
       ctx.session = {};
+    }
+    return next();
+  };
+
+  /** Продлевает TTL ключа сессии в Redis при каждом апдейте (иначе после ~24ч простоя сессия исчезает). */
+  const touchSession = (ctx: any, next: () => Promise<void>) => {
+    if (ctx.session && typeof ctx.session === 'object') {
+      ctx.session._t = Date.now();
     }
     return next();
   };
@@ -160,7 +176,7 @@ export async function createTelegrafConfig(
       telegram: { agent: telegramAgent },
       handlerTimeout: 30_000,
     },
-    middlewares: [sessionMiddleware, ensureSession],
+    middlewares: [sessionMiddleware, ensureSession, touchSession],
     include: [options.includeModule],
   };
 

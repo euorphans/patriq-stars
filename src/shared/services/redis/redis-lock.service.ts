@@ -600,4 +600,11 @@ export class RedisLockService implements OnModuleInit, OnModuleDestroy {
       this.IMAGE_FILE_ID_TTL,
     );
   }
+
+  /** Сбросить закешированный Telegram file_id (например после ошибки «wrong file»). */
+  async deleteImageFileId(imagePath: string): Promise<void> {
+    await this.delete(
+      this.IMAGE_FILE_ID_PREFIX + this.buildImageFileIdStorageKey(imagePath),
+    );
+  }
 }

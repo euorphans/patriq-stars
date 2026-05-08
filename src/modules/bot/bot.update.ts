@@ -34,7 +34,8 @@ import { generateCaptcha } from '@/shared/utils/captcha.utils';
 export class BotUpdate {
   private readonly logger = new Logger(BotUpdate.name);
   private userActionLocks = new Map<string, number>();
-  private readonly ACTION_LOCK_TTL_MS = 5000;
+  /** Антидребезг двойных нажатий; короткий, чтобы не казалось «зависло». */
+  private readonly ACTION_LOCK_TTL_MS = 1200;
 
   constructor(
     private readonly userService: UserService,
@@ -148,7 +149,7 @@ export class BotUpdate {
     step: string,
     ms: number,
   ): void {
-    this.logger.warn(`[PERF][${userId ?? '?'}] ${action} | ${step}: ${ms}ms`);
+    this.logger.debug(`[PERF][${userId ?? '?'}] ${action} | ${step}: ${ms}ms`);
   }
 
   private async getMediaSource(
@@ -279,7 +280,35 @@ export class BotUpdate {
           Date.now() - t1,
         );
         return result;
-      } catch {}
+      } catch (err: any) {
+        if (typeof media === 'string') {
+          await this.redisLock.deleteImageFileId(imagePath).catch(() => {});
+          try {
+            const result = await ctx.editMessageMedia(
+              {
+                type: 'photo',
+                media: { source: imagePath },
+                caption: options.caption,
+                parse_mode: options.parse_mode,
+              },
+              { reply_markup: options.reply_markup },
+            );
+            ctx.session.currentImage = imagePath;
+            this.cacheFileIdFromResult(imagePath, result);
+            this.perfLog(
+              uid,
+              'editOrSendPhoto',
+              `editMessageMedia(upload) [${imagePath}]`,
+              Date.now() - t1,
+            );
+            return result;
+          } catch (e2: any) {
+            this.logger.debug(
+              `editMessageMedia retry failed for ${imagePath}: ${e2?.message || err?.message}`,
+            );
+          }
+        }
+      }
     }
 
     const t2 = Date.now();
@@ -317,7 +346,7 @@ export class BotUpdate {
     }
   }
 
-  private readonly SUBSCRIPTION_CACHE_TTL_MS = 15 * 60 * 1000;
+  private readonly SUBSCRIPTION_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
   private withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
     return Promise.race([
@@ -345,7 +374,7 @@ export class BotUpdate {
         Date.now() - ctx.session.subscriptionCheckedAt <
           this.SUBSCRIPTION_CACHE_TTL_MS
       ) {
-        this.logger.warn(`[PERF][${userId}] checkSub: HIT cache`);
+        this.logger.debug(`[PERF][${userId}] checkSub: HIT cache`);
         return true;
       }
 
@@ -371,7 +400,7 @@ export class BotUpdate {
                 ),
               {
                 maxAttempts: 2,
-                delayMs: 500,
+                delayMs: 0,
                 exponentialBackoff: false,
                 shouldRetry: (err: any) =>
                   !err?.response?.error_code || err.response.error_code >= 500,
@@ -2242,7 +2271,7 @@ export class BotUpdate {
           }),
         {
           maxAttempts: 2,
-          delayMs: 500,
+          delayMs: 0,
           exponentialBackoff: false,
           shouldRetry: (err: any) =>
             !err?.response?.error_code || err.response.error_code >= 500,
