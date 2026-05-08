@@ -5,6 +5,7 @@ import {
   SupportedLanguage,
 } from '@/shared/services/i18n/i18n.service';
 import { backInlineButton } from '@/shared/keyboards/back-inline-button';
+import { ERROR_CUSTOM_EMOJI_ID } from '@/shared/utils/error-custom-emoji';
 
 const keyboardCache = new Map<string, { keyboard: any; expires: number }>();
 const KEYBOARD_CACHE_TTL = 300000;
@@ -56,13 +57,14 @@ const INFO_MENU_CUSTOM_EMOJI = {
   support: '5395695537687123235',
 } as const;
 
+/** На клавиатуре не выше этой суммы; больше — через «Свой ввод». */
+const STARS_QTY_PRESET_CAP = 5000;
+
 /**
- * Типичные суммы покупки Stars: мелкие подарки → частые «круглые» → средние → крупные.
- * Границы min/max из настроек подмешиваются отдельно.
+ * Пресеты Stars: до STARS_QTY_PRESET_CAP, по 2 кнопки в ряд → максимум 3 ряда сумм.
+ * Min из настроек подмешивается, max на клавиатуру не выводим, если он выше CAP.
  */
-const STARS_QTY_PRESETS = [
-  100, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000,
-] as const;
+const STARS_QTY_PRESETS = [100, 500, 1000, 2500, 5000] as const;
 
 /** Кнопка «Свой ввод» на экране количества Stars (без второй иконки-звезды). */
 const STARS_QTY_MANUAL_CUSTOM_EMOJI_ID = '5395444784611480792';
@@ -302,12 +304,21 @@ export class MainKeyboard {
 
     const presetSet = new Set<number>();
     for (const n of STARS_QTY_PRESETS) {
-      if (n >= minStars && n <= maxStars) presetSet.add(n);
+      if (
+        n >= minStars &&
+        n <= maxStars &&
+        n <= STARS_QTY_PRESET_CAP
+      ) {
+        presetSet.add(n);
+      }
     }
-    if (minStars <= maxStars) presetSet.add(minStars);
-    if (maxStars >= minStars && maxStars !== minStars) presetSet.add(maxStars);
+    if (minStars <= maxStars && minStars <= STARS_QTY_PRESET_CAP) {
+      presetSet.add(minStars);
+    }
 
-    const merged = [...presetSet].sort((a, b) => a - b);
+    const merged = [...presetSet]
+      .sort((a, b) => a - b)
+      .slice(0, 6);
     const rows: any[][] = [];
 
     for (let i = 0; i < merged.length; i += 2) {
@@ -439,7 +450,7 @@ export class MainKeyboard {
       let statusEmoji: string;
       let statusText: string;
       if (payment.status === 'CANCELLED') {
-        statusEmoji = '❌';
+        statusEmoji = '';
         statusText = i18n.t('purchases.status.cancelled', lang);
       } else if (payment.status === 'FAILED') {
         statusEmoji = '🔴';
@@ -484,12 +495,17 @@ export class MainKeyboard {
         productLabel = `${productEmoji} ${payment.product_type} x${payment.product_quantity}`;
       }
 
-      return [
-        Markup.button.callback(
-          `${statusEmoji} ${productLabel} — ${amountText} (${statusText})`,
-          `payment_details_${payment.id}`,
-        ),
-      ];
+      const label = `${statusEmoji ? `${statusEmoji} ` : ''}${productLabel} — ${amountText} (${statusText})`;
+      if (payment.status === 'CANCELLED') {
+        return [
+          {
+            text: label,
+            callback_data: `payment_details_${payment.id}`,
+            icon_custom_emoji_id: ERROR_CUSTOM_EMOJI_ID,
+          },
+        ];
+      }
+      return [Markup.button.callback(label, `payment_details_${payment.id}`)];
     });
 
     const filterButtons = [

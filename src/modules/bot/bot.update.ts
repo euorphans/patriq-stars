@@ -21,6 +21,7 @@ import {
   getProductEmoji,
   escapeHtml,
   formatDateTimeMoscow,
+  htmlErrorWithLeadingCustomEmoji,
 } from '@/shared/utils';
 import { RapiraService } from '@/shared/services/rapira/rapira.service';
 import { PrismaService } from '@/shared/services/prisma/prisma.service';
@@ -189,7 +190,8 @@ export class BotUpdate {
     }
     if (options.caption_entities && options.caption_entities.length > 0) {
       out.caption_entities = options.caption_entities;
-    } else if (options.parse_mode) {
+    }
+    if (options.parse_mode) {
       out.parse_mode = options.parse_mode;
     }
     return out;
@@ -209,7 +211,8 @@ export class BotUpdate {
       const textOpts: any = { reply_markup: options.reply_markup };
       if (options.caption_entities && options.caption_entities.length > 0) {
         textOpts.entities = options.caption_entities;
-      } else if (options.parse_mode) {
+      }
+      if (options.parse_mode) {
         textOpts.parse_mode = options.parse_mode;
       }
       return ctx.reply(options.caption || '', textOpts);
@@ -257,7 +260,8 @@ export class BotUpdate {
       const textOpts: any = { reply_markup: options.reply_markup };
       if (options.caption_entities && options.caption_entities.length > 0) {
         textOpts.entities = options.caption_entities;
-      } else if (options.parse_mode) {
+      }
+      if (options.parse_mode) {
         textOpts.parse_mode = options.parse_mode;
       }
       try {
@@ -301,7 +305,8 @@ export class BotUpdate {
         };
         if (options.caption_entities && options.caption_entities.length > 0) {
           mediaPayload.caption_entities = options.caption_entities;
-        } else if (options.parse_mode) {
+        }
+        if (options.parse_mode) {
           mediaPayload.parse_mode = options.parse_mode;
         }
         const result = await ctx.editMessageMedia(
@@ -329,7 +334,8 @@ export class BotUpdate {
             };
             if (options.caption_entities && options.caption_entities.length > 0) {
               mediaPayload2.caption_entities = options.caption_entities;
-            } else if (options.parse_mode) {
+            }
+            if (options.parse_mode) {
               mediaPayload2.parse_mode = options.parse_mode;
             }
             const result = await ctx.editMessageMedia(
@@ -1852,31 +1858,39 @@ export class BotUpdate {
     const messageId = ctx.session.lastBotMessageId;
     if (!chatId || !messageId) return false;
 
-    const lang = this.getUserLanguage(ctx);
     const reply_markup = MainKeyboard.getBackButton(backCallback).reply_markup;
+    const err = htmlErrorWithLeadingCustomEmoji(errorText);
 
     try {
       await ctx.telegram.editMessageCaption(
         chatId,
         messageId,
         undefined,
-        errorText,
-        { parse_mode: 'HTML', reply_markup },
+        err.text,
+        {
+          parse_mode: err.parse_mode,
+          caption_entities: err.caption_entities,
+          reply_markup,
+        },
       );
       return true;
-    } catch (err: any) {
-      if (BotUpdate.isMessageNotModifiedError(err)) return true;
+    } catch (e: any) {
+      if (BotUpdate.isMessageNotModifiedError(e)) return true;
       try {
         await ctx.telegram.editMessageText(
           chatId,
           messageId,
           undefined,
-          errorText,
-          { parse_mode: 'HTML', reply_markup },
+          err.text,
+          {
+            parse_mode: err.parse_mode,
+            entities: err.entities,
+            reply_markup,
+          },
         );
         return true;
-      } catch (err2: any) {
-        if (BotUpdate.isMessageNotModifiedError(err2)) return true;
+      } catch (e2: any) {
+        if (BotUpdate.isMessageNotModifiedError(e2)) return true;
         return false;
       }
     }
@@ -1904,28 +1918,38 @@ export class BotUpdate {
       ).reply_markup;
     }
 
+    const err = htmlErrorWithLeadingCustomEmoji(errorText);
+
     try {
       await ctx.telegram.editMessageCaption(
         chatId,
         messageId,
         undefined,
-        errorText,
-        { parse_mode: 'HTML', reply_markup },
+        err.text,
+        {
+          parse_mode: err.parse_mode,
+          caption_entities: err.caption_entities,
+          reply_markup,
+        },
       );
       return true;
-    } catch (err: any) {
-      if (BotUpdate.isMessageNotModifiedError(err)) return true;
+    } catch (e: any) {
+      if (BotUpdate.isMessageNotModifiedError(e)) return true;
       try {
         await ctx.telegram.editMessageText(
           chatId,
           messageId,
           undefined,
-          errorText,
-          { parse_mode: 'HTML', reply_markup },
+          err.text,
+          {
+            parse_mode: err.parse_mode,
+            entities: err.entities,
+            reply_markup,
+          },
         );
         return true;
-      } catch (err2: any) {
-        if (BotUpdate.isMessageNotModifiedError(err2)) return true;
+      } catch (e2: any) {
+        if (BotUpdate.isMessageNotModifiedError(e2)) return true;
         return false;
       }
     }
