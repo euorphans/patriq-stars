@@ -369,15 +369,19 @@ export class BotUpdate {
     return 'ru';
   }
 
-  /** Подпись экрана «Информация»: custom emoji в заголовке через caption_entities (HTML это не умеет). */
+  /**
+   * Подпись экрана «Информация»: анимированный emoji рядом с заголовком через caption_entities.
+   * В тексте нужен один «базовый» символ (⭐); сущность custom_emoji заменяет его на стикер бота.
+   * Символ U+FFFC и т.п. клиент часто не рисует как кастомный emoji.
+   */
   private getMenuInfoCaptionPayload(lang: 'ru'): {
     caption: string;
     caption_entities: any[];
   } {
     const title = this.i18n.t('menu.info.title', lang);
     const body = this.i18n.t('menu.info.body', lang);
-    const placeholder = '\uFFFC';
-    const caption = `${placeholder} ${title}\n\n${body}`;
+    const baseStar = '\u2B50';
+    const caption = `${baseStar} ${title}\n\n${body}`;
     const titleOffset = 2;
     return {
       caption,
@@ -393,14 +397,14 @@ export class BotUpdate {
     };
   }
 
-  /** Предпочтительно main2.png; если файла нет в образе — чтобы экран не ломался, main_menu.webp. */
+  /** Экран «Информация»: images/main2.webp (из images/new/main2.png); иначе запас — main_menu.webp. */
   private resolveInfoScreenImage(): string {
-    const pngAbsolute = path.join(process.cwd(), 'images', 'main2.png');
-    if (fs.existsSync(pngAbsolute)) {
-      return './images/main2.png';
+    const webpAbsolute = path.join(process.cwd(), 'images', 'main2.webp');
+    if (fs.existsSync(webpAbsolute)) {
+      return './images/main2.webp';
     }
     this.logger.warn(
-      `Info screen: images/main2.png not found (${pngAbsolute}), using main_menu.webp`,
+      `Info screen: images/main2.webp not found (${webpAbsolute}), using main_menu.webp`,
     );
     return './images/main_menu.webp';
   }
@@ -412,7 +416,7 @@ export class BotUpdate {
     const title = escapeHtml(this.i18n.t('menu.info.title', lang));
     const body = escapeHtml(this.i18n.t('menu.info.body', lang));
     return {
-      caption: `<b>${title}</b>\n\n${body}`,
+      caption: `<b>⭐ ${title}</b>\n\n${body}`,
       parse_mode: 'HTML',
     };
   }

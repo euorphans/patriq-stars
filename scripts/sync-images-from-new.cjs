@@ -5,7 +5,7 @@
  */
 const MAP = {
   'main.png': 'main_menu.webp',
-  'main2.png': 'referral.webp',
+  'main2.png': 'main2.webp',
   'starsTo.png': 'where_delivery_stars.webp',
   'starsIn5min.png': 'stars_success.webp',
   'premTo.png': 'where_delivery_premium.webp',

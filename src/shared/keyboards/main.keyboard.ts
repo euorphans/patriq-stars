@@ -58,6 +58,9 @@ const STARS_QTY_PRESETS = [
   500000,
 ] as const;
 
+/** Кнопка «Свой ввод» на экране количества Stars (без второй иконки-звезды). */
+const STARS_QTY_MANUAL_CUSTOM_EMOJI_ID = '5395444784611480792';
+
 function trimUrl(envVar: string | undefined): string | undefined {
   const s = envVar?.trim();
   return s && s !== '#' ? s : undefined;
@@ -323,7 +326,7 @@ export class MainKeyboard {
       {
         text: i18n.t('product.quantity.stars.manual_btn', lang),
         callback_data: 'stars_qty_manual',
-        icon_custom_emoji_id: MAIN_MENU_CUSTOM_EMOJI.stars,
+        icon_custom_emoji_id: STARS_QTY_MANUAL_CUSTOM_EMOJI_ID,
       },
     ]);
     rows.push([backInlineButton('back_to_recipient')]);
