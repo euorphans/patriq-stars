@@ -32,12 +32,15 @@ export function clearMainMenuCache(): void {
   }
 }
 
+/** Custom emoji у заголовка подписи экрана «Информация» (caption_entities). */
+export const MAIN_MENU_INFO_CUSTOM_EMOJI_ID = '5334544901428229844';
+
 /** Анимированные custom emoji (Bot API: InlineKeyboardButton.icon_custom_emoji_id). */
 const MAIN_MENU_CUSTOM_EMOJI = {
   stars: '5438496463044752972',
   premium: '5217822164362739968',
   profile: '5416041192905265756',
-  info: '5334544901428229844',
+  info: MAIN_MENU_INFO_CUSTOM_EMOJI_ID,
 } as const;
 
 /** Кнопки экрана «Информация» (url + icon_custom_emoji_id). */

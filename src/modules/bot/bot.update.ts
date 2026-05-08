@@ -8,7 +8,10 @@ import { PricingService } from '@/modules/pricing/pricing.service';
 import { PaymentsService } from '@/modules/payments/payments.service';
 import { SettingsService } from '@/modules/settings/settings.service';
 import { BOT_STARS_TOPUP_PAYLOAD_PREFIX } from '@/shared/constants/bot-stars-topup.constant';
-import { MainKeyboard } from '@/shared/keyboards/main.keyboard';
+import {
+  MainKeyboard,
+  MAIN_MENU_INFO_CUSTOM_EMOJI_ID,
+} from '@/shared/keyboards/main.keyboard';
 import { backInlineButton } from '@/shared/keyboards/back-inline-button';
 import { BotContext } from '@/shared/types/bot-context.interface';
 import { withRetry } from '@/shared/utils';
@@ -170,26 +173,53 @@ export class BotUpdate {
     }
   }
 
+  private buildPhotoCaptionOptions(options: {
+    caption?: string;
+    parse_mode?: 'HTML' | 'Markdown';
+    caption_entities?: any[];
+    reply_markup?: any;
+  }): Record<string, unknown> {
+    const out: Record<string, unknown> = {
+      reply_markup: options.reply_markup,
+    };
+    if (options.caption !== undefined) {
+      out.caption = options.caption;
+    }
+    if (options.caption_entities && options.caption_entities.length > 0) {
+      out.caption_entities = options.caption_entities;
+    } else if (options.parse_mode) {
+      out.parse_mode = options.parse_mode;
+    }
+    return out;
+  }
+
   private async sendCachedPhoto(
     ctx: BotContext,
     imagePath: string,
     options: {
       caption?: string;
       parse_mode?: 'HTML' | 'Markdown';
+      caption_entities?: any[];
       reply_markup?: any;
     },
   ): Promise<any> {
     if (this.isImagesDisabled()) {
-      return ctx.reply(options.caption || '', {
-        parse_mode: options.parse_mode,
-        reply_markup: options.reply_markup,
-      });
+      const textOpts: any = { reply_markup: options.reply_markup };
+      if (options.caption_entities && options.caption_entities.length > 0) {
+        textOpts.entities = options.caption_entities;
+      } else if (options.parse_mode) {
+        textOpts.parse_mode = options.parse_mode;
+      }
+      return ctx.reply(options.caption || '', textOpts);
     }
 
     const media = await this.getMediaSource(imagePath);
 
     try {
-      const message = await ctx.replyWithPhoto(media, options);
+      const message = await ctx.replyWithPhoto(
+        media,
+        this.buildPhotoCaptionOptions(options) as any,
+      );
       this.cacheFileIdFromResult(imagePath, message);
       ctx.session.currentImage = imagePath;
       return message;
@@ -200,7 +230,7 @@ export class BotUpdate {
         );
         const message = await ctx.replyWithPhoto(
           { source: imagePath },
-          options,
+          this.buildPhotoCaptionOptions(options) as any,
         );
         this.cacheFileIdFromResult(imagePath, message);
         ctx.session.currentImage = imagePath;
@@ -216,21 +246,22 @@ export class BotUpdate {
     options: {
       caption?: string;
       parse_mode?: 'HTML' | 'Markdown';
+      caption_entities?: any[];
       reply_markup?: any;
     },
     forceRefreshMedia = false,
   ): Promise<any> {
     if (this.isImagesDisabled()) {
+      const textOpts: any = { reply_markup: options.reply_markup };
+      if (options.caption_entities && options.caption_entities.length > 0) {
+        textOpts.entities = options.caption_entities;
+      } else if (options.parse_mode) {
+        textOpts.parse_mode = options.parse_mode;
+      }
       try {
-        return await ctx.editMessageText(options.caption || '', {
-          parse_mode: options.parse_mode,
-          reply_markup: options.reply_markup,
-        });
+        return await ctx.editMessageText(options.caption || '', textOpts);
       } catch {
-        return ctx.reply(options.caption || '', {
-          parse_mode: options.parse_mode,
-          reply_markup: options.reply_markup,
-        });
+        return ctx.reply(options.caption || '', textOpts);
       }
     }
 
@@ -239,10 +270,10 @@ export class BotUpdate {
 
     if (!forceRefreshMedia && ctx.session.currentImage === imagePath) {
       try {
-        const result = await ctx.editMessageCaption(options.caption, {
-          parse_mode: options.parse_mode,
-          reply_markup: options.reply_markup,
-        });
+        const result = await ctx.editMessageCaption(
+          options.caption,
+          this.buildPhotoCaptionOptions(options) as any,
+        );
         this.perfLog(
           uid,
           'editOrSendPhoto',
@@ -261,13 +292,18 @@ export class BotUpdate {
       );
       const t1 = Date.now();
       try {
+        const mediaPayload: Record<string, unknown> = {
+          type: 'photo',
+          media,
+          caption: options.caption,
+        };
+        if (options.caption_entities && options.caption_entities.length > 0) {
+          mediaPayload.caption_entities = options.caption_entities;
+        } else if (options.parse_mode) {
+          mediaPayload.parse_mode = options.parse_mode;
+        }
         const result = await ctx.editMessageMedia(
-          {
-            type: 'photo',
-            media,
-            caption: options.caption,
-            parse_mode: options.parse_mode,
-          },
+          mediaPayload as any,
           { reply_markup: options.reply_markup },
         );
 
@@ -284,13 +320,18 @@ export class BotUpdate {
         if (typeof media === 'string') {
           await this.redisLock.deleteImageFileId(imagePath).catch(() => {});
           try {
+            const mediaPayload2: Record<string, unknown> = {
+              type: 'photo',
+              media: { source: imagePath },
+              caption: options.caption,
+            };
+            if (options.caption_entities && options.caption_entities.length > 0) {
+              mediaPayload2.caption_entities = options.caption_entities;
+            } else if (options.parse_mode) {
+              mediaPayload2.parse_mode = options.parse_mode;
+            }
             const result = await ctx.editMessageMedia(
-              {
-                type: 'photo',
-                media: { source: imagePath },
-                caption: options.caption,
-                parse_mode: options.parse_mode,
-              },
+              mediaPayload2 as any,
               { reply_markup: options.reply_markup },
             );
             ctx.session.currentImage = imagePath;
@@ -324,6 +365,30 @@ export class BotUpdate {
 
   private getUserLanguage(_ctx: BotContext): 'ru' {
     return 'ru';
+  }
+
+  /** Подпись экрана «Информация»: custom emoji в заголовке через caption_entities (HTML это не умеет). */
+  private getMenuInfoCaptionPayload(lang: 'ru'): {
+    caption: string;
+    caption_entities: any[];
+  } {
+    const title = this.i18n.t('menu.info.title', lang);
+    const body = this.i18n.t('menu.info.body', lang);
+    const placeholder = '\uFFFC';
+    const caption = `${placeholder} ${title}\n\n${body}`;
+    const titleOffset = 2;
+    return {
+      caption,
+      caption_entities: [
+        {
+          type: 'custom_emoji',
+          offset: 0,
+          length: 1,
+          custom_emoji_id: MAIN_MENU_INFO_CUSTOM_EMOJI_ID,
+        },
+        { type: 'bold', offset: titleOffset, length: title.length },
+      ],
+    };
   }
 
   private normalizeTxForTonscan(tx: string): string | null {
@@ -1067,19 +1132,21 @@ export class BotUpdate {
     this.resetInputFlags(ctx);
 
     const lang = this.getUserLanguage(ctx);
-    const caption = this.i18n.t('menu.info.text', lang);
+    const { caption, caption_entities } = this.getMenuInfoCaptionPayload(lang);
+    const reply_markup = MainKeyboard.getInfoMenu(this.i18n, lang).reply_markup;
+    const infoImage = './images/main2.png';
 
     try {
-      await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
+      await this.editOrSendPhoto(ctx, infoImage, {
         caption,
-        parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getInfoMenu(this.i18n, lang).reply_markup,
+        caption_entities,
+        reply_markup,
       });
     } catch {
-      await ctx.reply(caption, {
-        parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getInfoMenu(this.i18n, lang).reply_markup,
-        link_preview_options: { is_disabled: true },
+      await this.sendCachedPhoto(ctx, infoImage, {
+        caption,
+        caption_entities,
+        reply_markup,
       });
     }
   }
