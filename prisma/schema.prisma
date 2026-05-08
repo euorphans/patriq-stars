@@ -65,12 +65,6 @@ model User {
   referrer       User?   @relation("UserReferrals", fields: [referred_by], references: [id], onDelete: SetNull)
   referrals      User[]  @relation("UserReferrals")
 
-  mops_coins              Int @default(0)
-  referral_coins_earned   Int @default(0)
-
-  /// Last time the user claimed the daily Mops Bones bonus (calendar day in Europe/Moscow)
-  mops_daily_bonus_at DateTime?
-
   payments       Payment[]
   fragment_queue FragmentQueue[]
 
@@ -120,7 +114,6 @@ model Payment {
   details_message_id         String?
   fragment_screenshot        String?
   stuck_resolved_at          DateTime?
-  mops_coin_awarded          Boolean       @default(false)
 
   created_at         DateTime            @default(now())
   updated_at         DateTime            @updatedAt

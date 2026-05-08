@@ -15,12 +15,10 @@ import {
   getProductEmoji,
   escapeHtml,
   formatDateTimeMoscow,
-  isSameCalendarDayMoscow,
 } from '@/shared/utils';
 import { RapiraService } from '@/shared/services/rapira/rapira.service';
 import { PrismaService } from '@/shared/services/prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { OnEvent } from '@nestjs/event-emitter';
 import {
   FragmentService,
   FragmentApiError,
@@ -34,7 +32,6 @@ import { generateCaptcha } from '@/shared/utils/captcha.utils';
 @Update()
 export class BotUpdate {
   private readonly logger = new Logger(BotUpdate.name);
-  private readonly MOPS_DAILY_BONUS_AMOUNT = 30;
   private userActionLocks = new Map<string, number>();
   private readonly ACTION_LOCK_TTL_MS = 5000;
 
@@ -1166,147 +1163,10 @@ export class BotUpdate {
     });
   }
 
-  @Action('mops_balance')
-  async showMopsBalance(@Ctx() ctx: BotContext): Promise<void> {
-    ctx.answerCbQuery().catch(() => {});
-    if (!(await this.checkSubscriptionMiddleware(ctx))) return;
-    await this.renderMopsBalanceScreen(ctx);
-  }
-
-  private async renderMopsBalanceScreen(ctx: BotContext): Promise<void> {
-    const tg = ctx.from;
-    if (!tg) return;
-
-    const lang = this.getUserLanguage(ctx);
-    const dbUser = await this.prisma.user.findUnique({
-      where: { telegram_id: tg.id.toString() },
-      select: { mops_coins: true },
-    });
-    const coins = dbUser?.mops_coins ?? 0;
-    const coinsFmt = coins.toLocaleString('ru-RU');
-    const text = this.i18n.t('mops_coin.balance.text', lang, {
-      coins: coinsFmt,
-    });
-
-    try {
-      await this.editOrSendPhoto(
-        ctx,
-        './images/mops_bones_balance.webp',
-        {
-          caption: text,
-          parse_mode: 'HTML',
-          reply_markup: MainKeyboard.getMopsBalanceMenu(this.i18n, lang)
-            .reply_markup,
-        },
-        true,
-      );
-    } catch {
-      await ctx.reply(text, {
-        parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getMopsBalanceMenu(this.i18n, lang)
-          .reply_markup,
-      });
-    }
-  }
-
-  @Action('mops_daily_bonus')
-  async claimMopsDailyBonus(@Ctx() ctx: BotContext): Promise<void> {
-    const langEarly = this.getUserLanguage(ctx);
-    if (!(await this.checkSubscriptionMiddleware(ctx))) {
-      await ctx
-        .answerCbQuery(this.i18n.t('subscription.failed', langEarly), {
-          show_alert: true,
-        })
-        .catch(() => {});
-      return;
-    }
-
-    const tg = ctx.from;
-    if (!tg) {
-      ctx.answerCbQuery().catch(() => {});
-      return;
-    }
-
-    const lang = this.getUserLanguage(ctx);
-    const telegramId = tg.id.toString();
-    const now = new Date();
-
-    const claimResult = await this.prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({
-        where: { telegram_id: telegramId },
-        select: { id: true, mops_daily_bonus_at: true },
-      });
-      if (!user) {
-        return 'missing' as const;
-      }
-      if (
-        user.mops_daily_bonus_at &&
-        isSameCalendarDayMoscow(user.mops_daily_bonus_at, now)
-      ) {
-        return 'already' as const;
-      }
-      await tx.user.update({
-        where: { id: user.id },
-        data: {
-          mops_coins: { increment: this.MOPS_DAILY_BONUS_AMOUNT },
-          mops_daily_bonus_at: now,
-        },
-      });
-      return 'claimed' as const;
-    });
-
-    this.userService.clearUserCache(telegramId);
-
-    if (claimResult === 'missing') {
-      await ctx
-        .answerCbQuery(this.i18n.t('common.error', lang), { show_alert: true })
-        .catch(() => {});
-      return;
-    }
-
-    if (claimResult === 'already') {
-      await ctx
-        .answerCbQuery(this.i18n.t('mops_coin.daily_bonus.already', lang), {
-          show_alert: true,
-        })
-        .catch(() => {});
-      return;
-    }
-
-    await ctx
-      .answerCbQuery(
-        this.i18n.t('mops_coin.daily_bonus.success_toast', lang, {
-          amount: String(this.MOPS_DAILY_BONUS_AMOUNT),
-        }),
-      )
-      .catch(() => {});
-
-    await this.renderMopsBalanceScreen(ctx);
-  }
-
-  @Action('mops_coin_info')
-  async showMopsCoinInfo(@Ctx() ctx: BotContext): Promise<void> {
-    ctx.answerCbQuery().catch(() => {});
-    if (!(await this.checkSubscriptionMiddleware(ctx))) return;
-
-    const lang = this.getUserLanguage(ctx);
-    const text = this.i18n.t('mops_coin.info.text', lang);
-
-    try {
-      await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
-        caption: text,
-        parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getMopsCoinInfoMenu(this.i18n, lang)
-          .reply_markup,
-      });
-    } catch {
-      await ctx.reply(text, {
-        parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getMopsCoinInfoMenu(this.i18n, lang)
-          .reply_markup,
-        link_preview_options: { is_disabled: true },
-      });
-    }
+  /** Старые inline-кнопки после удаления бонусной системы */
+  @Action(/^(mops_balance|mops_daily_bonus|mops_coin_info|mops_referral)$/)
+  async legacyMopsRoutes(@Ctx() ctx: BotContext): Promise<void> {
+    await this.showReferralProgram(ctx);
   }
 
   @Action('referral_program')
@@ -1322,126 +1182,26 @@ export class BotUpdate {
     const referralLink = `${botUrl}?start=ref_${tg.id}`;
 
     const stats = await this.userService.getReferralStats(tg.id.toString());
-    const earnedFmt = stats.earned.toLocaleString('ru-RU');
 
     const text = this.i18n.t('referral.title', lang, {
       link: referralLink,
       count: stats.count.toString(),
-      earned: earnedFmt,
     });
-
-    try {
-      await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
-        caption: text,
-        parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getReferralMenu(this.i18n, lang)
-          .reply_markup,
-      });
-    } catch {
-      await ctx.reply(text, {
-        parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getReferralMenu(this.i18n, lang)
-          .reply_markup,
-        link_preview_options: { is_disabled: true },
-      });
-    }
-  }
-
-  @Action('mops_referral')
-  async showMopsReferral(@Ctx() ctx: BotContext): Promise<void> {
-    ctx.answerCbQuery().catch(() => {});
-    if (!(await this.checkSubscriptionMiddleware(ctx))) return;
-
-    const userId = ctx.from?.id;
-    if (!userId) return;
-
-    const lang = this.getUserLanguage(ctx);
-    const botUrl = process.env.BOT_URL || 'https://t.me/MopsStarsBot';
-    const referralLink = `${botUrl}?start=ref${userId}`;
-    const text = this.i18n.t('mops_coin.referral.text', lang, { referralLink });
-
-    const shareKeyboard = Markup.inlineKeyboard([
-      [
-        Markup.button.url(
-          '📤 Поделиться',
-          `https://t.me/share/url?url=${encodeURIComponent(referralLink)}`,
-        ),
-      ],
-      [
-        Markup.button.callback(
-          this.i18n.t('common.back', lang),
-          'mops_balance',
-        ),
-      ],
-    ]);
 
     try {
       await this.editOrSendPhoto(ctx, './images/referral.webp', {
         caption: text,
         parse_mode: 'HTML',
-        reply_markup: shareKeyboard.reply_markup,
+        reply_markup: MainKeyboard.getReferralMenu(this.i18n, lang)
+          .reply_markup,
       });
     } catch {
       await ctx.reply(text, {
         parse_mode: 'HTML',
-        reply_markup: shareKeyboard.reply_markup,
+        reply_markup: MainKeyboard.getReferralMenu(this.i18n, lang)
+          .reply_markup,
         link_preview_options: { is_disabled: true },
       });
-    }
-  }
-
-  @OnEvent('referral.bonus')
-  async handleReferralBonus(payload: {
-    referrerTelegramId: string;
-    bonusCoins: number;
-    buyerTelegramId: string;
-  }): Promise<void> {
-    try {
-      const lang = 'ru';
-
-      const botUrl = process.env.BOT_URL || 'https://t.me/MopsStarsBot';
-      const referralLink = `${botUrl}?start=ref${payload.referrerTelegramId}`;
-
-      const text = this.i18n.t('mops_coin.referral_bonus', lang, {
-        bonusCoins: String(payload.bonusCoins),
-        referralLink,
-      });
-
-      const chatId = Number(payload.referrerTelegramId);
-      const media = await this.getMediaSource('./images/referral.webp');
-
-      const keyboard = Markup.inlineKeyboard([
-        [
-          Markup.button.url(
-            '📤 Поделиться',
-            `https://t.me/share/url?url=${encodeURIComponent(referralLink)}`,
-          ),
-        ],
-        [
-          Markup.button.callback(
-            this.i18n.t('common.back', lang),
-            'back_to_main',
-          ),
-        ],
-      ]);
-
-      try {
-        const result = await this.bot.telegram.sendPhoto(chatId, media, {
-          caption: text,
-          parse_mode: 'HTML',
-          reply_markup: keyboard.reply_markup,
-        });
-        this.cacheFileIdFromResult('./images/referral.webp', result);
-      } catch {
-        await this.bot.telegram.sendMessage(chatId, text, {
-          parse_mode: 'HTML',
-          reply_markup: keyboard.reply_markup,
-        });
-      }
-    } catch (err: any) {
-      this.logger.warn(
-        `Failed to send referral bonus notification to ${payload.referrerTelegramId}: ${err.message}`,
-      );
     }
   }
 

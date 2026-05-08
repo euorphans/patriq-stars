@@ -63,8 +63,8 @@ export class MainKeyboard {
       ],
       [
         {
-          text: i18n.t('menu.main.mops_balance', lang),
-          callback_data: 'mops_balance',
+          text: i18n.t('menu.main.referral', lang),
+          callback_data: 'referral_program',
         },
       ],
     ];
@@ -95,8 +95,8 @@ export class MainKeyboard {
       ],
       [
         {
-          text: i18n.t('menu.main.mops_balance', lang),
-          callback_data: 'mops_balance',
+          text: i18n.t('menu.main.referral', lang),
+          callback_data: 'referral_program',
         },
       ],
     ];
@@ -106,7 +106,7 @@ export class MainKeyboard {
     return keyboard;
   }
 
-  static getMopsPurchaseSuccessKeyboard(
+  static getPurchaseFollowUpKeyboard(
     i18n: I18nService,
     lang: SupportedLanguage = 'ru',
   ) {
@@ -117,47 +117,18 @@ export class MainKeyboard {
           'referral_program',
         ),
       ],
-      [
-        Markup.button.callback(
-          i18n.t('mops_coin.balance_btn', lang),
-          'mops_balance',
-        ),
-      ],
       [Markup.button.callback(i18n.t('common.back', lang), 'back_to_main')],
     ]);
   }
 
   static getReferralMenu(i18n: I18nService, lang: SupportedLanguage = 'ru') {
     return Markup.inlineKeyboard([
-      [Markup.button.callback(i18n.t('common.back', lang), 'mops_balance')],
-    ]);
-  }
-
-  static getMopsBalanceMenu(i18n: I18nService, lang: SupportedLanguage = 'ru') {
-    const rows: any[][] = [
-      [{
-        text: i18n.t('mops_coin.daily_bonus_btn', lang),
-        callback_data: 'mops_daily_bonus',
-      }],
-      [{
-        text: i18n.t('mops_coin.referral_btn', lang),
-        callback_data: 'mops_referral',
-      }],
-      [{
-        text: i18n.t('mops_coin.what_is', lang),
-        callback_data: 'mops_coin_info',
-      }],
-      [{ text: i18n.t('common.back', lang), callback_data: 'back_to_main' }],
-    ];
-    return { reply_markup: { inline_keyboard: rows } };
-  }
-
-  static getMopsCoinInfoMenu(
-    i18n: I18nService,
-    lang: SupportedLanguage = 'ru',
-  ) {
-    return Markup.inlineKeyboard([
-      [Markup.button.callback(i18n.t('common.back', lang), 'mops_balance')],
+      [
+        Markup.button.callback(
+          i18n.t('common.back', lang),
+          'back_to_main',
+        ),
+      ],
     ]);
   }
 

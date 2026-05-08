@@ -431,19 +431,17 @@ export class UserService {
     }
   }
 
-  async getReferralStats(
-    telegramId: string,
-  ): Promise<{ count: number; earned: number }> {
+  async getReferralStats(telegramId: string): Promise<{ count: number }> {
     const user = await this.prisma.user.findUnique({
       where: { telegram_id: telegramId },
-      select: { id: true, referral_coins_earned: true },
+      select: { id: true },
     });
-    if (!user) return { count: 0, earned: 0 };
+    if (!user) return { count: 0 };
 
     const count = await this.prisma.user.count({
       where: { referred_by: user.id },
     });
 
-    return { count, earned: user.referral_coins_earned };
+    return { count };
   }
 }

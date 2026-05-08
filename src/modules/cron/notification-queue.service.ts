@@ -10,8 +10,8 @@ import * as QRCode from 'qrcode';
 import { UserService } from '@/modules/user/user.service';
 import { I18nService } from '@/shared/services/i18n/i18n.service';
 import {
-  buildMopsPurchaseRewardCaption,
-  MOPS_PURCHASE_SUCCESS_IMAGE,
+  buildPurchaseFollowUpCaption,
+  PURCHASE_FOLLOWUP_IMAGE,
   sendOrEditPaymentSuccessPhoto,
 } from '@/shared/utils/payment-success-notification';
 
@@ -239,7 +239,9 @@ export class NotificationQueueService {
           await this.sendPartialUnderpaymentNotification(notification, data);
           break;
         case 'referral_reward':
-          await this.sendReferralRewardNotification(notification, data);
+          this.logger.debug(
+            `Skipping deprecated referral_reward notification ${notification.id}`,
+          );
           break;
         default:
           this.logger.warn(
@@ -500,14 +502,14 @@ export class NotificationQueueService {
         const lang = await this.userService.getUserLanguage(
           notification.user_telegram_id,
         );
-        const caption = await buildMopsPurchaseRewardCaption(
+        const caption = await buildPurchaseFollowUpCaption(
           this.prisma,
           this.i18n,
           lang,
           payment,
           notification.user_telegram_id,
         );
-        const replyMarkup = MainKeyboard.getMopsPurchaseSuccessKeyboard(
+        const reply_markup = MainKeyboard.getPurchaseFollowUpKeyboard(
           this.i18n,
           lang,
         ).reply_markup;
@@ -516,8 +518,8 @@ export class NotificationQueueService {
           paymentMessageId: null,
           detailsMessageId: null,
           caption,
-          imagePath: MOPS_PURCHASE_SUCCESS_IMAGE,
-          replyMarkup,
+          imagePath: PURCHASE_FOLLOWUP_IMAGE,
+          reply_markup,
         });
       }
     }
@@ -782,23 +784,6 @@ export class NotificationQueueService {
     } catch (e: any) {
       this.logger.error(`partial_underpayment send failed: ${e.message}`);
     }
-  }
-
-  private async sendReferralRewardNotification(
-    notification: any,
-    data: any,
-  ): Promise<void> {
-    const coins = data.coins || 0;
-    const message = `🎉 Вам начислено <b>${coins}</b> Mops Coin по реферальной программе от покупки вашего друга!`;
-
-    await this.bot.telegram.sendMessage(
-      notification.user_telegram_id,
-      message,
-      {
-        parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getBackButton('back_to_main').reply_markup,
-      },
-    );
   }
 
   private async sendPhotoWithFallback(

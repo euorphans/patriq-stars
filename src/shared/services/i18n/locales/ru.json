@@ -42,21 +42,8 @@
       "gifts": "Подарки",
       "profile": "Личный кабинет",
       "support": "Написать в поддержку",
-      "mops_balance": "Бонусы и приглашения"
+      "referral": "👥 Реферальная программа"
     }
-  },
-  "mops_coin": {
-    "balance_btn": "Мои бонусы",
-    "purchase_reward": "Вам начислено <b>{coins}</b> Mops Bones <tg-emoji emoji-id=\"5296355826053694696\">🤩</tg-emoji> за покупку {purchaseHtml}!\n\nПриглашайте больше друзей и зарабатывайте больше Mops Bones <tg-emoji emoji-id=\"5296355826053694696\">🤩</tg-emoji> <tg-emoji emoji-id=\"5438496463044752972\">⭐️</tg-emoji>\n\nВаша реферальная ссылка:\n<code>{referralLink}</code>",
-    "balance.text": "<b><tg-emoji emoji-id=\"5296355826053694696\">🤩</tg-emoji> Mops Bones</b>\n\nВаш баланс: <b>{coins} Mops Bones</b> <tg-emoji emoji-id=\"5296355826053694696\">🤩</tg-emoji> <tg-emoji emoji-id=\"5438496463044752972\">⭐️</tg-emoji>",
-    "what_is": "Как устроены бонусы",
-    "daily_bonus_btn": "Бонус раз в сутки",
-    "daily_bonus.already": "На сегодня бонус уже получен. Приходите за бонусом завтра!",
-    "daily_bonus.success_toast": "+{amount} Mops Bones — баланс обновлён!",
-    "referral_btn": "Пригласить друга",
-    "referral.text": "<b><tg-emoji emoji-id=\"5296355826053694696\">🤩</tg-emoji> Реферальная программа <tg-emoji emoji-id=\"5438496463044752972\">⭐️</tg-emoji></b>\n\nПриглашайте друзей и получайте <b>50% Mops Bones</b> от каждой их покупки!\n\nВаша реферальная ссылка:\n<code>{referralLink}</code>\n\nПоделитесь этой ссылкой с друзьями — когда они начнут пользоваться ботом и совершать покупки, вы будете получать Mops Bones <tg-emoji emoji-id=\"5296355826053694696\">🤩</tg-emoji> <tg-emoji emoji-id=\"5438496463044752972\">⭐️</tg-emoji>",
-    "referral_bonus": "Вам начислено <b>{bonusCoins} Mops Bones</b> <tg-emoji emoji-id=\"5296355826053694696\">🤩</tg-emoji> за покупку вашего реферала!\n\nПриглашайте больше друзей и зарабатывайте больше Mops Bones <tg-emoji emoji-id=\"5296355826053694696\">🤩</tg-emoji> <tg-emoji emoji-id=\"5438496463044752972\">⭐️</tg-emoji>\n\nВаша реферальная ссылка:\n<code>{referralLink}</code>",
-    "info.text": "<b>Mops Bones</b> — бонусные баллы за покупки в боте.\n\n<b>Начисление:</b>\n• Stars: 1 ⭐ ≈ 1 балл\n• Premium: 3 мес — 1000, 6 мес — 1500, 12 мес — 3000\n• TON: 1 TON ≈ 100 баллов\n\nЗа приглашённых пользователей начисляется доля от их покупок (см. раздел «Реферальная программа»). Условия использования и изменения правил публикуются в боте и в оферте."
   },
   "profile": {
     "title": "<b>Профиль</b>\n\nИстория заказов и документы.",
@@ -141,6 +128,7 @@
     "premium.duration.12": "12 месяцев"
   },
   "payment": {
+    "followup_caption": "✅ Спасибо за покупку: {purchaseHtml}\n\nПриглашайте друзей по ссылке — это помогает развивать бота.\n\n<code>{referralLink}</code>",
     "title": "<b>Оплата</b>\n",
     "product": "📦 Товар: {quantity} {emoji}",
     "recipient": "👤 Получатель: {recipient}",
@@ -294,8 +282,8 @@
     }
   },
   "referral": {
-    "button": "Пригласить и получить бонус",
-    "title": "<b>👥 Реферальная программа</b>\n\nПриглашайте друзей по вашей ссылке и получайте <b>30%</b> Mops Coin от каждой их покупки!\n\n🔗 <b>Ваша реферальная ссылка:</b>\n<code>{link}</code>\n\n👥 <b>Приглашено друзей:</b> {count}\n🪙 <b>Заработано монет:</b> {earned}",
-    "earned_notification": "🎉 Вам начислено <b>{coins}</b> Mops Coin по реферальной программе от покупки вашего друга!"
+    "button": "Пригласить друзей",
+    "title": "<b>👥 Реферальная программа</b>\n\nПриглашайте друзей по вашей персональной ссылке.\n\n🔗 <b>Ваша ссылка:</b>\n<code>{link}</code>\n\n👥 <b>Приглашено друзей:</b> {count}",
+    "share_screen": "<b>👥 Поделитесь ссылкой с друзьями</b>\n\n<code>{referralLink}</code>"
   }
 }

@@ -12,8 +12,8 @@ import { Telegraf } from 'telegraf';
 import { getProductName } from '@/shared/utils';
 import { MainKeyboard } from '@/shared/keyboards/main.keyboard';
 import {
-  buildMopsPurchaseRewardCaption,
-  MOPS_PURCHASE_SUCCESS_IMAGE,
+  buildPurchaseFollowUpCaption,
+  PURCHASE_FOLLOWUP_IMAGE,
   sendOrEditPaymentSuccessPhoto,
 } from '@/shared/utils/payment-success-notification';
 import { PaymentStatus } from '@prisma/client';
@@ -605,7 +605,7 @@ export class PaymentCheckerService {
       const lang = await this.userService.getUserLanguage(
         payment.user_telegram_id,
       );
-      const caption = await buildMopsPurchaseRewardCaption(
+      const caption = await buildPurchaseFollowUpCaption(
         this.prisma,
         this.i18n,
         lang,
@@ -615,7 +615,7 @@ export class PaymentCheckerService {
         },
         payment.user_telegram_id,
       );
-      const replyMarkup = MainKeyboard.getMopsPurchaseSuccessKeyboard(
+      const reply_markup = MainKeyboard.getPurchaseFollowUpKeyboard(
         this.i18n,
         lang,
       ).reply_markup;
@@ -624,8 +624,8 @@ export class PaymentCheckerService {
         paymentMessageId: payment.payment_message_id,
         detailsMessageId: payment.details_message_id,
         caption,
-        imagePath: MOPS_PURCHASE_SUCCESS_IMAGE,
-        replyMarkup,
+        imagePath: PURCHASE_FOLLOWUP_IMAGE,
+        reply_markup,
       });
     } catch (error: any) {
       this.logger.error(

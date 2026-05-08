@@ -10,14 +10,12 @@ import {
   PaymentStatus,
   PaymentMethod,
   ProductType,
-  Prisma,
 } from '@prisma/client';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   withRetry,
   isRetryableError,
   withTransactionRetry,
-  computeMopsCoinsForPayment,
 } from '@/shared/utils';
 
 @Injectable()
@@ -33,122 +31,6 @@ export class PaymentsService {
     private readonly eventEmitter: EventEmitter2,
     private readonly fraudService: FraudService,
   ) {}
-
-  /** `referred_by` хранит User.id (UUID); ранее часть строк имела telegram_id — поддерживаем оба варианта. */
-  private async resolveReferrerFromReferredByField(
-    tx: Prisma.TransactionClient,
-    referredBy: string,
-  ): Promise<{ id: string; telegram_id: string } | null> {
-    const byId = await tx.user.findUnique({
-      where: { id: referredBy },
-      select: { id: true, telegram_id: true },
-    });
-    if (byId) {
-      return byId;
-    }
-    if (/^\d+$/.test(referredBy)) {
-      return tx.user.findUnique({
-        where: { telegram_id: referredBy },
-        select: { id: true, telegram_id: true },
-      });
-    }
-    return null;
-  }
-
-  private async applyMopsCoinReward(
-    tx: Prisma.TransactionClient,
-    paymentId: string,
-  ): Promise<void> {
-    const p = await tx.payment.findUnique({ where: { id: paymentId } });
-    if (!p || p.status !== PaymentStatus.COMPLETED || p.mops_coin_awarded) {
-      return;
-    }
-
-    const coins = computeMopsCoinsForPayment(
-      p.product_type,
-      p.product_quantity,
-    );
-
-    await tx.user.update({
-      where: { id: p.user_id },
-      data: { mops_coins: { increment: coins } },
-    });
-
-    let referrerResolved: { id: string; telegram_id: string } | null = null;
-    if (coins > 0) {
-      const buyer = await tx.user.findUnique({
-        where: { id: p.user_id },
-        select: { referred_by: true },
-      });
-      if (buyer?.referred_by) {
-        referrerResolved = await this.resolveReferrerFromReferredByField(
-          tx,
-          buyer.referred_by,
-        );
-      }
-    }
-
-    if (coins > 0 && referrerResolved) {
-      const referralCoins = Math.floor(coins * 0.3);
-      if (referralCoins > 0) {
-        await tx.user.update({
-          where: { id: referrerResolved.id },
-          data: {
-            mops_coins: { increment: referralCoins },
-            referral_coins_earned: { increment: referralCoins },
-          },
-        });
-
-        await tx.notificationQueue.create({
-          data: {
-            user_telegram_id: referrerResolved.telegram_id,
-            message_type: 'referral_reward',
-            payment_id: paymentId,
-            message_data: { coins: referralCoins },
-          },
-        });
-
-        this.logger.log(
-          `Referral Mops Coin +${referralCoins} for referrer of user=${p.user_telegram_id} (payment ${paymentId})`,
-        );
-      }
-    }
-
-    await tx.payment.update({
-      where: { id: paymentId },
-      data: { mops_coin_awarded: true },
-    });
-
-    if (coins > 0) {
-      this.logger.log(
-        `Mops Coin +${coins} for payment ${paymentId} (#${p.order_number}) user=${p.user_telegram_id} (${p.product_type})`,
-      );
-
-      if (referrerResolved) {
-        const referralBonus = Math.floor(coins * 0.5);
-        if (referralBonus > 0) {
-          try {
-            await tx.user.update({
-              where: { id: referrerResolved.id },
-              data: { mops_coins: { increment: referralBonus } },
-            });
-            this.logger.log(
-              `Referral bonus +${referralBonus} for referrer id=${referrerResolved.id} tg=${referrerResolved.telegram_id} (from user ${p.user_telegram_id})`,
-            );
-            this.eventEmitter.emit('referral.bonus', {
-              referrerTelegramId: referrerResolved.telegram_id,
-              bonusCoins: referralBonus,
-              buyerTelegramId: p.user_telegram_id,
-            });
-          } catch (err: any) {
-            this.logger.warn(
-              `Failed to credit referral bonus to referrer ${referrerResolved.id}: ${err.message}`,
-            );
-          }
-        }
-      }
-    }
-  }
 
   private getPlategaPaymentDescription(params: {
     product_type: ProductType;
@@ -1008,10 +890,6 @@ export class PaymentsService {
         return { created: false };
       }
 
-      await this.prisma.$transaction(async (tx) => {
-        await this.applyMopsCoinReward(tx, payment.id);
-      });
-
       let targetUsername = payment.recipient_username;
       if (!targetUsername || targetUsername.trim() === '') {
         const buyer = await this.prisma.user.findUnique({
@@ -1221,8 +1099,6 @@ export class PaymentsService {
               this.eventEmitter.emit('fraud.detected', updatedPayment);
               return { payment: updatedPayment, queueCreated: false };
             }
-
-            await this.applyMopsCoinReward(tx, updatedPayment.id);
 
             try {
               let targetUsername = updatedPayment.recipient_username;

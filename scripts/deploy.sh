@@ -17,10 +17,15 @@
 #   ./scripts/deploy.sh --ingress    # только cert-manager + Ingress + TLS (после полного деплоя или смены домена)
 #
 # Первый деплой: .env → ./scripts/deploy.sh
+#
+# Ветка для git pull на сервере (если на origin нет dev — задай свою):
+#   export DEPLOY_BRANCH=main
+#   ./scripts/deploy.sh --hotfix
 
 set -euo pipefail
 
 # ─── Конфигурация ────────────────────────────────────
+DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
 NAMESPACE="stars-bot"
 IMAGE="stars-bot:latest"
 FULL_IMAGE="docker.io/library/${IMAGE}"
@@ -71,6 +76,24 @@ check_env_file() {
     err "  cp .env.example .env && nano .env"
     exit 1
   fi
+}
+
+# Git: актуальный код с origin (ветка DEPLOY_BRANCH, по умолчанию main)
+pull_deploy_branch() {
+  local branch="${DEPLOY_BRANCH}"
+  log "Pulling latest code (branch: ${branch})..."
+  cd "$PROJECT_DIR"
+  if ! git rev-parse --git-dir &>/dev/null; then
+    err "Каталог не является git-репозиторием: ${PROJECT_DIR}"
+    exit 1
+  fi
+  if ! git fetch origin "$branch"; then
+    err "Не удалось получить origin/${branch} (fatal: couldn't find remote ref — такой ветки нет на remote)."
+    err "Задай существующую ветку, например: export DEPLOY_BRANCH=main"
+    exit 1
+  fi
+  git checkout "$branch"
+  git pull --ff-only origin "$branch"
 }
 
 # ─── Сборка и импорт образа ─────────────────────────
@@ -549,8 +572,7 @@ main() {
       check_tools
       log "Режим: ОБНОВЛЕНИЕ КОДА"
       echo ""
-      log "Pulling latest code..."
-      cd "$PROJECT_DIR" && git pull origin dev
+      pull_deploy_branch
       build_and_import no
       apply_manifests
       restart_all_deployments
@@ -563,8 +585,7 @@ main() {
       check_tools
       log "Режим: ХОТФИКС (быстрая сборка с кешем)"
       echo ""
-      log "Pulling latest code..."
-      cd "$PROJECT_DIR" && git pull origin dev
+      pull_deploy_branch
       build_and_import yes
       apply_manifests
       restart_all_deployments
@@ -576,8 +597,7 @@ main() {
       check_tools
       log "Режим: ОБНОВЛЕНИЕ КОДА + PRISMA"
       echo ""
-      log "Pulling latest code..."
-      cd "$PROJECT_DIR" && git pull origin dev
+      pull_deploy_branch
       build_and_import no
       run_migrations
       restart_all_deployments
@@ -748,6 +768,9 @@ main() {
       echo ""
       echo "Опасно:"
       echo "  --destroy          Удалить всё (данные потеряются!)"
+      echo ""
+      echo "Переменные:"
+      echo "  DEPLOY_BRANCH      Ветка для git pull (по умолчанию: main). Пример: DEPLOY_BRANCH=master ./scripts/deploy.sh --hotfix"
       ;;
 
     *)
