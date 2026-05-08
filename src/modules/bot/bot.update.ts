@@ -2,6 +2,8 @@ import { Update, Ctx, Start, Command, Action, On } from 'nestjs-telegraf';
 import { Logger } from '@nestjs/common';
 import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf, Markup } from 'telegraf';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import * as QRCode from 'qrcode';
 import { UserService } from '@/modules/user/user.service';
 import { PricingService } from '@/modules/pricing/pricing.service';
@@ -388,6 +390,30 @@ export class BotUpdate {
         },
         { type: 'bold', offset: titleOffset, length: title.length },
       ],
+    };
+  }
+
+  /** Предпочтительно main2.png; если файла нет в образе — чтобы экран не ломался, main_menu.webp. */
+  private resolveInfoScreenImage(): string {
+    const pngAbsolute = path.join(process.cwd(), 'images', 'main2.png');
+    if (fs.existsSync(pngAbsolute)) {
+      return './images/main2.png';
+    }
+    this.logger.warn(
+      `Info screen: images/main2.png not found (${pngAbsolute}), using main_menu.webp`,
+    );
+    return './images/main_menu.webp';
+  }
+
+  private getMenuInfoCaptionHtmlFallback(lang: 'ru'): {
+    caption: string;
+    parse_mode: 'HTML';
+  } {
+    const title = escapeHtml(this.i18n.t('menu.info.title', lang));
+    const body = escapeHtml(this.i18n.t('menu.info.body', lang));
+    return {
+      caption: `<b>${title}</b>\n\n${body}`,
+      parse_mode: 'HTML',
     };
   }
 
@@ -1132,22 +1158,46 @@ export class BotUpdate {
     this.resetInputFlags(ctx);
 
     const lang = this.getUserLanguage(ctx);
-    const { caption, caption_entities } = this.getMenuInfoCaptionPayload(lang);
     const reply_markup = MainKeyboard.getInfoMenu(this.i18n, lang).reply_markup;
-    const infoImage = './images/main2.png';
+    const infoImage = this.resolveInfoScreenImage();
+    const rich = this.getMenuInfoCaptionPayload(lang);
 
     try {
       await this.editOrSendPhoto(ctx, infoImage, {
-        caption,
-        caption_entities,
+        caption: rich.caption,
+        caption_entities: rich.caption_entities,
         reply_markup,
       });
-    } catch {
-      await this.sendCachedPhoto(ctx, infoImage, {
-        caption,
-        caption_entities,
-        reply_markup,
-      });
+    } catch (err: any) {
+      this.logger.warn(
+        `menu_info (caption_entities): ${err?.message ?? err}`,
+      );
+      const plain = this.getMenuInfoCaptionHtmlFallback(lang);
+      try {
+        await this.editOrSendPhoto(ctx, infoImage, {
+          caption: plain.caption,
+          parse_mode: plain.parse_mode,
+          reply_markup,
+        });
+      } catch (err2: any) {
+        this.logger.warn(`menu_info (HTML caption): ${err2?.message ?? err2}`);
+        try {
+          await this.sendCachedPhoto(ctx, infoImage, {
+            caption: plain.caption,
+            parse_mode: plain.parse_mode,
+            reply_markup,
+          });
+        } catch (err3: any) {
+          this.logger.error(`menu_info failed: ${err3?.message ?? err3}`);
+          await ctx
+            .reply(plain.caption, {
+              parse_mode: 'HTML',
+              reply_markup,
+              link_preview_options: { is_disabled: true },
+            })
+            .catch(() => {});
+        }
+      }
     }
   }
 
