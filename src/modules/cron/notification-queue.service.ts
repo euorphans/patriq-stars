@@ -15,6 +15,7 @@ import {
   PURCHASE_FOLLOWUP_IMAGE,
   sendOrEditPaymentSuccessPhoto,
 } from '@/shared/utils/payment-success-notification';
+import { htmlErrorPhotoCaptionOptions } from '@/shared/utils/error-custom-emoji';
 
 @Injectable()
 export class NotificationQueueService {
@@ -418,6 +419,15 @@ export class NotificationQueueService {
         return `✅ <b>Оплата успешна!</b>\n\n${productName} ${pendingText}.\n\nВаш заказ: <code>#${data.order_number}</code>`;
       })();
 
+    const successCaption =
+      data.error_notice && data.message
+        ? htmlErrorPhotoCaptionOptions(message)
+        : { caption: message, parse_mode: 'HTML' as const };
+    const successCaptionEntities =
+      'caption_entities' in successCaption
+        ? successCaption.caption_entities
+        : undefined;
+
     let successImage = './images/main_menu.webp';
     if (data.product_type === 'TON') {
       successImage = './images/ton_success.webp';
@@ -446,8 +456,11 @@ export class NotificationQueueService {
           {
             type: 'photo',
             media: { source: successImage },
-            caption: message,
-            parse_mode: 'HTML',
+            caption: successCaption.caption,
+            parse_mode: successCaption.parse_mode,
+            ...(successCaptionEntities?.length
+              ? { caption_entities: successCaptionEntities }
+              : {}),
           },
           {
             reply_markup: MainKeyboard.getBackButton().reply_markup,
@@ -463,9 +476,12 @@ export class NotificationQueueService {
             notification.user_telegram_id,
             parseInt(data.payment_message_id, 10),
             undefined,
-            message,
+            successCaption.caption,
             {
               parse_mode: 'HTML',
+              ...(successCaptionEntities?.length
+                ? { caption_entities: successCaptionEntities }
+                : {}),
               reply_markup: MainKeyboard.getBackButton().reply_markup,
             },
           );
@@ -477,7 +493,8 @@ export class NotificationQueueService {
           await this.sendPhotoWithFallback(
             notification.user_telegram_id,
             successImage,
-            message,
+            successCaption.caption,
+            successCaptionEntities,
           );
           await deletePaymentDetailsMessage();
         }
@@ -486,7 +503,8 @@ export class NotificationQueueService {
       await this.sendPhotoWithFallback(
         notification.user_telegram_id,
         successImage,
-        message,
+        successCaption.caption,
+        successCaptionEntities,
       );
       await deletePaymentDetailsMessage();
     }
@@ -528,9 +546,12 @@ export class NotificationQueueService {
     notification: any,
     data: any,
   ): Promise<void> {
-    const message =
-      data.message ||
-      `❌ <b>Оплата отменена</b>\n\nЗаказ <code>#${data.order_number}</code> был отменен.\n\nВы можете создать новый заказ.`;
+    const defaultHtml = `<b>Оплата отменена</b>\n\nЗаказ <code>#${data.order_number}</code> был отменен.\n\nВы можете создать новый заказ.`;
+    const errCaption = data.message
+      ? { caption: data.message, parse_mode: 'HTML' as const }
+      : htmlErrorPhotoCaptionOptions(defaultHtml);
+    const errCaptionEntities =
+      'caption_entities' in errCaption ? errCaption.caption_entities : undefined;
 
     if (data.payment_message_id) {
       try {
@@ -541,8 +562,11 @@ export class NotificationQueueService {
           {
             type: 'photo',
             media: { source: './images/main_menu.webp' },
-            caption: message,
-            parse_mode: 'HTML',
+            caption: errCaption.caption,
+            parse_mode: errCaption.parse_mode,
+            ...(errCaptionEntities?.length
+              ? { caption_entities: errCaptionEntities }
+              : {}),
           },
           {
             reply_markup: MainKeyboard.getBackButton().reply_markup,
@@ -564,7 +588,8 @@ export class NotificationQueueService {
     await this.sendPhotoWithFallback(
       notification.user_telegram_id,
       './images/main_menu.webp',
-      message,
+      errCaption.caption,
+      errCaptionEntities,
     );
   }
 
@@ -789,6 +814,7 @@ export class NotificationQueueService {
     chatId: string,
     image: string,
     caption: string,
+    captionEntities?: any[],
     retryCount = 0,
   ): Promise<void> {
     try {
@@ -798,6 +824,7 @@ export class NotificationQueueService {
         {
           caption,
           parse_mode: 'HTML',
+          ...(captionEntities?.length ? { caption_entities: captionEntities } : {}),
           reply_markup: MainKeyboard.getBackButton().reply_markup,
         },
       );
@@ -809,11 +836,13 @@ export class NotificationQueueService {
           chatId,
           image,
           caption,
+          captionEntities,
           retryCount + 1,
         );
       }
       await this.bot.telegram.sendMessage(chatId, caption, {
         parse_mode: 'HTML',
+        ...(captionEntities?.length ? { entities: captionEntities } : {}),
         reply_markup: MainKeyboard.getBackButton().reply_markup,
       });
     }

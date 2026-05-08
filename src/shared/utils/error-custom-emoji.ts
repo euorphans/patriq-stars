@@ -36,3 +36,17 @@ export function htmlErrorWithLeadingCustomEmoji(html: string): {
     entities: ent,
   };
 }
+
+/** Опции подписи к фото (editOrSendPhoto / sendCachedPhoto). */
+export function htmlErrorPhotoCaptionOptions(html: string): {
+  caption: string;
+  parse_mode: 'HTML';
+  caption_entities: ReturnType<typeof leadingErrorEntities>;
+} {
+  const e = htmlErrorWithLeadingCustomEmoji(html);
+  return {
+    caption: e.text,
+    parse_mode: e.parse_mode,
+    caption_entities: e.caption_entities,
+  };
+}
