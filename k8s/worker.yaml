@@ -204,10 +204,12 @@ spec:
             successThreshold: 1
             timeoutSeconds: 15
 
+          # Requests must fit on the node alongside stars-bot + Redis + Postgres + other workers.
+          # Bursts use limits; reserving 3 CPUs here prevented scheduling the main bot Deployment on small VMs.
           resources:
             requests:
-              cpu: "3000m"
-              memory: "2Gi"
+              cpu: "500m"
+              memory: "1Gi"
             limits:
               cpu: "12000m"
               memory: "16Gi"
