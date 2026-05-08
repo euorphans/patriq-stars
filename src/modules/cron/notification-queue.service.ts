@@ -419,10 +419,9 @@ export class NotificationQueueService {
         return `✅ <b>Оплата успешна!</b>\n\n${productName} ${pendingText}.\n\nВаш заказ: <code>#${data.order_number}</code>`;
       })();
 
-    const successCaption =
-      data.error_notice && data.message
-        ? htmlErrorPhotoCaptionOptions(message)
-        : { caption: message, parse_mode: 'HTML' as const };
+    const successCaption = data.message
+      ? htmlErrorPhotoCaptionOptions(message)
+      : { caption: message, parse_mode: 'HTML' as const };
     const successCaptionEntities =
       'caption_entities' in successCaption
         ? successCaption.caption_entities
