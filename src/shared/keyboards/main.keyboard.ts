@@ -43,6 +43,9 @@ const MAIN_MENU_CUSTOM_EMOJI = {
   info: MAIN_MENU_INFO_CUSTOM_EMOJI_ID,
 } as const;
 
+/** Как в payments / cron: при пустом env кнопка «Поддержка» не пропадает. */
+const DEFAULT_INFO_SUPPORT_URL = 'https://t.me/Mops_Support';
+
 /** Кнопки экрана «Информация» (url + icon_custom_emoji_id). */
 const INFO_MENU_CUSTOM_EMOJI = {
   /** Политика / правила */
@@ -152,7 +155,9 @@ export class MainKeyboard {
       offerUrl = undefined;
     }
     const supportUrl =
-      trimUrl(process.env.INFO_SUPPORT_URL) || trimUrl(process.env.SUPPORT_URL);
+      trimUrl(process.env.INFO_SUPPORT_URL) ||
+      trimUrl(process.env.SUPPORT_URL) ||
+      DEFAULT_INFO_SUPPORT_URL;
 
     const rows: any[][] = [];
 
