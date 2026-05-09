@@ -454,14 +454,19 @@ export class BotUpdate {
   }
 
   /** Ввод @username для звёзд: заголовок как на экране «кому», затем подсказка с отдельным custom emoji. */
-  private getStarsUsernameEnterCaptionPayload(_lang: 'ru'): {
+  private getStarsUsernameEnterCaptionPayload(
+    _lang: 'ru',
+    buyerUsername?: string | null,
+  ): {
     caption: string;
     caption_entities: any[];
   } {
     const base = '\u2B50';
     const title = 'Покупка звёзд';
-    const body =
-      'Введите юзернейм пользователя, которому будем дарить звёзды:\n— Пример: @(username пользователя который пишет боту)';
+    const example = buyerUsername?.trim()
+      ? `@${buyerUsername.replace(/^@+/, '')}`
+      : '@username';
+    const body = `Введите юзернейм пользователя, которому будем дарить звёзды:\n— Пример: ${example}`;
     const line1 = `${base} ${title}`;
     const line2 = `${base} ${body}`;
     const caption = `${line1}\n\n${line2}`;
@@ -488,14 +493,19 @@ export class BotUpdate {
   }
 
   /** Ввод @username для Premium — тот же шаблон, что для звёзд; иконка строки 1 из главного меню Premium. */
-  private getPremiumUsernameEnterCaptionPayload(_lang: 'ru'): {
+  private getPremiumUsernameEnterCaptionPayload(
+    _lang: 'ru',
+    buyerUsername?: string | null,
+  ): {
     caption: string;
     caption_entities: any[];
   } {
     const base = '\u2B50';
     const title = 'Покупка Premium';
-    const body =
-      'Введите юзернейм пользователя, которому будем дарить Premium:\n— Пример: @(username пользователя который пишет боту)';
+    const example = buyerUsername?.trim()
+      ? `@${buyerUsername.replace(/^@+/, '')}`
+      : '@username';
+    const body = `Введите юзернейм пользователя, которому будем дарить Premium:\n— Пример: ${example}`;
     const line1 = `${base} ${title}`;
     const line2 = `${base} ${body}`;
     const caption = `${line1}\n\n${line2}`;
@@ -516,6 +526,48 @@ export class BotUpdate {
           offset: line2Start,
           length: 1,
           custom_emoji_id: STARS_USERNAME_PROMPT_CUSTOM_EMOJI_ID,
+        },
+      ],
+    };
+  }
+
+  /** Экран выбора суммы Stars (пресеты): заголовок с emoji главного меню, лимиты и подсказка про «Свой ввод». */
+  private getStarsQuantityPickCaptionPayload(
+    minStars: number,
+    maxStars: number,
+  ): { caption: string; caption_entities: any[] } {
+    const base = '\u2B50';
+    const title = 'Покупка звёзд';
+    const minStr = minStars.toLocaleString('ru-RU');
+    const maxStr = maxStars.toLocaleString('ru-RU');
+    const line1 = `${base} ${title}`;
+    const para2 = `Доступно от ${minStr} до ${maxStr}.`;
+    const p3pre = 'Выберите сумму кнопкой или нажмите ';
+    const p3bold = '«Свой ввод»';
+    const p3suf = ' и отправьте число сообщением.';
+    const caption = `${line1}\n\n${para2}\n\n${p3pre}${p3bold}${p3suf}`;
+
+    const para2Start = line1.length + 2;
+    const minOff = para2Start + 'Доступно от '.length;
+    const maxOff = minOff + minStr.length + ' до '.length;
+    const para3Start = para2Start + para2.length + 2;
+
+    return {
+      caption,
+      caption_entities: [
+        {
+          type: 'custom_emoji',
+          offset: 0,
+          length: 1,
+          custom_emoji_id: MAIN_MENU_STARS_CUSTOM_EMOJI_ID,
+        },
+        { type: 'bold', offset: 2, length: title.length },
+        { type: 'bold', offset: minOff, length: minStr.length },
+        { type: 'bold', offset: maxOff, length: maxStr.length },
+        {
+          type: 'bold',
+          offset: para3Start + p3pre.length,
+          length: p3bold.length,
         },
       ],
     };
@@ -1928,7 +1980,10 @@ export class BotUpdate {
           : './images/main_menu.webp';
 
     if (productType === 'stars') {
-      const cap = this.getStarsUsernameEnterCaptionPayload(lang);
+      const cap = this.getStarsUsernameEnterCaptionPayload(
+        lang,
+        ctx.from?.username,
+      );
       try {
         await this.editOrSendPhoto(ctx, imagePath, {
           caption: cap.caption,
@@ -1947,7 +2002,10 @@ export class BotUpdate {
     }
 
     if (productType === 'premium') {
-      const cap = this.getPremiumUsernameEnterCaptionPayload(lang);
+      const cap = this.getPremiumUsernameEnterCaptionPayload(
+        lang,
+        ctx.from?.username,
+      );
       try {
         await this.editOrSendPhoto(ctx, imagePath, {
           caption: cap.caption,
@@ -2061,10 +2119,10 @@ export class BotUpdate {
       const minAmount = limits.minStars;
       const maxAmount = limits.maxStars;
 
-      const text = this.i18n.t('product.quantity.stars.caption', lang, {
-        min: minAmount.toLocaleString('ru-RU'),
-        max: maxAmount.toLocaleString('ru-RU'),
-      });
+      const qtyCap = this.getStarsQuantityPickCaptionPayload(
+        minAmount,
+        maxAmount,
+      );
 
       const imagePath = './images/new/starsIn5min.png';
       const qtyKb = MainKeyboard.getStarsQuantityKeyboard(
@@ -2078,13 +2136,13 @@ export class BotUpdate {
       if (edit) {
         try {
           await this.editOrSendPhoto(ctx, imagePath, {
-            caption: text,
-            parse_mode: 'HTML',
+            caption: qtyCap.caption,
+            caption_entities: qtyCap.caption_entities,
             reply_markup: qtyKb,
           });
         } catch {
-          const sentMessage = await ctx.reply(text, {
-            parse_mode: 'HTML',
+          const sentMessage = await ctx.reply(qtyCap.caption, {
+            entities: qtyCap.caption_entities,
             reply_markup: qtyKb,
           });
           ctx.session.lastBotMessageId = sentMessage.message_id;
@@ -2097,15 +2155,15 @@ export class BotUpdate {
           const sentMessage = await ctx.replyWithPhoto(
             { source: imagePath },
             {
-              caption: text,
-              parse_mode: 'HTML',
+              caption: qtyCap.caption,
+              caption_entities: qtyCap.caption_entities,
               reply_markup: qtyKb,
             },
           );
           ctx.session.lastBotMessageId = sentMessage.message_id;
         } catch {
-          const sentMessage = await ctx.reply(text, {
-            parse_mode: 'HTML',
+          const sentMessage = await ctx.reply(qtyCap.caption, {
+            entities: qtyCap.caption_entities,
             reply_markup: qtyKb,
           });
           ctx.session.lastBotMessageId = sentMessage.message_id;
@@ -2272,10 +2330,10 @@ export class BotUpdate {
       const minAmount = limits.minStars;
       const maxAmount = limits.maxStars;
 
-      const text = this.i18n.t('product.quantity.stars.caption', lang, {
-        min: minAmount.toLocaleString('ru-RU'),
-        max: maxAmount.toLocaleString('ru-RU'),
-      });
+      const qtyCap = this.getStarsQuantityPickCaptionPayload(
+        minAmount,
+        maxAmount,
+      );
 
       const imagePath = './images/new/starsIn5min.png';
 
@@ -2297,8 +2355,8 @@ export class BotUpdate {
             {
               type: 'photo',
               media,
-              caption: text,
-              parse_mode: 'HTML',
+              caption: qtyCap.caption,
+              caption_entities: qtyCap.caption_entities,
             },
             { reply_markup: qtyKb },
           );
@@ -2313,8 +2371,8 @@ export class BotUpdate {
       }
 
       const msg = await this.sendCachedPhoto(ctx, imagePath, {
-        caption: text,
-        parse_mode: 'HTML',
+        caption: qtyCap.caption,
+        caption_entities: qtyCap.caption_entities,
         reply_markup: qtyKb,
       });
       ctx.session.lastBotMessageId = msg.message_id;
