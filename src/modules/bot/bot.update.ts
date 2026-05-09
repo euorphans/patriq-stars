@@ -419,6 +419,39 @@ export class BotUpdate {
     return { caption, caption_entities: entities };
   }
 
+  /** Экран выбора получателя для Stars: emoji главного меню + заголовок, emoji «получатель» + подзаголовок. */
+  private getStarsRecipientCaptionPayload(_lang: 'ru'): {
+    caption: string;
+    caption_entities: any[];
+  } {
+    const base = '\u2B50';
+    const title = 'Покупка звёзд';
+    const subtitle = 'Выберите, кому будем отправлять звёзды';
+    const line1 = `${base} ${title}`;
+    const line2 = `${base} ${subtitle}`;
+    const caption = `${line1}\n${line2}`;
+    const line2Start = line1.length + 1;
+
+    return {
+      caption,
+      caption_entities: [
+        {
+          type: 'custom_emoji',
+          offset: 0,
+          length: 1,
+          custom_emoji_id: MAIN_MENU_STARS_CUSTOM_EMOJI_ID,
+        },
+        { type: 'bold', offset: 2, length: title.length },
+        {
+          type: 'custom_emoji',
+          offset: line2Start,
+          length: 1,
+          custom_emoji_id: PAYMENT_RECIPIENT_CUSTOM_EMOJI_ID,
+        },
+      ],
+    };
+  }
+
   /**
    * Подпись экрана «Информация»: анимированный emoji рядом с заголовком через caption_entities.
    * В тексте нужен один «базовый» символ (⭐); сущность custom_emoji заменяет его на стикер бота.
@@ -810,47 +843,46 @@ export class BotUpdate {
     switch (deepLinkLower) {
       case 'stars':
         ctx.session.productType = 'stars';
-        if (edit) {
-          try {
-            await this.editOrSendPhoto(
-              ctx,
-              './images/where_delivery_stars.webp',
-              {
-                caption: this.i18n.t('product.delivery.stars', lang),
-                parse_mode: 'HTML',
-                reply_markup: MainKeyboard.getRecipientSelection(
-                  this.i18n,
-                  lang,
-                ).reply_markup,
-              },
-            );
-          } catch {
-            await ctx.reply(this.i18n.t('product.delivery.stars', lang), {
-              parse_mode: 'HTML',
-              reply_markup: MainKeyboard.getRecipientSelection(this.i18n, lang)
-                .reply_markup,
-            });
-          }
-        } else {
-          try {
-            await ctx.replyWithPhoto(
-              { source: './images/where_delivery_stars.webp' },
-              {
-                caption: this.i18n.t('product.delivery.stars', lang),
-                parse_mode: 'HTML',
-                reply_markup: MainKeyboard.getRecipientSelection(
-                  this.i18n,
-                  lang,
-                ).reply_markup,
-              },
-            );
-            ctx.session.currentImage = './images/where_delivery_stars.webp';
-          } catch {
-            await ctx.reply(this.i18n.t('product.delivery.stars', lang), {
-              parse_mode: 'HTML',
-              reply_markup: MainKeyboard.getRecipientSelection(this.i18n, lang)
-                .reply_markup,
-            });
+        {
+          const starsCap = this.getStarsRecipientCaptionPayload(lang);
+          const recipientKb = MainKeyboard.getRecipientSelection(
+            this.i18n,
+            lang,
+          ).reply_markup;
+          if (edit) {
+            try {
+              await this.editOrSendPhoto(
+                ctx,
+                './images/where_delivery_stars.webp',
+                {
+                  caption: starsCap.caption,
+                  caption_entities: starsCap.caption_entities,
+                  reply_markup: recipientKb,
+                },
+              );
+            } catch {
+              await ctx.reply(starsCap.caption, {
+                entities: starsCap.caption_entities,
+                reply_markup: recipientKb,
+              });
+            }
+          } else {
+            try {
+              await ctx.replyWithPhoto(
+                { source: './images/where_delivery_stars.webp' },
+                {
+                  caption: starsCap.caption,
+                  caption_entities: starsCap.caption_entities,
+                  reply_markup: recipientKb,
+                },
+              );
+              ctx.session.currentImage = './images/where_delivery_stars.webp';
+            } catch {
+              await ctx.reply(starsCap.caption, {
+                entities: starsCap.caption_entities,
+                reply_markup: recipientKb,
+              });
+            }
           }
         }
         break;
@@ -1078,6 +1110,26 @@ export class BotUpdate {
     };
 
     const imagePath = imageMap[productType] || './images/main_menu.webp';
+    const recipientKb = MainKeyboard.getRecipientSelection(this.i18n, lang)
+      .reply_markup;
+
+    if (productType === 'stars') {
+      const starsCap = this.getStarsRecipientCaptionPayload(lang);
+      try {
+        await this.editOrSendPhoto(ctx, imagePath, {
+          caption: starsCap.caption,
+          caption_entities: starsCap.caption_entities,
+          reply_markup: recipientKb,
+        });
+      } catch {
+        await ctx.reply(starsCap.caption, {
+          entities: starsCap.caption_entities,
+          reply_markup: recipientKb,
+        });
+      }
+      return;
+    }
+
     const text = this.i18n.t(
       textMap[productType] || 'product.delivery.stars',
       lang,
@@ -1087,14 +1139,12 @@ export class BotUpdate {
       await this.editOrSendPhoto(ctx, imagePath, {
         caption: text,
         parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getRecipientSelection(this.i18n, lang)
-          .reply_markup,
+        reply_markup: recipientKb,
       });
     } catch {
       await ctx.reply(text, {
         parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getRecipientSelection(this.i18n, lang)
-          .reply_markup,
+        reply_markup: recipientKb,
       });
     }
   }
@@ -1167,21 +1217,21 @@ export class BotUpdate {
 
     ctx.session.productType = 'stars';
     const lang = this.getUserLanguage(ctx);
-    const text = this.i18n.t('product.delivery.stars', lang);
+    const starsCap = this.getStarsRecipientCaptionPayload(lang);
+    const recipientKb = MainKeyboard.getRecipientSelection(this.i18n, lang)
+      .reply_markup;
 
     const t2 = Date.now();
     try {
       await this.editOrSendPhoto(ctx, './images/where_delivery_stars.webp', {
-        caption: text,
-        parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getRecipientSelection(this.i18n, lang)
-          .reply_markup,
+        caption: starsCap.caption,
+        caption_entities: starsCap.caption_entities,
+        reply_markup: recipientKb,
       });
     } catch {
-      await ctx.reply(text, {
-        parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getRecipientSelection(this.i18n, lang)
-          .reply_markup,
+      await ctx.reply(starsCap.caption, {
+        entities: starsCap.caption_entities,
+        reply_markup: recipientKb,
       });
     }
     this.perfLog(uid, 'buy_stars', 'editOrSendPhoto', Date.now() - t2);
