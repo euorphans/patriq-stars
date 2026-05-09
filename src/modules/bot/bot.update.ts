@@ -433,6 +433,18 @@ export class BotUpdate {
     return './images/main_menu.webp';
   }
 
+  /** Экран выбора срока Premium: предпочитаем premIn5min, иначе старый premium_duration. */
+  private resolvePremiumDurationImage(): string {
+    const preferred = path.join(process.cwd(), 'images', 'new', 'premIn5min.png');
+    if (fs.existsSync(preferred)) {
+      return './images/new/premIn5min.png';
+    }
+    this.logger.warn(
+      `Premium duration: images/new/premIn5min.png not found (${preferred}), using premium_duration.webp`,
+    );
+    return './images/premium_duration.webp';
+  }
+
   private getMenuInfoCaptionHtmlFallback(lang: 'ru'): {
     caption: string;
     parse_mode: 'HTML';
@@ -1734,10 +1746,11 @@ export class BotUpdate {
 
     if (productType === 'premium') {
       const text = this.i18n.t('product.quantity.premium', lang);
+      const premiumDurationImage = this.resolvePremiumDurationImage();
 
       if (edit) {
         try {
-          await this.editOrSendPhoto(ctx, './images/premium_duration.webp', {
+          await this.editOrSendPhoto(ctx, premiumDurationImage, {
             caption: text,
             parse_mode: 'HTML',
             reply_markup: MainKeyboard.getPremiumDurationKeyboard(
@@ -1760,7 +1773,7 @@ export class BotUpdate {
         } catch {}
         try {
           await ctx.replyWithPhoto(
-            { source: './images/premium_duration.webp' },
+            { source: premiumDurationImage },
             {
               caption: text,
               parse_mode: 'HTML',
@@ -1959,7 +1972,7 @@ export class BotUpdate {
     if (productType === 'premium') {
       const text = this.i18n.t('product.quantity.premium', lang);
       const keyboard = MainKeyboard.getPremiumDurationKeyboard(this.i18n, lang);
-      const imagePath = './images/premium_duration.webp';
+      const imagePath = this.resolvePremiumDurationImage();
       const media = await this.getMediaSource(imagePath);
 
       if (messageId && chatId) {
