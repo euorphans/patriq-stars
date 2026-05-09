@@ -287,6 +287,56 @@ export class BotUpdate {
     return 'ru';
   }
 
+  private buildPaymentMethodsCaption(
+    lang: 'ru',
+    productType: string,
+    quantity: number,
+    recipientDisplay: string,
+  ): string {
+    const normalizedType = productType.toUpperCase();
+    const productEmoji = getProductEmoji(normalizedType);
+
+    let productText: string;
+    if (normalizedType === 'PREMIUM') {
+      const monthsText = this.i18n.t('product.premium.duration', lang, {
+        months: quantity,
+      });
+      productText = this.i18n.t('payment.product', lang, {
+        quantity: `${this.i18n.t('product.premium', lang)} • ${monthsText}`,
+        emoji: '👑',
+      });
+    } else {
+      productText = this.i18n.t('payment.product', lang, {
+        quantity: quantity.toString(),
+        emoji: productEmoji,
+      });
+    }
+
+    let productNameForWarning: string;
+    if (normalizedType === 'STARS') {
+      productNameForWarning = 'звёзд';
+    } else if (normalizedType === 'TON') {
+      productNameForWarning = 'TON';
+    } else if (normalizedType === 'PREMIUM') {
+      productNameForWarning = 'Premium';
+    } else {
+      productNameForWarning = 'товара';
+    }
+
+    return [
+      this.i18n.t('payment.title', lang),
+      productText,
+      this.i18n.t('payment.recipient', lang, { recipient: recipientDisplay }),
+      '',
+      this.i18n.t('payment.username_warning', lang, {
+        product: productNameForWarning,
+      }),
+      '',
+      '────────────',
+      this.i18n.t('payment.methods', lang),
+    ].join('\n');
+  }
+
   /**
    * Подпись экрана «Информация»: анимированный emoji рядом с заголовком через caption_entities.
    * В тексте нужен один «базовый» символ (⭐); сущность custom_emoji заменяет его на стикер бота.
@@ -2182,29 +2232,6 @@ export class BotUpdate {
 
       const tonAmount = prices.ton.usd / cachedRates.tonToUsd;
 
-      const productEmoji = getProductEmoji(productType.toUpperCase());
-      let productText: string;
-
-      const baseProductTemplate = this.i18n.t('payment.product', lang, {
-        quantity: quantity.toString(),
-        emoji: productEmoji,
-      });
-
-      if (productType.toUpperCase() === 'PREMIUM') {
-        const monthsText = this.i18n.t('product.premium.duration', lang, {
-          months: quantity,
-        });
-        productText = baseProductTemplate
-          .replace('📦', productEmoji)
-          .replace(
-            `${quantity}`,
-            `${productEmoji} ${this.i18n.t('product.premium', lang)} на ${monthsText}`,
-          )
-          .replace(` ${productEmoji}`, '');
-      } else {
-        productText = baseProductTemplate.replace('📦', productEmoji);
-      }
-
       let recipientDisplay: string;
       if (ctx.session.isForSelf) {
         const userName = escapeHtml(
@@ -2220,20 +2247,12 @@ export class BotUpdate {
         recipientDisplay = this.i18n.t('common.you', lang);
       }
 
-      let productNameForWarning: string;
-      if (productType.toUpperCase() === 'STARS') {
-        productNameForWarning =
-          'ЗВЕЗД';
-      } else if (productType.toUpperCase() === 'TON') {
-        productNameForWarning = 'TON';
-      } else if (productType.toUpperCase() === 'PREMIUM') {
-        productNameForWarning = 'PREMIUM';
-      } else {
-        productNameForWarning =
-          'ТОВАРА';
-      }
-
-      const text = `${this.i18n.t('payment.title', lang)}\n${productText}\n${this.i18n.t('payment.recipient', lang, { recipient: recipientDisplay })}\n\n${this.i18n.t('payment.username_warning', lang, { product: productNameForWarning })}\n\n${this.i18n.t('payment.methods', lang)}`;
+      const text = this.buildPaymentMethodsCaption(
+        lang,
+        productType,
+        quantity,
+        recipientDisplay,
+      );
 
       const paymentHero = this.paymentMethodsHeroImage(productType);
 
@@ -2362,28 +2381,6 @@ export class BotUpdate {
       ]);
       const tonAmount = prices.ton.usd / cachedRates.tonToUsd;
 
-      const productEmoji = getProductEmoji(productType.toUpperCase());
-      let productText: string;
-      const baseProductTemplate = this.i18n.t('payment.product', lang, {
-        quantity: quantity.toString(),
-        emoji: productEmoji,
-      });
-
-      if (productType.toUpperCase() === 'PREMIUM') {
-        const monthsText = this.i18n.t('product.premium.duration', lang, {
-          months: quantity,
-        });
-        productText = baseProductTemplate
-          .replace('📦', productEmoji)
-          .replace(
-            `${quantity}`,
-            `${productEmoji} ${this.i18n.t('product.premium', lang)} на ${monthsText}`,
-          )
-          .replace(` ${productEmoji}`, '');
-      } else {
-        productText = baseProductTemplate.replace('📦', productEmoji);
-      }
-
       let recipientDisplay: string;
       if (ctx.session.isForSelf) {
         const userName = escapeHtml(
@@ -2399,20 +2396,12 @@ export class BotUpdate {
         recipientDisplay = this.i18n.t('common.you', lang);
       }
 
-      let productNameForWarning: string;
-      if (productType.toUpperCase() === 'STARS') {
-        productNameForWarning =
-          'ЗВЕЗД';
-      } else if (productType.toUpperCase() === 'TON') {
-        productNameForWarning = 'TON';
-      } else if (productType.toUpperCase() === 'PREMIUM') {
-        productNameForWarning = 'PREMIUM';
-      } else {
-        productNameForWarning =
-          'ТОВАРА';
-      }
-
-      const text = `${this.i18n.t('payment.title', lang)}\n${productText}\n${this.i18n.t('payment.recipient', lang, { recipient: recipientDisplay })}\n\n${this.i18n.t('payment.username_warning', lang, { product: productNameForWarning })}\n\n${this.i18n.t('payment.methods', lang)}`;
+      const text = this.buildPaymentMethodsCaption(
+        lang,
+        productType,
+        quantity,
+        recipientDisplay,
+      );
 
       const keyboard = MainKeyboard.getPaymentMethodKeyboard(
         prices,

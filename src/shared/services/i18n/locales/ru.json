@@ -140,15 +140,15 @@
   },
   "payment": {
     "followup_caption": "✅ Спасибо за покупку: {purchaseHtml}",
-    "title": "<b>Оплата</b>\n",
-    "product": "📦 Товар: {quantity} {emoji}",
-    "recipient": "👤 Получатель: {recipient}",
-    "username_warning": "‼️ВНИМАНИЕ‼️НЕ МЕНЯЙТЕ @ЮЗЕРНЕЙМ ДО ЗАЧИСЛЕНИЯ {product} НА АККАУНТ.",
-    "methods": "<b>Выберите способ оплаты:</b>",
+    "title": "<b>Оформление заказа</b>\n",
+    "product": "✨ <b>Товар:</b> {quantity} {emoji}",
+    "recipient": "👤 <b>Получатель:</b> {recipient}",
+    "username_warning": "⚠️ <b>Важно:</b> не меняйте @username до зачисления {product} на аккаунт.",
+    "methods": "<b>Выберите удобный способ оплаты:</b>",
     "method": {
-      "platega": "💵 СБП РФ",
+      "platega": "💳 СБП РФ",
       "heleket": "🪙 Криптовалюта",
-      "ton": "💎 TON"
+      "ton": "💎 TON Wallet"
     },
     "expired": {
       "title": "⏱ <b>Время на оплату истекло</b>\n\n❌ Платеж <code>#{order}</code> отменен.\n💳 Способ оплаты: {method}\n⏰ Время на оплату: 30 минут\n\nВы можете создать новый заказ."
