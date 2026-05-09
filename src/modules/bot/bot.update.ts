@@ -33,8 +33,6 @@ import { FragmentAccountService } from '@/shared/services/fragment/fragment-acco
 import { I18nService } from '@/shared/services/i18n/i18n.service';
 import { RedisLockService } from '@/shared/services/redis/redis-lock.service';
 
-import { generateCaptcha } from '@/shared/utils/captcha.utils';
-
 @Update()
 export class BotUpdate {
   private readonly logger = new Logger(BotUpdate.name);
@@ -2474,107 +2472,6 @@ export class BotUpdate {
     }
   }
 
-  private async showCaptcha(ctx: BotContext): Promise<void> {
-    const lang = this.getUserLanguage(ctx);
-    const captcha = generateCaptcha();
-    ctx.session.captchaCorrectKey = captcha.correctKey;
-    ctx.session.captchaOptions = captcha.options.map((o) => o.key);
-
-    const emojiName = this.i18n.t(`captcha.emoji.${captcha.correctKey}`, lang);
-    const correctEmoji =
-      captcha.options.find((o) => o.key === captcha.correctKey)?.emoji ?? '';
-    const nameWithEmoji = correctEmoji
-      ? `${emojiName} ${correctEmoji}`
-      : emojiName;
-    const text = this.i18n.t('captcha.title', lang, { name: nameWithEmoji });
-
-    const buttons = captcha.options.map((opt) =>
-      Markup.button.callback(opt.emoji, `captcha_${opt.key}`),
-    );
-
-    await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
-      caption: text,
-      parse_mode: 'HTML',
-      reply_markup: Markup.inlineKeyboard([buttons]).reply_markup,
-    });
-  }
-
-  @Action(/^captcha_(.+)$/)
-  async onCaptchaAnswer(@Ctx() ctx: BotContext): Promise<void> {
-    const match = ctx.match as RegExpExecArray | null;
-    if (!match) return;
-
-    const selectedKey = match[1];
-    const correctKey = ctx.session.captchaCorrectKey;
-    const pendingMethod = ctx.session.pendingPaymentMethod;
-    const userId = ctx.from?.id;
-    if (!userId) return;
-
-    ctx.answerCbQuery().catch(() => {});
-
-    if (!correctKey || !pendingMethod) {
-      await this.showMainMenu(ctx, true);
-      return;
-    }
-
-    if (selectedKey === correctKey) {
-      ctx.session.captchaCorrectKey = undefined;
-      ctx.session.captchaOptions = undefined;
-
-      await this.userService.incrementCaptchaPassed(userId.toString());
-
-      const pendingPaymentMethod = ctx.session.pendingPaymentMethod;
-      ctx.session.pendingPaymentMethod = undefined;
-      await this.processPaymentCreation(ctx, pendingPaymentMethod);
-    } else {
-      const result = await this.userService.incrementCaptchaFailed(
-        userId.toString(),
-      );
-
-      ctx.session.captchaCorrectKey = undefined;
-      ctx.session.captchaOptions = undefined;
-      ctx.session.pendingPaymentMethod = undefined;
-
-      const lang = this.getUserLanguage(ctx);
-      if (result.banned) {
-        await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
-          caption: this.i18n.t('captcha.banned', lang),
-          parse_mode: 'HTML',
-          reply_markup: MainKeyboard.getBackButton('back_to_main').reply_markup,
-        });
-      } else {
-        const remaining = 3 - result.failedCount;
-        await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
-          caption: this.i18n.t('captcha.wrong', lang, {
-            remaining: remaining.toString(),
-          }),
-          parse_mode: 'HTML',
-          reply_markup: Markup.inlineKeyboard([
-            [
-              Markup.button.callback(
-                this.i18n.t('captcha.retry', lang),
-                `retry_captcha_${pendingMethod}`,
-              ),
-            ],
-            [backInlineButton('back_to_main')],
-          ]).reply_markup,
-        });
-      }
-    }
-  }
-
-  @Action(/^retry_captcha_(platega|heleket|ton)$/)
-  async onRetryCaptcha(@Ctx() ctx: BotContext): Promise<void> {
-    const match = ctx.match as RegExpExecArray | null;
-    if (!match) return;
-
-    ctx.answerCbQuery().catch(() => {});
-
-    const paymentMethod = match[1] as 'platega' | 'heleket' | 'ton';
-    ctx.session.pendingPaymentMethod = paymentMethod;
-    await this.showCaptcha(ctx);
-  }
-
   @Action(/^payment_(platega|heleket|ton)$/)
   async selectPaymentMethod(@Ctx() ctx: BotContext): Promise<void> {
     const match = ctx.match;
@@ -2601,28 +2498,6 @@ export class BotUpdate {
       if (!(await this.checkSubscriptionMiddleware(ctx))) return;
 
       if (!(await this.checkUserAccess(ctx))) return;
-
-      if (userId) {
-        const captchaStatus = await this.userService.getCaptchaStatus(
-          userId.toString(),
-        );
-
-        if (captchaStatus.isCaptchaBanned) {
-          const lang = this.getUserLanguage(ctx);
-          await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
-            caption: this.i18n.t('captcha.banned', lang),
-            parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton('back_to_main').reply_markup,
-          });
-          return;
-        }
-
-        if (captchaStatus.needsCaptcha) {
-          ctx.session.pendingPaymentMethod = paymentMethod;
-          await this.showCaptcha(ctx);
-          return;
-        }
-      }
 
       await this.processPaymentCreation(ctx, paymentMethod);
     } finally {
