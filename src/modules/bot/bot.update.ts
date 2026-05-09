@@ -429,8 +429,8 @@ export class BotUpdate {
     const subtitle = 'Выберите, кому будем отправлять звёзды';
     const line1 = `${base} ${title}`;
     const line2 = `${base} ${subtitle}`;
-    const caption = `${line1}\n${line2}`;
-    const line2Start = line1.length + 1;
+    const caption = `${line1}\n\n${line2}`;
+    const line2Start = line1.length + 2;
 
     return {
       caption,
@@ -440,6 +440,39 @@ export class BotUpdate {
           offset: 0,
           length: 1,
           custom_emoji_id: MAIN_MENU_STARS_CUSTOM_EMOJI_ID,
+        },
+        { type: 'bold', offset: 2, length: title.length },
+        {
+          type: 'custom_emoji',
+          offset: line2Start,
+          length: 1,
+          custom_emoji_id: PAYMENT_RECIPIENT_CUSTOM_EMOJI_ID,
+        },
+      ],
+    };
+  }
+
+  /** Экран выбора получателя для Premium: emoji «Premium» из главного меню + заголовок, emoji «получатель» + подзаголовок. */
+  private getPremiumRecipientCaptionPayload(_lang: 'ru'): {
+    caption: string;
+    caption_entities: any[];
+  } {
+    const base = '\u2B50';
+    const title = 'Покупка Premium';
+    const subtitle = 'Выберите, кому будем отправлять Premium';
+    const line1 = `${base} ${title}`;
+    const line2 = `${base} ${subtitle}`;
+    const caption = `${line1}\n\n${line2}`;
+    const line2Start = line1.length + 2;
+
+    return {
+      caption,
+      caption_entities: [
+        {
+          type: 'custom_emoji',
+          offset: 0,
+          length: 1,
+          custom_emoji_id: MAIN_MENU_PREMIUM_CUSTOM_EMOJI_ID,
         },
         { type: 'bold', offset: 2, length: title.length },
         {
@@ -893,47 +926,46 @@ export class BotUpdate {
 
       case 'premium':
         ctx.session.productType = 'premium';
-        if (edit) {
-          try {
-            await this.editOrSendPhoto(
-              ctx,
-              './images/where_delivery_premium.webp',
-              {
-                caption: this.i18n.t('product.delivery.premium', lang),
-                parse_mode: 'HTML',
-                reply_markup: MainKeyboard.getRecipientSelection(
-                  this.i18n,
-                  lang,
-                ).reply_markup,
-              },
-            );
-          } catch {
-            await ctx.reply(this.i18n.t('product.delivery.premium', lang), {
-              parse_mode: 'HTML',
-              reply_markup: MainKeyboard.getRecipientSelection(this.i18n, lang)
-                .reply_markup,
-            });
-          }
-        } else {
-          try {
-            await ctx.replyWithPhoto(
-              { source: './images/where_delivery_premium.webp' },
-              {
-                caption: this.i18n.t('product.delivery.premium', lang),
-                parse_mode: 'HTML',
-                reply_markup: MainKeyboard.getRecipientSelection(
-                  this.i18n,
-                  lang,
-                ).reply_markup,
-              },
-            );
-            ctx.session.currentImage = './images/where_delivery_premium.webp';
-          } catch {
-            await ctx.reply(this.i18n.t('product.delivery.premium', lang), {
-              parse_mode: 'HTML',
-              reply_markup: MainKeyboard.getRecipientSelection(this.i18n, lang)
-                .reply_markup,
-            });
+        {
+          const premiumCap = this.getPremiumRecipientCaptionPayload(lang);
+          const recipientKb = MainKeyboard.getRecipientSelection(
+            this.i18n,
+            lang,
+          ).reply_markup;
+          if (edit) {
+            try {
+              await this.editOrSendPhoto(
+                ctx,
+                './images/where_delivery_premium.webp',
+                {
+                  caption: premiumCap.caption,
+                  caption_entities: premiumCap.caption_entities,
+                  reply_markup: recipientKb,
+                },
+              );
+            } catch {
+              await ctx.reply(premiumCap.caption, {
+                entities: premiumCap.caption_entities,
+                reply_markup: recipientKb,
+              });
+            }
+          } else {
+            try {
+              await ctx.replyWithPhoto(
+                { source: './images/where_delivery_premium.webp' },
+                {
+                  caption: premiumCap.caption,
+                  caption_entities: premiumCap.caption_entities,
+                  reply_markup: recipientKb,
+                },
+              );
+              ctx.session.currentImage = './images/where_delivery_premium.webp';
+            } catch {
+              await ctx.reply(premiumCap.caption, {
+                entities: premiumCap.caption_entities,
+                reply_markup: recipientKb,
+              });
+            }
           }
         }
         break;
@@ -1130,6 +1162,23 @@ export class BotUpdate {
       return;
     }
 
+    if (productType === 'premium') {
+      const premiumCap = this.getPremiumRecipientCaptionPayload(lang);
+      try {
+        await this.editOrSendPhoto(ctx, imagePath, {
+          caption: premiumCap.caption,
+          caption_entities: premiumCap.caption_entities,
+          reply_markup: recipientKb,
+        });
+      } catch {
+        await ctx.reply(premiumCap.caption, {
+          entities: premiumCap.caption_entities,
+          reply_markup: recipientKb,
+        });
+      }
+      return;
+    }
+
     const text = this.i18n.t(
       textMap[productType] || 'product.delivery.stars',
       lang,
@@ -1256,21 +1305,21 @@ export class BotUpdate {
 
     ctx.session.productType = 'premium';
     const lang = this.getUserLanguage(ctx);
-    const text = this.i18n.t('product.delivery.premium', lang);
+    const premiumCap = this.getPremiumRecipientCaptionPayload(lang);
+    const recipientKb = MainKeyboard.getRecipientSelection(this.i18n, lang)
+      .reply_markup;
 
     const t2 = Date.now();
     try {
       await this.editOrSendPhoto(ctx, './images/where_delivery_premium.webp', {
-        caption: text,
-        parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getRecipientSelection(this.i18n, lang)
-          .reply_markup,
+        caption: premiumCap.caption,
+        caption_entities: premiumCap.caption_entities,
+        reply_markup: recipientKb,
       });
     } catch {
-      await ctx.reply(text, {
-        parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getRecipientSelection(this.i18n, lang)
-          .reply_markup,
+      await ctx.reply(premiumCap.caption, {
+        entities: premiumCap.caption_entities,
+        reply_markup: recipientKb,
       });
     }
     this.perfLog(uid, 'buy_premium', 'editOrSendPhoto', Date.now() - t2);
