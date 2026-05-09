@@ -35,6 +35,9 @@ export function clearMainMenuCache(): void {
 /** Custom emoji у заголовка подписи экрана «Информация» (caption_entities). */
 export const MAIN_MENU_INFO_CUSTOM_EMOJI_ID = '5334544901428229844';
 
+/** Анимированный emoji рядом с «Важно:» на экране выбора способа оплаты (caption_entities). */
+export const PAYMENT_USERNAME_WARNING_CUSTOM_EMOJI_ID = '5447644880824181073';
+
 /** Анимированные custom emoji (Bot API: InlineKeyboardButton.icon_custom_emoji_id). */
 const MAIN_MENU_CUSTOM_EMOJI = {
   stars: '5438496463044752972',
@@ -42,6 +45,10 @@ const MAIN_MENU_CUSTOM_EMOJI = {
   profile: '5416041192905265756',
   info: MAIN_MENU_INFO_CUSTOM_EMOJI_ID,
 } as const;
+
+/** Те же иконки, что у кнопок Stars / Premium в главном меню — для строки «Товар:» на экране оплаты. */
+export const MAIN_MENU_STARS_CUSTOM_EMOJI_ID = MAIN_MENU_CUSTOM_EMOJI.stars;
+export const MAIN_MENU_PREMIUM_CUSTOM_EMOJI_ID = MAIN_MENU_CUSTOM_EMOJI.premium;
 
 /** Как в payments / cron: при пустом env кнопка «Поддержка» не пропадает. */
 const DEFAULT_INFO_SUPPORT_URL = 'https://t.me/patriq_star';

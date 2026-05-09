@@ -1,4 +1,4 @@
-import { Update, Ctx, Start, Command, Action, On } from 'nestjs-telegraf';
+import { Update, Ctx, Start, Action, On } from 'nestjs-telegraf';
 import { Logger } from '@nestjs/common';
 import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf, Markup } from 'telegraf';
@@ -13,8 +13,10 @@ import { BOT_STARS_TOPUP_PAYLOAD_PREFIX } from '@/shared/constants/bot-stars-top
 import {
   MainKeyboard,
   MAIN_MENU_INFO_CUSTOM_EMOJI_ID,
+  MAIN_MENU_PREMIUM_CUSTOM_EMOJI_ID,
+  MAIN_MENU_STARS_CUSTOM_EMOJI_ID,
+  PAYMENT_USERNAME_WARNING_CUSTOM_EMOJI_ID,
 } from '@/shared/keyboards/main.keyboard';
-import { backInlineButton } from '@/shared/keyboards/back-inline-button';
 import { BotContext } from '@/shared/types/bot-context.interface';
 import { withRetry } from '@/shared/utils';
 import {
@@ -287,30 +289,39 @@ export class BotUpdate {
     return 'ru';
   }
 
-  private buildPaymentMethodsCaption(
+  /**
+   * Экран способа оплаты: подпись с HTML из i18n переводится в plain + caption_entities,
+   * чтобы рядом с «Важно:» показать анимированный custom emoji (нельзя смешивать с parse_mode HTML).
+   */
+  private buildPaymentMethodsCaptionPayload(
     lang: 'ru',
     productType: string,
     quantity: number,
-    recipientDisplay: string,
-  ): string {
+    recipientDisplayPlain: string,
+  ): { caption: string; caption_entities: any[] } {
     const normalizedType = productType.toUpperCase();
-    const productEmoji = getProductEmoji(normalizedType);
 
-    let productText: string;
+    const baseStar = '\u2B50';
+    let productCustomEmojiId: string | undefined;
+    let productLinePlain: string;
     if (normalizedType === 'PREMIUM') {
-      const monthsText = this.i18n.t('product.premium.duration', lang, {
-        months: quantity,
-      });
-      productText = this.i18n.t('payment.product', lang, {
-        quantity: `${this.i18n.t('product.premium', lang)} • ${monthsText}`,
-        emoji: '👑',
-      });
+      productCustomEmojiId = MAIN_MENU_PREMIUM_CUSTOM_EMOJI_ID;
+      const durationText = this.i18n.t(
+        `product.premium.duration.${quantity}` as any,
+        lang,
+      );
+      productLinePlain = `${baseStar} Товар: Premium на ${durationText}`;
+    } else if (normalizedType === 'STARS') {
+      productCustomEmojiId = MAIN_MENU_STARS_CUSTOM_EMOJI_ID;
+      productLinePlain = `${baseStar} Товар: ${quantity} звёзд`;
     } else {
-      productText = this.i18n.t('payment.product', lang, {
-        quantity: quantity.toString(),
-        emoji: productEmoji,
-      });
+      const productEmoji = getProductEmoji(normalizedType);
+      productLinePlain = `${baseStar} Товар: ${quantity} ${productEmoji}`;
     }
+
+    const recipientLinePlain = this.i18n
+      .t('payment.recipient', lang, { recipient: recipientDisplayPlain })
+      .replace(/<\/?b>/gi, '');
 
     let productNameForWarning: string;
     if (normalizedType === 'STARS') {
@@ -323,18 +334,81 @@ export class BotUpdate {
       productNameForWarning = 'товара';
     }
 
-    return [
-      this.i18n.t('payment.title', lang),
-      productText,
-      this.i18n.t('payment.recipient', lang, { recipient: recipientDisplay }),
-      '',
-      this.i18n.t('payment.username_warning', lang, {
-        product: productNameForWarning,
-      }),
-      '',
-      '────────────',
-      this.i18n.t('payment.methods', lang),
-    ].join('\n');
+    const warningRest = this.i18n.t('payment.username_warning_rest', lang, {
+      product: productNameForWarning,
+    });
+
+    const titlePlain = this.i18n
+      .t('payment.title', lang)
+      .replace(/<\/?b>/gi, '')
+      .trim();
+    const methodsPlain = this.i18n
+      .t('payment.methods', lang)
+      .replace(/<\/?b>/gi, '');
+
+    const importantLabel = 'Важно:';
+
+    const entities: any[] = [];
+    let caption = '';
+
+    entities.push({ type: 'bold', offset: 0, length: titlePlain.length });
+    caption += titlePlain + '\n';
+
+    const productLineStart = caption.length;
+    caption += productLinePlain + '\n';
+
+    if (productCustomEmojiId) {
+      entities.push({
+        type: 'custom_emoji',
+        offset: productLineStart,
+        length: 1,
+        custom_emoji_id: productCustomEmojiId,
+      });
+    }
+
+    const prodBold = 'Товар:';
+    const prodIdx = productLinePlain.indexOf(prodBold);
+    if (prodIdx >= 0) {
+      entities.push({
+        type: 'bold',
+        offset: productLineStart + prodIdx,
+        length: prodBold.length,
+      });
+    }
+
+    const recBold = 'Получатель:';
+    const recIdx = recipientLinePlain.indexOf(recBold);
+    if (recIdx >= 0) {
+      entities.push({
+        type: 'bold',
+        offset: caption.length + recIdx,
+        length: recBold.length,
+      });
+    }
+    caption += recipientLinePlain + '\n\n';
+
+    const warnStart = caption.length;
+    caption += `${baseStar} ${importantLabel} ${warningRest}\n\n`;
+    entities.push({
+      type: 'custom_emoji',
+      offset: warnStart,
+      length: 1,
+      custom_emoji_id: PAYMENT_USERNAME_WARNING_CUSTOM_EMOJI_ID,
+    });
+    entities.push({
+      type: 'bold',
+      offset: warnStart + 2,
+      length: importantLabel.length,
+    });
+
+    entities.push({
+      type: 'bold',
+      offset: caption.length,
+      length: methodsPlain.length,
+    });
+    caption += methodsPlain;
+
+    return { caption, caption_entities: entities };
   }
 
   /**
@@ -403,7 +477,12 @@ export class BotUpdate {
 
   /** Экран выбора срока Premium: предпочитаем premIn5min, иначе старый premium_duration. */
   private resolvePremiumDurationImage(): string {
-    const preferred = path.join(process.cwd(), 'images', 'new', 'premIn5min.png');
+    const preferred = path.join(
+      process.cwd(),
+      'images',
+      'new',
+      'premIn5min.png',
+    );
     if (fs.existsSync(preferred)) {
       return './images/new/premIn5min.png';
     }
@@ -617,12 +696,12 @@ export class BotUpdate {
 
     try {
       let { user: dbUser } = await this.userService.createOrUpdateFromTelegram({
-          id: user.id,
-          first_name: user.first_name,
-          last_name: user.last_name,
-          username: user.username,
-          is_premium: (user as any).is_premium ?? false,
-        });
+        id: user.id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        username: user.username,
+        is_premium: (user as any).is_premium ?? false,
+      });
 
       if (!dbUser?.language || dbUser.language === '') {
         await this.userService.setUserLanguage(user.id.toString(), 'ru');
@@ -849,7 +928,8 @@ export class BotUpdate {
       }
 
       const disabledText = this.i18n.t('start.bot.disabled', lang);
-      const backKeyboard = MainKeyboard.getBackButton('back_to_main').reply_markup;
+      const backKeyboard =
+        MainKeyboard.getBackButton('back_to_main').reply_markup;
       try {
         ctx.answerCbQuery().catch(() => {});
         const msg = ctx.callbackQuery?.message;
@@ -1175,9 +1255,7 @@ export class BotUpdate {
         reply_markup,
       });
     } catch (err: any) {
-      this.logger.warn(
-        `menu_info (caption_entities): ${err?.message ?? err}`,
-      );
+      this.logger.warn(`menu_info (caption_entities): ${err?.message ?? err}`);
       const plain = this.getMenuInfoCaptionHtmlFallback(lang);
       try {
         await this.editOrSendPhoto(ctx, infoImage, {
@@ -1465,10 +1543,8 @@ export class BotUpdate {
       await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
         caption: detailsText,
         parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getPaymentDetailsKeyboard(
-          this.i18n,
-          lang,
-        ).reply_markup,
+        reply_markup: MainKeyboard.getPaymentDetailsKeyboard(this.i18n, lang)
+          .reply_markup,
       });
     } catch (error) {
       this.logger.error(`Error showing payment details: ${error.message}`);
@@ -1485,7 +1561,6 @@ export class BotUpdate {
     }
     ctx.answerCbQuery().catch(() => {});
     if (!(await this.checkSubscriptionMiddleware(ctx))) return;
-
 
     if (ctx.callbackQuery?.message) {
       ctx.session.lastBotMessageId = ctx.callbackQuery.message.message_id;
@@ -1525,7 +1600,8 @@ export class BotUpdate {
         await this.editOrSendPhoto(ctx, imagePath, {
           caption: noUsernameText,
           parse_mode: 'HTML',
-          reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
+          reply_markup:
+            MainKeyboard.getBackButton('back_to_recipient').reply_markup,
         });
       } catch (error: any) {
         if (error?.response?.error_code !== 403) {
@@ -1555,7 +1631,8 @@ export class BotUpdate {
           await this.editOrSendPhoto(ctx, imagePath, {
             caption: this.i18n.t('product.username.check_error', lang),
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
+            reply_markup:
+              MainKeyboard.getBackButton('back_to_recipient').reply_markup,
           });
           return;
         }
@@ -1573,7 +1650,8 @@ export class BotUpdate {
           await this.editOrSendPhoto(ctx, imagePath, {
             caption: this.i18n.t('product.username.check_error', lang),
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
+            reply_markup:
+              MainKeyboard.getBackButton('back_to_recipient').reply_markup,
           });
           return;
         }
@@ -1590,21 +1668,24 @@ export class BotUpdate {
                   username: `@${user.username}`,
                 }),
                 parse_mode: 'HTML',
-                reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
+                reply_markup:
+                  MainKeyboard.getBackButton('back_to_recipient').reply_markup,
               });
               return;
             case 'GIFTS_CLOSED':
               await this.editOrSendPhoto(ctx, imagePath, {
                 caption: this.i18n.t('product.username.not_found', lang),
                 parse_mode: 'HTML',
-                reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
+                reply_markup:
+                  MainKeyboard.getBackButton('back_to_recipient').reply_markup,
               });
               return;
             default:
               await this.editOrSendPhoto(ctx, imagePath, {
                 caption: this.i18n.t('product.username.check_error', lang),
                 parse_mode: 'HTML',
-                reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
+                reply_markup:
+                  MainKeyboard.getBackButton('back_to_recipient').reply_markup,
               });
               return;
           }
@@ -1612,7 +1693,8 @@ export class BotUpdate {
           await this.editOrSendPhoto(ctx, imagePath, {
             caption: this.i18n.t('product.username.check_error', lang),
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
+            reply_markup:
+              MainKeyboard.getBackButton('back_to_recipient').reply_markup,
           });
           return;
         }
@@ -1634,7 +1716,6 @@ export class BotUpdate {
     }
     ctx.answerCbQuery().catch(() => {});
     if (!(await this.checkSubscriptionMiddleware(ctx))) return;
-
 
     if (ctx.callbackQuery?.message) {
       ctx.session.lastBotMessageId = ctx.callbackQuery.message.message_id;
@@ -1683,12 +1764,14 @@ export class BotUpdate {
       await this.editOrSendPhoto(ctx, imagePath, {
         caption: text,
         parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
+        reply_markup:
+          MainKeyboard.getBackButton('back_to_recipient').reply_markup,
       });
     } catch {
       const message = await ctx.reply(text, {
         parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
+        reply_markup:
+          MainKeyboard.getBackButton('back_to_recipient').reply_markup,
       });
       ctx.session.lastBotMessageId = message.message_id;
     }
@@ -1882,7 +1965,8 @@ export class BotUpdate {
     if (!chatId || !messageId) return false;
 
     const lang = this.getUserLanguage(ctx);
-    let reply_markup = MainKeyboard.getBackButton('back_to_recipient').reply_markup;
+    let reply_markup =
+      MainKeyboard.getBackButton('back_to_recipient').reply_markup;
     if (ctx.session.productType === 'stars') {
       const { minStars, maxStars } =
         await this.settingsService.getPurchaseLimits();
@@ -2137,7 +2221,8 @@ export class BotUpdate {
     }
 
     const lang = this.getUserLanguage(ctx);
-    const { minStars, maxStars } = await this.settingsService.getPurchaseLimits();
+    const { minStars, maxStars } =
+      await this.settingsService.getPurchaseLimits();
     if (qty < minStars || qty > maxStars) {
       const errText = this.i18n.t('product.quantity.range', lang, {
         min: minStars.toString(),
@@ -2207,7 +2292,8 @@ export class BotUpdate {
           await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
             caption: errorText,
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton('back_to_main').reply_markup,
+            reply_markup:
+              MainKeyboard.getBackButton('back_to_main').reply_markup,
           });
         } else {
           try {
@@ -2215,7 +2301,8 @@ export class BotUpdate {
           } catch {}
           await ctx.reply(errorText, {
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton('back_to_main').reply_markup,
+            reply_markup:
+              MainKeyboard.getBackButton('back_to_main').reply_markup,
           });
         }
         return;
@@ -2234,9 +2321,8 @@ export class BotUpdate {
 
       let recipientDisplay: string;
       if (ctx.session.isForSelf) {
-        const userName = escapeHtml(
-          user?.first_name || this.i18n.t('common.you', lang),
-        );
+        const userName =
+          user?.first_name || this.i18n.t('common.you', lang);
         const userUsername = ctx.from?.username;
         recipientDisplay = userUsername
           ? `${userName} (@${userUsername})`
@@ -2247,7 +2333,7 @@ export class BotUpdate {
         recipientDisplay = this.i18n.t('common.you', lang);
       }
 
-      const text = this.buildPaymentMethodsCaption(
+      const paymentCaption = this.buildPaymentMethodsCaptionPayload(
         lang,
         productType,
         quantity,
@@ -2259,8 +2345,8 @@ export class BotUpdate {
       if (edit) {
         try {
           await this.editOrSendPhoto(ctx, paymentHero, {
-            caption: text,
-            parse_mode: 'HTML',
+            caption: paymentCaption.caption,
+            caption_entities: paymentCaption.caption_entities,
             reply_markup: MainKeyboard.getPaymentMethodKeyboard(
               prices,
               tonAmount,
@@ -2271,8 +2357,8 @@ export class BotUpdate {
             ).reply_markup,
           });
         } catch {
-          await ctx.reply(text, {
-            parse_mode: 'HTML',
+          await ctx.reply(paymentCaption.caption, {
+            entities: paymentCaption.caption_entities,
             reply_markup: MainKeyboard.getPaymentMethodKeyboard(
               prices,
               tonAmount,
@@ -2291,8 +2377,8 @@ export class BotUpdate {
           await ctx.replyWithPhoto(
             { source: paymentHero },
             {
-              caption: text,
-              parse_mode: 'HTML',
+              caption: paymentCaption.caption,
+              caption_entities: paymentCaption.caption_entities,
               reply_markup: MainKeyboard.getPaymentMethodKeyboard(
                 prices,
                 tonAmount,
@@ -2304,8 +2390,8 @@ export class BotUpdate {
             },
           );
         } catch {
-          await ctx.reply(text, {
-            parse_mode: 'HTML',
+          await ctx.reply(paymentCaption.caption, {
+            entities: paymentCaption.caption_entities,
             reply_markup: MainKeyboard.getPaymentMethodKeyboard(
               prices,
               tonAmount,
@@ -2383,9 +2469,8 @@ export class BotUpdate {
 
       let recipientDisplay: string;
       if (ctx.session.isForSelf) {
-        const userName = escapeHtml(
-          user?.first_name || this.i18n.t('common.you', lang),
-        );
+        const userName =
+          user?.first_name || this.i18n.t('common.you', lang);
         const userUsername = ctx.from?.username;
         recipientDisplay = userUsername
           ? `${userName} (@${userUsername})`
@@ -2396,7 +2481,7 @@ export class BotUpdate {
         recipientDisplay = this.i18n.t('common.you', lang);
       }
 
-      const text = this.buildPaymentMethodsCaption(
+      const paymentCaption = this.buildPaymentMethodsCaptionPayload(
         lang,
         productType,
         quantity,
@@ -2423,8 +2508,8 @@ export class BotUpdate {
             {
               type: 'photo',
               media,
-              caption: text,
-              parse_mode: 'HTML',
+              caption: paymentCaption.caption,
+              caption_entities: paymentCaption.caption_entities,
             },
             { reply_markup: keyboard.reply_markup },
           );
@@ -2439,8 +2524,8 @@ export class BotUpdate {
       const msg = await withRetry(
         () =>
           this.sendCachedPhoto(ctx, imagePath, {
-            caption: text,
-            parse_mode: 'HTML',
+            caption: paymentCaption.caption,
+            caption_entities: paymentCaption.caption_entities,
             reply_markup: keyboard.reply_markup,
           }),
         {
@@ -2727,15 +2812,13 @@ export class BotUpdate {
 
         let productNameForWarning: string;
         if (productType.toUpperCase() === 'STARS') {
-          productNameForWarning =
-            'ЗВЕЗД';
+          productNameForWarning = 'ЗВЕЗД';
         } else if (productType.toUpperCase() === 'TON') {
           productNameForWarning = 'TON';
         } else if (productType.toUpperCase() === 'PREMIUM') {
           productNameForWarning = 'PREMIUM';
         } else {
-          productNameForWarning =
-            'ТОВАРА';
+          productNameForWarning = 'ТОВАРА';
         }
 
         const productLine = this.i18n.t('payment.product', lang, {
@@ -2806,15 +2889,13 @@ export class BotUpdate {
 
     let productNameForWarning: string;
     if (payment.product_type === 'STARS') {
-      productNameForWarning =
-        'ЗВЕЗД';
+      productNameForWarning = 'ЗВЕЗД';
     } else if (payment.product_type === 'TON') {
       productNameForWarning = 'TON';
     } else if (payment.product_type === 'PREMIUM') {
       productNameForWarning = 'PREMIUM';
     } else {
-      productNameForWarning =
-        'ТОВАРА';
+      productNameForWarning = 'ТОВАРА';
     }
 
     const text = `${this.i18n.t('payment.ton.title', lang)}\n${this.i18n.t('payment.ton.recipient', lang, { recipient: recipientDisplay })}\n\n${this.i18n.t('payment.ton.username_warning', lang, { product: productNameForWarning })}\n\n${this.i18n.t('payment.ton.amount', lang, { amount: amountTon.toFixed(4) })}\n${this.i18n.t('payment.ton.order', lang, { order: payment.order_number.toString() })}\n\n${this.i18n.t('payment.ton.warning', lang)}\n${this.i18n.t('payment.ton.manual', lang, { address: tonAddress, amount: amountTon.toFixed(4), comment: payment.id })}`;
@@ -2950,7 +3031,8 @@ export class BotUpdate {
           await this.editOrSendPhoto(ctx, imagePath, {
             caption: errorText,
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
+            reply_markup:
+              MainKeyboard.getBackButton('back_to_recipient').reply_markup,
           });
         }
         ctx.session.awaitingUsername = true;
@@ -2970,7 +3052,8 @@ export class BotUpdate {
           await this.editOrSendPhoto(ctx, imagePath, {
             caption: errorText,
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
+            reply_markup:
+              MainKeyboard.getBackButton('back_to_recipient').reply_markup,
           });
         }
         ctx.session.awaitingUsername = true;
@@ -2995,7 +3078,8 @@ export class BotUpdate {
             await this.editOrSendPhoto(ctx, errImage, {
               caption: errorText,
               parse_mode: 'HTML',
-              reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
+              reply_markup:
+                MainKeyboard.getBackButton('back_to_recipient').reply_markup,
             });
           }
           ctx.session.awaitingUsername = true;
@@ -3024,7 +3108,8 @@ export class BotUpdate {
             await this.editOrSendPhoto(ctx, imagePath, {
               caption: errorText,
               parse_mode: 'HTML',
-              reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
+              reply_markup:
+                MainKeyboard.getBackButton('back_to_recipient').reply_markup,
             });
           }
           ctx.session.awaitingUsername = true;
@@ -3053,7 +3138,8 @@ export class BotUpdate {
             await this.editOrSendPhoto(ctx, imagePath, {
               caption: errorText,
               parse_mode: 'HTML',
-              reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
+              reply_markup:
+                MainKeyboard.getBackButton('back_to_recipient').reply_markup,
             });
           }
           ctx.session.awaitingUsername = true;
@@ -3095,7 +3181,8 @@ export class BotUpdate {
           await this.editOrSendPhoto(ctx, imagePath, {
             caption: errorText,
             parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
+            reply_markup:
+              MainKeyboard.getBackButton('back_to_recipient').reply_markup,
           });
         }
 
@@ -3185,8 +3272,7 @@ export class BotUpdate {
   @On('pre_checkout_query')
   async onPreCheckoutQuery(@Ctx() ctx: BotContext): Promise<void> {
     const query =
-      (ctx as any).preCheckoutQuery ??
-      (ctx.update as any)?.pre_checkout_query;
+      (ctx as any).preCheckoutQuery ?? (ctx.update as any)?.pre_checkout_query;
     if (!query) return;
 
     const payload = query.invoice_payload;

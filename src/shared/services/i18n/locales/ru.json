@@ -141,9 +141,9 @@
   "payment": {
     "followup_caption": "✅ Спасибо за покупку: {purchaseHtml}",
     "title": "<b>Оформление заказа</b>\n",
-    "product": "✨ <b>Товар:</b> {quantity} {emoji}",
-    "recipient": "👤 <b>Получатель:</b> {recipient}",
-    "username_warning": "⚠️ <b>Важно:</b> не меняйте @username до зачисления {product} на аккаунт.",
+    "product": "<b>Товар:</b> {quantity} {emoji}",
+    "recipient": "<b>Получатель:</b> {recipient}",
+    "username_warning_rest": "не меняйте @username до зачисления {product} на аккаунт.",
     "methods": "<b>Выберите удобный способ оплаты:</b>",
     "method": {
       "platega": "💳 СБП РФ",
