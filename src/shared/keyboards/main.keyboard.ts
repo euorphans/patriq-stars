@@ -559,49 +559,14 @@ export class MainKeyboard {
     ]);
   }
 
-  static getTonWalletsKeyboard(
+  /** TON: одна ссылка ton:// и «Обратно». */
+  static getTonPayKeyboard(
     tonLink: string,
     i18n: I18nService,
     lang: SupportedLanguage = 'ru',
   ) {
-    const match = tonLink.match(/ton:\/\/transfer\/([^?]+)(?:\?(.+))?/);
-    if (!match) {
-      return Markup.inlineKeyboard([
-        [Markup.button.url(i18n.t('payment.ton.wallets', lang), tonLink)],
-        [Markup.button.url(i18n.t('payment.ton.tonkeeper', lang), tonLink)],
-        [Markup.button.url(i18n.t('payment.ton.tonhub', lang), tonLink)],
-        [backInlineButton('back_to_main')],
-      ]);
-    }
-
-    const address = match[1];
-    const queryString = match[2] || '';
-    const params = new URLSearchParams(queryString);
-    const amount = params.get('amount') || '';
-    const text = params.get('text') || '';
-
-    const queryParams = new URLSearchParams();
-    if (amount) queryParams.set('amount', amount);
-    if (text) queryParams.set('text', text);
-
-    const tonkeeperQueryParams = new URLSearchParams();
-    if (amount) tonkeeperQueryParams.set('amount', amount);
-    if (text) tonkeeperQueryParams.set('text', text);
-    const tonkeeperQueryStr = tonkeeperQueryParams.toString();
-
-    const amountTon = amount ? (parseInt(amount, 10) / 1e9).toFixed(9) : '';
-    const tonhubQueryParams = new URLSearchParams();
-    if (amountTon) tonhubQueryParams.set('amount', amountTon);
-    if (text) tonhubQueryParams.set('text', text);
-    const tonhubQueryStr = tonhubQueryParams.toString();
-
-    const tonkeeperLink = `https://app.tonkeeper.com/transfer/${address}${tonkeeperQueryStr ? `?${tonkeeperQueryStr}` : ''}`;
-    const tonhubLink = `https://tonhub.com/transfer/${address}${tonhubQueryStr ? `?${tonhubQueryStr}` : ''}`;
-
     return Markup.inlineKeyboard([
-      [Markup.button.url(i18n.t('payment.ton.wallets', lang), tonLink)],
-      [Markup.button.url(i18n.t('payment.ton.tonkeeper', lang), tonkeeperLink)],
-      [Markup.button.url(i18n.t('payment.ton.tonhub', lang), tonhubLink)],
+      [Markup.button.url(i18n.t('payment.ton.pay', lang), tonLink)],
       [backInlineButton('back_to_main')],
     ]);
   }

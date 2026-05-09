@@ -18,6 +18,9 @@ import {
   withTransactionRetry,
 } from '@/shared/utils';
 
+/** Окно ожидания оплаты TON (автоотмена, проверка «истекло» в статусе). */
+export const TON_PAYMENT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
@@ -490,7 +493,6 @@ export class PaymentsService {
   }
 
   private async getTonProviderStatus(payment: Payment): Promise<string | null> {
-    const TON_WINDOW_MS = 30 * 60 * 1000;
     const DUST_NANO = 1000n;
 
     if (payment.status === PaymentStatus.COMPLETED) {
@@ -510,7 +512,7 @@ export class PaymentsService {
     }
 
     const createdAt = payment.created_at?.getTime?.() ?? 0;
-    const expiredByTime = Date.now() - createdAt > TON_WINDOW_MS;
+    const expiredByTime = Date.now() - createdAt > TON_PAYMENT_WINDOW_MS;
 
     const amountStr = payment.amount_ton?.toString() || '0';
 

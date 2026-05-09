@@ -18,6 +18,7 @@ import {
   STARS_USERNAME_PROMPT_CUSTOM_EMOJI_ID,
   PAYMENT_RECIPIENT_CUSTOM_EMOJI_ID,
   PAYMENT_USERNAME_WARNING_CUSTOM_EMOJI_ID,
+  PAYMENT_METHOD_TON_CUSTOM_EMOJI_ID,
 } from '@/shared/keyboards/main.keyboard';
 import { BotContext } from '@/shared/types/bot-context.interface';
 import { withRetry } from '@/shared/utils';
@@ -416,6 +417,259 @@ export class BotUpdate {
       length: methodsPlain.length,
     });
     caption += methodsPlain;
+
+    return { caption, caption_entities: entities };
+  }
+
+  /**
+   * Экран оплаты TON: тот же стиль, что выбор способа оплаты — plain caption + caption_entities
+   * (кастомные emoji и жирные подписи, без HTML).
+   */
+  private buildTonPaymentCaptionPayload(
+    lang: 'ru',
+    args: {
+      productType: string;
+      quantity: number;
+      recipientDisplayPlain: string;
+      amountTonFormatted: string;
+      orderNumber: string;
+      address: string;
+      comment: string;
+    },
+  ): { caption: string; caption_entities: any[] } {
+    const baseStar = '\u2B50';
+    const entities: any[] = [];
+    let caption = '';
+
+    const title = this.i18n.t('payment.ton.caption_title', lang);
+    const line1 = `${baseStar} ${title}`;
+    caption += line1 + '\n\n';
+    entities.push({
+      type: 'custom_emoji',
+      offset: 0,
+      length: 1,
+      custom_emoji_id: PAYMENT_METHOD_TON_CUSTOM_EMOJI_ID,
+    });
+    entities.push({
+      type: 'bold',
+      offset: 2,
+      length: title.length,
+    });
+
+    const normalizedType = args.productType.toUpperCase();
+    let productCustomEmojiId: string | undefined;
+    let productLinePlain: string;
+    if (normalizedType === 'PREMIUM') {
+      productCustomEmojiId = MAIN_MENU_PREMIUM_CUSTOM_EMOJI_ID;
+      const durationText = this.i18n.t(
+        `product.premium.duration.${args.quantity}` as any,
+        lang,
+      );
+      productLinePlain = `${baseStar} Товар: Premium на ${durationText}`;
+    } else if (normalizedType === 'STARS') {
+      productCustomEmojiId = MAIN_MENU_STARS_CUSTOM_EMOJI_ID;
+      productLinePlain = `${baseStar} Товар: ${args.quantity} звёзд`;
+    } else {
+      const productEmoji = getProductEmoji(normalizedType);
+      productLinePlain = `${baseStar} Товар: ${args.quantity} ${productEmoji}`;
+    }
+
+    const productLineStart = caption.length;
+    caption += productLinePlain + '\n';
+    if (productCustomEmojiId) {
+      entities.push({
+        type: 'custom_emoji',
+        offset: productLineStart,
+        length: 1,
+        custom_emoji_id: productCustomEmojiId,
+      });
+    }
+    const prodBold = 'Товар:';
+    const prodIdx = productLinePlain.indexOf(prodBold);
+    if (prodIdx >= 0) {
+      entities.push({
+        type: 'bold',
+        offset: productLineStart + prodIdx,
+        length: prodBold.length,
+      });
+    }
+
+    const recipientLinePlain = `${baseStar} Получатель: ${args.recipientDisplayPlain}`;
+    const recipientLineStart = caption.length;
+    caption += recipientLinePlain + '\n\n';
+    entities.push({
+      type: 'custom_emoji',
+      offset: recipientLineStart,
+      length: 1,
+      custom_emoji_id: PAYMENT_RECIPIENT_CUSTOM_EMOJI_ID,
+    });
+    const recBold = 'Получатель:';
+    const recIdx = recipientLinePlain.indexOf(recBold);
+    if (recIdx >= 0) {
+      entities.push({
+        type: 'bold',
+        offset: recipientLineStart + recIdx,
+        length: recBold.length,
+      });
+    }
+
+    let productNameForWarning: string;
+    if (normalizedType === 'STARS') {
+      productNameForWarning = 'звёзд';
+    } else if (normalizedType === 'TON') {
+      productNameForWarning = 'TON';
+    } else if (normalizedType === 'PREMIUM') {
+      productNameForWarning = 'Premium';
+    } else {
+      productNameForWarning = 'товара';
+    }
+    const warningRest = this.i18n.t('payment.username_warning_rest', lang, {
+      product: productNameForWarning,
+    });
+    const importantLabel = 'Важно:';
+    const warnStart = caption.length;
+    caption += `${baseStar} ${importantLabel} ${warningRest}\n\n`;
+    entities.push({
+      type: 'custom_emoji',
+      offset: warnStart,
+      length: 1,
+      custom_emoji_id: PAYMENT_USERNAME_WARNING_CUSTOM_EMOJI_ID,
+    });
+    entities.push({
+      type: 'bold',
+      offset: warnStart + 2,
+      length: importantLabel.length,
+    });
+
+    const amountLabel = this.i18n.t('payment.ton.amount_label', lang);
+    const amountLine = `${amountLabel} ${args.amountTonFormatted} TON`;
+    const amountLineStart = caption.length;
+    caption += amountLine + '\n';
+    const amountLabelIdx = amountLine.indexOf(amountLabel);
+    if (amountLabelIdx >= 0) {
+      entities.push({
+        type: 'bold',
+        offset: amountLineStart + amountLabelIdx,
+        length: amountLabel.length,
+      });
+    }
+
+    const orderLabel = this.i18n.t('payment.ton.order_label', lang);
+    const orderHash = `#${args.orderNumber}`;
+    const orderLine = `${orderLabel} ${orderHash}`;
+    const orderLineStart = caption.length;
+    caption += orderLine + '\n\n';
+    const orderLabelIdx = orderLine.indexOf(orderLabel);
+    if (orderLabelIdx >= 0) {
+      entities.push({
+        type: 'bold',
+        offset: orderLineStart + orderLabelIdx,
+        length: orderLabel.length,
+      });
+    }
+    const hashIdx = orderLine.indexOf(orderHash);
+    if (hashIdx >= 0) {
+      entities.push({
+        type: 'code',
+        offset: orderLineStart + hashIdx,
+        length: orderHash.length,
+      });
+    }
+
+    const timeLine = this.i18n.t('payment.ton.time_window', lang);
+    const timeLineStart = caption.length;
+    caption += timeLine + '\n\n';
+    entities.push({
+      type: 'bold',
+      offset: timeLineStart,
+      length: timeLine.length,
+    });
+
+    const manualTitle = this.i18n.t('payment.ton.manual_title', lang);
+    const manualTitleStart = caption.length;
+    caption += manualTitle + '\n';
+    entities.push({
+      type: 'bold',
+      offset: manualTitleStart,
+      length: manualTitle.length,
+    });
+
+    const addrLabel = this.i18n.t('payment.ton.address_label', lang);
+    const addrLine = `${addrLabel} ${args.address}`;
+    const addrLineStart = caption.length;
+    caption += addrLine + '\n';
+    const addrLabelIdx = addrLine.indexOf(addrLabel);
+    if (addrLabelIdx >= 0) {
+      entities.push({
+        type: 'bold',
+        offset: addrLineStart + addrLabelIdx,
+        length: addrLabel.length,
+      });
+    }
+    const addrValIdx = addrLine.indexOf(args.address);
+    if (addrValIdx >= 0) {
+      entities.push({
+        type: 'code',
+        offset: addrLineStart + addrValIdx,
+        length: args.address.length,
+      });
+    }
+
+    const sumLabel = this.i18n.t('payment.ton.sum_label', lang);
+    const sumCodePayload = `${args.amountTonFormatted} TON`;
+    const sumLine = `${sumLabel} ${sumCodePayload}`;
+    const sumLineStart = caption.length;
+    caption += sumLine + '\n';
+    const sumLabelIdx = sumLine.indexOf(sumLabel);
+    if (sumLabelIdx >= 0) {
+      entities.push({
+        type: 'bold',
+        offset: sumLineStart + sumLabelIdx,
+        length: sumLabel.length,
+      });
+    }
+    const sumCodeIdx = sumLine.indexOf(sumCodePayload);
+    if (sumCodeIdx >= 0) {
+      entities.push({
+        type: 'code',
+        offset: sumLineStart + sumCodeIdx,
+        length: sumCodePayload.length,
+      });
+    }
+
+    const commLabel = this.i18n.t('payment.ton.comment_label', lang);
+    const commLine = `${commLabel} ${args.comment}`;
+    const commLineStart = caption.length;
+    caption += commLine + '\n\n';
+    const commLabelIdx = commLine.indexOf(commLabel);
+    if (commLabelIdx >= 0) {
+      entities.push({
+        type: 'bold',
+        offset: commLineStart + commLabelIdx,
+        length: commLabel.length,
+      });
+    }
+    const commValIdx = commLine.indexOf(args.comment);
+    if (commValIdx >= 0) {
+      entities.push({
+        type: 'code',
+        offset: commLineStart + commValIdx,
+        length: args.comment.length,
+      });
+    }
+
+    const commentHint = this.i18n.t('payment.ton.comment_hint', lang);
+    const hintStart = caption.length;
+    caption += commentHint;
+    const hintBold = 'Важно:';
+    const hintBoldIdx = commentHint.indexOf(hintBold);
+    if (hintBoldIdx >= 0) {
+      entities.push({
+        type: 'bold',
+        offset: hintStart + hintBoldIdx,
+        length: hintBold.length,
+      });
+    }
 
     return { caption, caption_entities: entities };
   }
@@ -3190,18 +3444,21 @@ export class BotUpdate {
       recipientDisplay = this.i18n.t('common.you', lang);
     }
 
-    let productNameForWarning: string;
-    if (payment.product_type === 'STARS') {
-      productNameForWarning = 'ЗВЕЗД';
-    } else if (payment.product_type === 'TON') {
-      productNameForWarning = 'TON';
-    } else if (payment.product_type === 'PREMIUM') {
-      productNameForWarning = 'PREMIUM';
-    } else {
-      productNameForWarning = 'ТОВАРА';
-    }
+    const tonCaption = this.buildTonPaymentCaptionPayload(lang, {
+      productType: payment.product_type,
+      quantity: Number(payment.product_quantity) || 0,
+      recipientDisplayPlain: recipientDisplay,
+      amountTonFormatted: amountTon.toFixed(4),
+      orderNumber: payment.order_number.toString(),
+      address: tonAddress,
+      comment: payment.id,
+    });
 
-    const text = `${this.i18n.t('payment.ton.title', lang)}\n${this.i18n.t('payment.ton.recipient', lang, { recipient: recipientDisplay })}\n\n${this.i18n.t('payment.ton.username_warning', lang, { product: productNameForWarning })}\n\n${this.i18n.t('payment.ton.amount', lang, { amount: amountTon.toFixed(4) })}\n${this.i18n.t('payment.ton.order', lang, { order: payment.order_number.toString() })}\n\n${this.i18n.t('payment.ton.warning', lang)}\n${this.i18n.t('payment.ton.manual', lang, { address: tonAddress, amount: amountTon.toFixed(4), comment: payment.id })}`;
+    const tonKeyboard = MainKeyboard.getTonPayKeyboard(
+      tonLink,
+      this.i18n,
+      lang,
+    ).reply_markup;
 
     let paymentMessageId: number | undefined;
 
@@ -3218,15 +3475,11 @@ export class BotUpdate {
           {
             type: 'photo',
             media: { source: qrCodeBuffer },
-            caption: text,
-            parse_mode: 'HTML',
+            caption: tonCaption.caption,
+            caption_entities: tonCaption.caption_entities,
           },
           {
-            reply_markup: MainKeyboard.getTonWalletsKeyboard(
-              tonLink,
-              this.i18n,
-              lang,
-            ).reply_markup,
+            reply_markup: tonKeyboard,
           },
         );
         if (typeof editResult === 'object' && 'message_id' in editResult) {
@@ -3236,26 +3489,18 @@ export class BotUpdate {
         const qrMessage = await ctx.replyWithPhoto(
           { source: qrCodeBuffer },
           {
-            caption: text,
-            parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getTonWalletsKeyboard(
-              tonLink,
-              this.i18n,
-              lang,
-            ).reply_markup,
+            caption: tonCaption.caption,
+            caption_entities: tonCaption.caption_entities,
+            reply_markup: tonKeyboard,
           },
         );
         paymentMessageId = qrMessage.message_id;
       }
     } catch (error) {
       this.logger.error(`Error sending QR code: ${error.message}`);
-      const textMessage = await ctx.reply(text, {
-        parse_mode: 'HTML',
-        reply_markup: MainKeyboard.getTonWalletsKeyboard(
-          tonLink,
-          this.i18n,
-          lang,
-        ).reply_markup,
+      const textMessage = await ctx.reply(tonCaption.caption, {
+        entities: tonCaption.caption_entities,
+        reply_markup: tonKeyboard,
       });
       paymentMessageId = textMessage.message_id;
     }

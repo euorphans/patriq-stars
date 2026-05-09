@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '@/shared/services/prisma/prisma.service';
-import { PaymentsService } from '@/modules/payments/payments.service';
+import {
+  PaymentsService,
+  TON_PAYMENT_WINDOW_MS,
+} from '@/modules/payments/payments.service';
 import { PlategaService } from '@/modules/payments/providers/platega.service';
 import { FraudService } from '@/modules/fraud/fraud.service';
 import { SettingsService } from '@/modules/settings/settings.service';
@@ -162,11 +165,21 @@ export class PaymentCheckerService {
 
     try {
       const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+      const tonExpiryAgo = new Date(Date.now() - TON_PAYMENT_WINDOW_MS);
 
       const expiredPayments = await this.prisma.payment.findMany({
         where: {
           status: { in: [PaymentStatus.PENDING, PaymentStatus.PROCESSING] },
-          created_at: { lt: thirtyMinutesAgo },
+          OR: [
+            {
+              payment_method: 'TON',
+              created_at: { lt: tonExpiryAgo },
+            },
+            {
+              payment_method: { not: 'TON' },
+              created_at: { lt: thirtyMinutesAgo },
+            },
+          ],
         },
         orderBy: { created_at: 'asc' },
         take: 500,
@@ -337,7 +350,9 @@ export class PaymentCheckerService {
         where: {
           status: { in: [PaymentStatus.PENDING, PaymentStatus.PROCESSING] },
           payment_method: 'TON',
-          created_at: { gte: new Date(Date.now() - 30 * 60 * 1000) },
+          created_at: {
+            gte: new Date(Date.now() - TON_PAYMENT_WINDOW_MS),
+          },
         },
         orderBy: { created_at: 'asc' },
         take: this.MAX_PAYMENTS_PER_CYCLE,
@@ -571,9 +586,15 @@ export class PaymentCheckerService {
           ? this.i18n.t(paymentMethodKey, userLanguage)
           : paymentMethodKey;
 
+      const windowText =
+        payment.payment_method === 'TON'
+          ? this.i18n.t('payment.expired.window_ton', userLanguage)
+          : this.i18n.t('payment.expired.window_other', userLanguage);
+
       const message = this.i18n.t('payment.expired.title', userLanguage, {
         order: payment.order_number,
         method: paymentMethod,
+        window: windowText,
       });
 
       const notificationData = {
