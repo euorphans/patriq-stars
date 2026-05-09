@@ -2,7 +2,7 @@
 # Запуск: docker compose up -d
 # Или: npm run db:up
 #
-# Экран «Информация» / документы: AGREEMENT_URL, PRIVACY_POLICY_URL, SUPPORT_URL.
+# Документы в боте: AGREEMENT_URL, PRIVACY_POLICY_URL, SUPPORT_URL в .env (в k8s они уходят в Secret, не в ConfigMap).
 # Образ приложения (Dockerfile) не копирует .env — переменные должны попасть в контейнер через
 #   env_file / environment в compose, Kubernetes ConfigMap/Secret или docker run -e ...
 # Nest ConfigModule читает .env из рабочей директории только если файл смонтирован или собран в образ.

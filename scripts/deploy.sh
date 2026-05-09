@@ -6,7 +6,8 @@
 #   ./scripts/deploy.sh              # полный деплой (первый раз на новом сервере)
 #   ./scripts/deploy.sh --update     # обновление кода (git pull + build + restart)
 #   ./scripts/deploy.sh --hotfix     # быстрый деплой с Docker-кешем (~30с)
-#   ./scripts/deploy.sh --update-config  # только ConfigMap (AGREEMENT_URL и т.д.) + перезапуск подов
+#   ./scripts/deploy.sh --update-config  # только ConfigMap (без URL документов) + перезапуск подов
+#   ./scripts/deploy.sh --update-secrets # перезалить Secret из .env (AGREEMENT_URL, PRIVACY_POLICY_URL, SUPPORT_URL — здесь)
 #   ./scripts/deploy.sh --update-db  # обновление кода + prisma db push (если менялась схема)
 #   ./scripts/deploy.sh --restart    # перезапуск без пересборки
 #   ./scripts/deploy.sh --status     # показать статус всех компонентов
@@ -624,7 +625,7 @@ main() {
 
     --update-config)
       check_tools
-      log "Режим: обновление ConfigMap и перезапуск подов"
+      log "Режим: обновление ConfigMap и перезапуск подов (ссылки документов — из Secret: ./scripts/deploy.sh --update-secrets)"
       if [ ! -f "${K8S_DIR}/configmap.yaml" ]; then
         err "Нет файла ${K8S_DIR}/configmap.yaml"
         exit 1
@@ -778,7 +779,7 @@ main() {
       echo "  --update-db        Обновить код + prisma db push (если менялась схема)"
       echo "  --restart          Перезапустить бота без пересборки"
       echo "  --update-config    Применить k8s/configmap.yaml и перезапустить поды (ссылки документов и др.)"
-      echo "  --update-secrets   Обновить секреты из .env и перезапустить"
+      echo "  --update-secrets   Обновить Secret из .env (ссылки документов, STAR_PRICE / лимиты покупки и др.) и перезапустить"
       echo "  --ingress          Только cert-manager + Ingress + TLS (WEBHOOK_DOMAIN + ACME_EMAIL в .env)"
       echo ""
       echo "Мониторинг:"

@@ -175,22 +175,55 @@ spec:
                   key: MISTRAL_API_KEY
                   optional: true
 
-            # Ссылки на документы: явно из ConfigMap (после envFrom), чтобы совпадали с kubectl get configmap
+            # Документы и поддержка — из Secret (= переменные из .env при --update-secrets), перебивают envFrom
             - name: AGREEMENT_URL
               valueFrom:
-                configMapKeyRef:
-                  name: stars-bot-config
+                secretKeyRef:
+                  name: stars-bot-secrets
                   key: AGREEMENT_URL
+                  optional: true
             - name: PRIVACY_POLICY_URL
               valueFrom:
-                configMapKeyRef:
-                  name: stars-bot-config
+                secretKeyRef:
+                  name: stars-bot-secrets
                   key: PRIVACY_POLICY_URL
+                  optional: true
             - name: SUPPORT_URL
               valueFrom:
-                configMapKeyRef:
-                  name: stars-bot-config
+                secretKeyRef:
+                  name: stars-bot-secrets
                   key: SUPPORT_URL
+                  optional: true
+            - name: STAR_PRICE_USD
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: STAR_PRICE_USD
+                  optional: true
+            - name: MIN_STARS_PURCHASE
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: MIN_STARS_PURCHASE
+                  optional: true
+            - name: MAX_STARS_PURCHASE
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: MAX_STARS_PURCHASE
+                  optional: true
+            - name: MIN_TON_PURCHASE
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: MIN_TON_PURCHASE
+                  optional: true
+            - name: MAX_TON_PURCHASE
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: MAX_TON_PURCHASE
+                  optional: true
 
           # --- Health checks ---
 

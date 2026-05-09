@@ -156,6 +156,11 @@ export class HealthController {
       AGREEMENT_URL: process.env.AGREEMENT_URL ?? null,
       PRIVACY_POLICY_URL: process.env.PRIVACY_POLICY_URL ?? null,
       SUPPORT_URL: process.env.SUPPORT_URL ?? null,
+      STAR_PRICE_USD: process.env.STAR_PRICE_USD ?? null,
+      MIN_STARS_PURCHASE: process.env.MIN_STARS_PURCHASE ?? null,
+      MAX_STARS_PURCHASE: process.env.MAX_STARS_PURCHASE ?? null,
+      MIN_TON_PURCHASE: process.env.MIN_TON_PURCHASE ?? null,
+      MAX_TON_PURCHASE: process.env.MAX_TON_PURCHASE ?? null,
       NODE_ENV: process.env.NODE_ENV ?? null,
       timestamp: new Date().toISOString(),
     });

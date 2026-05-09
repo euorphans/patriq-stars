@@ -23,10 +23,8 @@ data:
   # Webhook
   WEBHOOK_PATH: "/api/bot/webhook"
 
-  # Документы: AGREEMENT_URL = кнопка «Правила», PRIVACY_POLICY_URL = «Конфиденциальность», SUPPORT_URL = поддержка
-  AGREEMENT_URL: "https://telegra.ph/Pravila-ispolzovaniya-05-07"
-  PRIVACY_POLICY_URL: "https://telegra.ph/Politika-konfidencialnosti-05-07-14"
-  SUPPORT_URL: "https://t.me/dxminus"
+  # AGREEMENT_URL, PRIVACY_POLICY_URL, SUPPORT_URL — не здесь: задаются в .env на сервере и попадают в
+  # Secret stars-bot-secrets (./scripts/deploy.sh --update-secrets). Так же как BOT_TOKEN.
 
   # Скриншоты заказов: каталог внутри контейнера (см. volumeMount в deployment / screenshot-worker)
   LOCAL_STORAGE_PATH: "/data/local-storage"
@@ -35,9 +33,5 @@ data:
   FRONTEND_URL: "https://fh34hfhfw9efhjsdhkjsfd.lol"
   CORS_EXTRA_ORIGINS: ""
 
-  # Pricing defaults
-  STAR_PRICE_USD: "0.015"
-  MIN_STARS_PURCHASE: "50"
-  MAX_STARS_PURCHASE: "500000"
-  MIN_TON_PURCHASE: "1"
-  MAX_TON_PURCHASE: "10000"
+  # STAR_PRICE_USD, MIN_STARS_PURCHASE, MAX_STARS_PURCHASE, MIN_TON_PURCHASE, MAX_TON_PURCHASE — в .env → Secret
+  # (см. deployment env secretKeyRef и ./scripts/deploy.sh --update-secrets).

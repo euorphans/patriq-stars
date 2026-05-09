@@ -175,6 +175,54 @@ spec:
                   name: stars-bot-secrets
                   key: MISTRAL_API_KEY
                   optional: true
+            - name: AGREEMENT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: AGREEMENT_URL
+                  optional: true
+            - name: PRIVACY_POLICY_URL
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: PRIVACY_POLICY_URL
+                  optional: true
+            - name: SUPPORT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: SUPPORT_URL
+                  optional: true
+            - name: STAR_PRICE_USD
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: STAR_PRICE_USD
+                  optional: true
+            - name: MIN_STARS_PURCHASE
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: MIN_STARS_PURCHASE
+                  optional: true
+            - name: MAX_STARS_PURCHASE
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: MAX_STARS_PURCHASE
+                  optional: true
+            - name: MIN_TON_PURCHASE
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: MIN_TON_PURCHASE
+                  optional: true
+            - name: MAX_TON_PURCHASE
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: MAX_TON_PURCHASE
+                  optional: true
 
           startupProbe:
             httpGet:
