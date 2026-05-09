@@ -41,11 +41,14 @@ export const PAYMENT_USERNAME_WARNING_CUSTOM_EMOJI_ID = '5447644880824181073';
 /** Иконка перед «Получатель:» на экране выбора способа оплаты (caption_entities). */
 export const PAYMENT_RECIPIENT_CUSTOM_EMOJI_ID = '5391032818111363540';
 
-/** InlineKeyboard: способ оплаты Heleket (криптовалюта). */
-export const PAYMENT_METHOD_HELEKET_CUSTOM_EMOJI_ID = '5231005931550030290';
+/** InlineKeyboard: СБП (Platega). */
+export const PAYMENT_METHOD_PLATEGA_CUSTOM_EMOJI_ID = '5294247005701292072';
 
-/** InlineKeyboard: способ оплаты TON Wallet. */
-export const PAYMENT_METHOD_TON_CUSTOM_EMOJI_ID = '5427168083074628963';
+/** InlineKeyboard: Heleket (криптовалюта). */
+export const PAYMENT_METHOD_HELEKET_CUSTOM_EMOJI_ID = '5294015055992471554';
+
+/** InlineKeyboard: TON Wallet. */
+export const PAYMENT_METHOD_TON_CUSTOM_EMOJI_ID = '5294209201399153148';
 
 /** Анимированные custom emoji (Bot API: InlineKeyboardButton.icon_custom_emoji_id). */
 const MAIN_MENU_CUSTOM_EMOJI = {
@@ -58,6 +61,9 @@ const MAIN_MENU_CUSTOM_EMOJI = {
 /** Те же иконки, что у кнопок Stars / Premium в главном меню — для строки «Товар:» на экране оплаты. */
 export const MAIN_MENU_STARS_CUSTOM_EMOJI_ID = MAIN_MENU_CUSTOM_EMOJI.stars;
 export const MAIN_MENU_PREMIUM_CUSTOM_EMOJI_ID = MAIN_MENU_CUSTOM_EMOJI.premium;
+
+/** Подсказка при вводе @username (звёзды и Premium — второй ряд подписи). */
+export const STARS_USERNAME_PROMPT_CUSTOM_EMOJI_ID = '5460795800101594035';
 
 /** Кнопки экрана «Информация» (url + icon_custom_emoji_id). */
 const INFO_MENU_CUSTOM_EMOJI = {
@@ -384,11 +390,15 @@ export class MainKeyboard {
       switch (method) {
         case 'PLATEGA':
           if (prices.platega) {
+            const plategaLabel = i18n
+              .t('payment.method.platega', lang)
+              .replace(/^💳\s+/, '');
             buttons.push([
-              Markup.button.callback(
-                `${i18n.t('payment.method.platega', lang)} — ${prices.platega.rub.toFixed(2)} ₽`,
-                `${actionPrefix}_platega`,
-              ),
+              {
+                text: `${plategaLabel} — ${prices.platega.rub.toFixed(2)} ₽`,
+                callback_data: `${actionPrefix}_platega`,
+                icon_custom_emoji_id: PAYMENT_METHOD_PLATEGA_CUSTOM_EMOJI_ID,
+              },
             ]);
           }
           break;

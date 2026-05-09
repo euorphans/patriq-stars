@@ -15,6 +15,7 @@ import {
   MAIN_MENU_INFO_CUSTOM_EMOJI_ID,
   MAIN_MENU_PREMIUM_CUSTOM_EMOJI_ID,
   MAIN_MENU_STARS_CUSTOM_EMOJI_ID,
+  STARS_USERNAME_PROMPT_CUSTOM_EMOJI_ID,
   PAYMENT_RECIPIENT_CUSTOM_EMOJI_ID,
   PAYMENT_USERNAME_WARNING_CUSTOM_EMOJI_ID,
 } from '@/shared/keyboards/main.keyboard';
@@ -447,6 +448,74 @@ export class BotUpdate {
           offset: line2Start,
           length: 1,
           custom_emoji_id: PAYMENT_RECIPIENT_CUSTOM_EMOJI_ID,
+        },
+      ],
+    };
+  }
+
+  /** Ввод @username для звёзд: заголовок как на экране «кому», затем подсказка с отдельным custom emoji. */
+  private getStarsUsernameEnterCaptionPayload(_lang: 'ru'): {
+    caption: string;
+    caption_entities: any[];
+  } {
+    const base = '\u2B50';
+    const title = 'Покупка звёзд';
+    const body =
+      'Введите юзернейм пользователя, которому будем дарить звёзды:\n— Пример: @(username пользователя который пишет боту)';
+    const line1 = `${base} ${title}`;
+    const line2 = `${base} ${body}`;
+    const caption = `${line1}\n\n${line2}`;
+    const line2Start = line1.length + 2;
+
+    return {
+      caption,
+      caption_entities: [
+        {
+          type: 'custom_emoji',
+          offset: 0,
+          length: 1,
+          custom_emoji_id: MAIN_MENU_STARS_CUSTOM_EMOJI_ID,
+        },
+        { type: 'bold', offset: 2, length: title.length },
+        {
+          type: 'custom_emoji',
+          offset: line2Start,
+          length: 1,
+          custom_emoji_id: STARS_USERNAME_PROMPT_CUSTOM_EMOJI_ID,
+        },
+      ],
+    };
+  }
+
+  /** Ввод @username для Premium — тот же шаблон, что для звёзд; иконка строки 1 из главного меню Premium. */
+  private getPremiumUsernameEnterCaptionPayload(_lang: 'ru'): {
+    caption: string;
+    caption_entities: any[];
+  } {
+    const base = '\u2B50';
+    const title = 'Покупка Premium';
+    const body =
+      'Введите юзернейм пользователя, которому будем дарить Premium:\n— Пример: @(username пользователя который пишет боту)';
+    const line1 = `${base} ${title}`;
+    const line2 = `${base} ${body}`;
+    const caption = `${line1}\n\n${line2}`;
+    const line2Start = line1.length + 2;
+
+    return {
+      caption,
+      caption_entities: [
+        {
+          type: 'custom_emoji',
+          offset: 0,
+          length: 1,
+          custom_emoji_id: MAIN_MENU_PREMIUM_CUSTOM_EMOJI_ID,
+        },
+        { type: 'bold', offset: 2, length: title.length },
+        {
+          type: 'custom_emoji',
+          offset: line2Start,
+          length: 1,
+          custom_emoji_id: STARS_USERNAME_PROMPT_CUSTOM_EMOJI_ID,
         },
       ],
     };
@@ -1849,16 +1918,7 @@ export class BotUpdate {
       return;
     }
 
-    const productEmoji = getProductEmoji(productType.toUpperCase());
-    const productName =
-      productType === 'stars'
-        ? this.i18n.t('product.stars_recipient', lang)
-        : this.i18n.t('product.premium', lang);
-
-    const text = this.i18n.t('product.recipient.enter_username', lang, {
-      product: productName,
-      emoji: productEmoji,
-    });
+    const backKb = MainKeyboard.getBackButton('back_to_recipient').reply_markup;
 
     const imagePath =
       productType === 'premium'
@@ -1867,18 +1927,63 @@ export class BotUpdate {
           ? './images/where_delivery_stars.webp'
           : './images/main_menu.webp';
 
+    if (productType === 'stars') {
+      const cap = this.getStarsUsernameEnterCaptionPayload(lang);
+      try {
+        await this.editOrSendPhoto(ctx, imagePath, {
+          caption: cap.caption,
+          caption_entities: cap.caption_entities,
+          reply_markup: backKb,
+        });
+      } catch {
+        const message = await ctx.reply(cap.caption, {
+          entities: cap.caption_entities,
+          reply_markup: backKb,
+        });
+        ctx.session.lastBotMessageId = message.message_id;
+      }
+      ctx.session.awaitingUsername = true;
+      return;
+    }
+
+    if (productType === 'premium') {
+      const cap = this.getPremiumUsernameEnterCaptionPayload(lang);
+      try {
+        await this.editOrSendPhoto(ctx, imagePath, {
+          caption: cap.caption,
+          caption_entities: cap.caption_entities,
+          reply_markup: backKb,
+        });
+      } catch {
+        const message = await ctx.reply(cap.caption, {
+          entities: cap.caption_entities,
+          reply_markup: backKb,
+        });
+        ctx.session.lastBotMessageId = message.message_id;
+      }
+      ctx.session.awaitingUsername = true;
+      return;
+    }
+
+    const productEmoji = getProductEmoji(
+      (productType as string).toUpperCase(),
+    );
+    const productName = this.i18n.t('product.premium', lang);
+    const text = this.i18n.t('product.recipient.enter_username', lang, {
+      product: productName,
+      emoji: productEmoji,
+    });
+
     try {
       await this.editOrSendPhoto(ctx, imagePath, {
         caption: text,
         parse_mode: 'HTML',
-        reply_markup:
-          MainKeyboard.getBackButton('back_to_recipient').reply_markup,
+        reply_markup: backKb,
       });
     } catch {
       const message = await ctx.reply(text, {
         parse_mode: 'HTML',
-        reply_markup:
-          MainKeyboard.getBackButton('back_to_recipient').reply_markup,
+        reply_markup: backKb,
       });
       ctx.session.lastBotMessageId = message.message_id;
     }
