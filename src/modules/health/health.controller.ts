@@ -149,6 +149,18 @@ export class HealthController {
     }
   }
 
+  /** Что реально видит процесс (проверка после смены ConfigMap / рестарта). */
+  @Get('docs-env')
+  docsEnv(@Res() res: Response) {
+    return res.status(HttpStatus.OK).json({
+      AGREEMENT_URL: process.env.AGREEMENT_URL ?? null,
+      PRIVACY_POLICY_URL: process.env.PRIVACY_POLICY_URL ?? null,
+      SUPPORT_URL: process.env.SUPPORT_URL ?? null,
+      NODE_ENV: process.env.NODE_ENV ?? null,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   @Get('startup')
   async startup(@Res() res: Response) {
     try {

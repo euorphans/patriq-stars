@@ -23,10 +23,10 @@ data:
   # Webhook
   WEBHOOK_PATH: "/api/bot/webhook"
 
-  # Документы и поддержка (весь бот): AGREEMENT_URL, PRIVACY_POLICY_URL, SUPPORT_URL
-  AGREEMENT_URL: "https://telegra.ph/Politika-konfidencialnosti-02-15-91"
-  PRIVACY_POLICY_URL: "https://telegra.ph/Pravila-ispolzovaniya-02-15-2"
-  SUPPORT_URL: "https://t.me/patriq_star"
+  # Документы: AGREEMENT_URL = кнопка «Правила», PRIVACY_POLICY_URL = «Конфиденциальность», SUPPORT_URL = поддержка
+  AGREEMENT_URL: "https://telegra.ph/Pravila-ispolzovaniya-05-07"
+  PRIVACY_POLICY_URL: "https://telegra.ph/Politika-konfidencialnosti-05-07-14"
+  SUPPORT_URL: "https://t.me/dxminus"
 
   # Скриншоты заказов: каталог внутри контейнера (см. volumeMount в deployment / screenshot-worker)
   LOCAL_STORAGE_PATH: "/data/local-storage"

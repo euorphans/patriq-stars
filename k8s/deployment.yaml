@@ -175,6 +175,23 @@ spec:
                   key: MISTRAL_API_KEY
                   optional: true
 
+            # Ссылки на документы: явно из ConfigMap (после envFrom), чтобы совпадали с kubectl get configmap
+            - name: AGREEMENT_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: stars-bot-config
+                  key: AGREEMENT_URL
+            - name: PRIVACY_POLICY_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: stars-bot-config
+                  key: PRIVACY_POLICY_URL
+            - name: SUPPORT_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: stars-bot-config
+                  key: SUPPORT_URL
+
           # --- Health checks ---
 
           # Startup probe: give the app up to 60s to start (30 * 2s)
