@@ -59,9 +59,6 @@ const MAIN_MENU_CUSTOM_EMOJI = {
 export const MAIN_MENU_STARS_CUSTOM_EMOJI_ID = MAIN_MENU_CUSTOM_EMOJI.stars;
 export const MAIN_MENU_PREMIUM_CUSTOM_EMOJI_ID = MAIN_MENU_CUSTOM_EMOJI.premium;
 
-/** Как в payments / cron: при пустом env кнопка «Поддержка» не пропадает. */
-const DEFAULT_INFO_SUPPORT_URL = 'https://t.me/patriq_star';
-
 /** Кнопки экрана «Информация» (url + icon_custom_emoji_id). */
 const INFO_MENU_CUSTOM_EMOJI = {
   /** Политика / правила */
@@ -149,25 +146,12 @@ export class MainKeyboard {
   }
 
   /**
-   * Экран «Информация».
-   * Базовые ссылки: AGREEMENT_URL (правила / оферта), PRIVACY_POLICY_URL, SUPPORT_URL.
-   * INFO_* — только если нужны другие URL именно для этого экрана (переопределение).
+   * Экран «Информация»: только AGREEMENT_URL, PRIVACY_POLICY_URL, SUPPORT_URL.
    */
   static getInfoMenu(i18n: I18nService, lang: SupportedLanguage = 'ru') {
-    const rulesUrl =
-      trimUrl(process.env.INFO_RULES_URL) || trimUrl(process.env.AGREEMENT_URL);
-    const privacyUrl =
-      trimUrl(process.env.INFO_PRIVACY_URL) ||
-      trimUrl(process.env.PRIVACY_POLICY_URL);
-    let offerUrl =
-      trimUrl(process.env.INFO_OFFER_URL) || trimUrl(process.env.AGREEMENT_URL);
-    if (offerUrl && offerUrl === rulesUrl) {
-      offerUrl = undefined;
-    }
-    const supportUrl =
-      trimUrl(process.env.INFO_SUPPORT_URL) ||
-      trimUrl(process.env.SUPPORT_URL) ||
-      DEFAULT_INFO_SUPPORT_URL;
+    const rulesUrl = trimUrl(process.env.AGREEMENT_URL);
+    const privacyUrl = trimUrl(process.env.PRIVACY_POLICY_URL);
+    const supportUrl = trimUrl(process.env.SUPPORT_URL);
 
     const rows: any[][] = [];
 
@@ -187,12 +171,6 @@ export class MainKeyboard {
       });
     }
     if (docRow.length) rows.push(docRow);
-
-    if (offerUrl) {
-      rows.push([
-        Markup.button.url(i18n.t('menu.info.btn.offer', lang), offerUrl),
-      ]);
-    }
 
     if (supportUrl) {
       rows.push([
@@ -294,7 +272,7 @@ export class MainKeyboard {
     i18n: I18nService,
     lang: SupportedLanguage = 'ru',
   ) {
-    const cacheKey = `recipient_self_first_${lang}`;
+    const cacheKey = `recipient_row2_${lang}`;
     const cached = getCachedKeyboard(cacheKey);
     if (cached) return cached;
 
@@ -304,8 +282,6 @@ export class MainKeyboard {
           i18n.t('product.recipient.self', lang),
           'recipient_self',
         ),
-      ],
-      [
         Markup.button.callback(
           i18n.t('product.recipient.other', lang),
           'recipient_other',

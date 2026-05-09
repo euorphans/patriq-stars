@@ -1,6 +1,15 @@
 # Локальная БД и Redis для разработки.
 # Запуск: docker compose up -d
 # Или: npm run db:up
+#
+# Экран «Информация» / документы: AGREEMENT_URL, PRIVACY_POLICY_URL, SUPPORT_URL.
+# Образ приложения (Dockerfile) не копирует .env — переменные должны попасть в контейнер через
+#   env_file / environment в compose, Kubernetes ConfigMap/Secret или docker run -e ...
+# Nest ConfigModule читает .env из рабочей директории только если файл смонтирован или собран в образ.
+#
+# Запуск бота в Docker вместе с БД (профиль подхватывает .env из каталога проекта):
+#   docker compose --profile bot up -d --build
+#
 version: '3.8'
 
 services:
@@ -40,6 +49,28 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # Опционально: приложение бота. AGREEMENT_URL и прочие из .env в корне проекта попадают через env_file.
+  # DATABASE_URL / REDIS_URL переопределены под имена сервисов в этой сети (не localhost).
+  bot:
+    profiles: ["bot"]
+    build: .
+    container_name: patriq-stars-bot
+    restart: unless-stopped
+    ports:
+      - "${APPLICATION_PORT:-3001}:3001"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgresql:5432/${POSTGRES_DB:-mopsstars}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - patriq-stars-network
 
 volumes:
   postgres_data:
