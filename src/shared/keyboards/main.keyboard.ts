@@ -41,6 +41,12 @@ export const PAYMENT_USERNAME_WARNING_CUSTOM_EMOJI_ID = '5447644880824181073';
 /** Иконка перед «Получатель:» на экране выбора способа оплаты (caption_entities). */
 export const PAYMENT_RECIPIENT_CUSTOM_EMOJI_ID = '5391032818111363540';
 
+/** InlineKeyboard: способ оплаты Heleket (криптовалюта). */
+export const PAYMENT_METHOD_HELEKET_CUSTOM_EMOJI_ID = '5231005931550030290';
+
+/** InlineKeyboard: способ оплаты TON Wallet. */
+export const PAYMENT_METHOD_TON_CUSTOM_EMOJI_ID = '5427168083074628963';
+
 /** Анимированные custom emoji (Bot API: InlineKeyboardButton.icon_custom_emoji_id). */
 const MAIN_MENU_CUSTOM_EMOJI = {
   stars: '5438496463044752972',
@@ -367,22 +373,16 @@ export class MainKeyboard {
     i18n: I18nService,
     lang: SupportedLanguage = 'ru',
   ) {
-    const cacheKey = `premium_dur_${lang}`;
+    const cacheKey = `premium_dur_row3_${lang}`;
     const cached = getCachedKeyboard(cacheKey);
     if (cached) return cached;
 
-    const getDurationLabel = (months: number) => {
-      const specificKey = `product.premium.duration.${months}`;
-      const text = i18n.t(specificKey, lang);
-      return text === specificKey
-        ? i18n.t('product.premium.duration', lang, { months })
-        : text;
-    };
-
     const keyboard = Markup.inlineKeyboard([
-      [Markup.button.callback(getDurationLabel(3), 'premium_duration_3')],
-      [Markup.button.callback(getDurationLabel(6), 'premium_duration_6')],
-      [Markup.button.callback(getDurationLabel(12), 'premium_duration_12')],
+      [
+        Markup.button.callback('3', 'premium_duration_3'),
+        Markup.button.callback('6', 'premium_duration_6'),
+        Markup.button.callback('12', 'premium_duration_12'),
+      ],
       [backInlineButton('back_to_recipient')],
     ]);
 
@@ -424,22 +424,32 @@ export class MainKeyboard {
 
         case 'HELEKET':
           if (prices.heleket) {
+            const heleketLabel = i18n
+              .t('payment.method.heleket', lang)
+              .replace(/^🪙\s+/, '');
             buttons.push([
-              Markup.button.callback(
-                `${i18n.t('payment.method.heleket', lang)} — ${prices.heleket.usd.toFixed(2)} $`,
-                `${actionPrefix}_heleket`,
-              ),
+              {
+                text: `${heleketLabel} — ${prices.heleket.usd.toFixed(2)} $`,
+                callback_data: `${actionPrefix}_heleket`,
+                icon_custom_emoji_id: PAYMENT_METHOD_HELEKET_CUSTOM_EMOJI_ID,
+              },
             ]);
           }
           break;
 
         case 'TON':
-          buttons.push([
-            Markup.button.callback(
-              `${i18n.t('payment.method.ton', lang)} — ${tonAmount.toFixed(2)} TON`,
-              `${actionPrefix}_ton`,
-            ),
-          ]);
+          {
+            const tonLabel = i18n
+              .t('payment.method.ton', lang)
+              .replace(/^💎\s+/, '');
+            buttons.push([
+              {
+                text: `${tonLabel} — ${tonAmount.toFixed(2)} TON`,
+                callback_data: `${actionPrefix}_ton`,
+                icon_custom_emoji_id: PAYMENT_METHOD_TON_CUSTOM_EMOJI_ID,
+              },
+            ]);
+          }
           break;
       }
     }

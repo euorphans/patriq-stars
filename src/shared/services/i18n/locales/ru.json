@@ -146,7 +146,7 @@
     "username_warning_rest": "не меняйте @username до зачисления {product} на аккаунт.",
     "methods": "<b>Выберите удобный способ оплаты:</b>",
     "method": {
-      "platega": "💳 СБП РФ",
+      "platega": "💳 СБП",
       "heleket": "🪙 Криптовалюта",
       "ton": "💎 TON Wallet"
     },
