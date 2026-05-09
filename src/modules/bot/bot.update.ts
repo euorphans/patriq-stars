@@ -15,6 +15,7 @@ import {
   MAIN_MENU_INFO_CUSTOM_EMOJI_ID,
   MAIN_MENU_PREMIUM_CUSTOM_EMOJI_ID,
   MAIN_MENU_STARS_CUSTOM_EMOJI_ID,
+  PAYMENT_RECIPIENT_CUSTOM_EMOJI_ID,
   PAYMENT_USERNAME_WARNING_CUSTOM_EMOJI_ID,
 } from '@/shared/keyboards/main.keyboard';
 import { BotContext } from '@/shared/types/bot-context.interface';
@@ -319,9 +320,7 @@ export class BotUpdate {
       productLinePlain = `${baseStar} Товар: ${quantity} ${productEmoji}`;
     }
 
-    const recipientLinePlain = this.i18n
-      .t('payment.recipient', lang, { recipient: recipientDisplayPlain })
-      .replace(/<\/?b>/gi, '');
+    const recipientLinePlain = `${baseStar} Получатель: ${recipientDisplayPlain}`;
 
     let productNameForWarning: string;
     if (normalizedType === 'STARS') {
@@ -352,7 +351,7 @@ export class BotUpdate {
     let caption = '';
 
     entities.push({ type: 'bold', offset: 0, length: titlePlain.length });
-    caption += titlePlain + '\n';
+    caption += titlePlain + '\n\n';
 
     const productLineStart = caption.length;
     caption += productLinePlain + '\n';
@@ -376,16 +375,25 @@ export class BotUpdate {
       });
     }
 
+    const recipientLineStart = caption.length;
+    caption += recipientLinePlain + '\n\n';
+
+    entities.push({
+      type: 'custom_emoji',
+      offset: recipientLineStart,
+      length: 1,
+      custom_emoji_id: PAYMENT_RECIPIENT_CUSTOM_EMOJI_ID,
+    });
+
     const recBold = 'Получатель:';
     const recIdx = recipientLinePlain.indexOf(recBold);
     if (recIdx >= 0) {
       entities.push({
         type: 'bold',
-        offset: caption.length + recIdx,
+        offset: recipientLineStart + recIdx,
         length: recBold.length,
       });
     }
-    caption += recipientLinePlain + '\n\n';
 
     const warnStart = caption.length;
     caption += `${baseStar} ${importantLabel} ${warningRest}\n\n`;

@@ -38,6 +38,9 @@ export const MAIN_MENU_INFO_CUSTOM_EMOJI_ID = '5334544901428229844';
 /** Анимированный emoji рядом с «Важно:» на экране выбора способа оплаты (caption_entities). */
 export const PAYMENT_USERNAME_WARNING_CUSTOM_EMOJI_ID = '5447644880824181073';
 
+/** Иконка перед «Получатель:» на экране выбора способа оплаты (caption_entities). */
+export const PAYMENT_RECIPIENT_CUSTOM_EMOJI_ID = '5391032818111363540';
+
 /** Анимированные custom emoji (Bot API: InlineKeyboardButton.icon_custom_emoji_id). */
 const MAIN_MENU_CUSTOM_EMOJI = {
   stars: '5438496463044752972',
