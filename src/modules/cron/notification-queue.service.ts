@@ -641,7 +641,7 @@ export class NotificationQueueService {
     notification: any,
     data: any,
   ): Promise<void> {
-    const supportUrl = process.env.SUPPORT_URL || 'https://t.me/dxminus';
+    const supportUrl = process.env.SUPPORT_URL || 'https://t.me/patriq_star';
 
     const message =
       `⚠️ <b>Получена неполная оплата по заказу <code>#${data.order_number}</code></b>\n\n` +

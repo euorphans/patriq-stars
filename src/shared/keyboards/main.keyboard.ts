@@ -44,7 +44,7 @@ const MAIN_MENU_CUSTOM_EMOJI = {
 } as const;
 
 /** Как в payments / cron: при пустом env кнопка «Поддержка» не пропадает. */
-const DEFAULT_INFO_SUPPORT_URL = 'https://t.me/dxminus';
+const DEFAULT_INFO_SUPPORT_URL = 'https://t.me/patriq_star';
 
 /** Кнопки экрана «Информация» (url + icon_custom_emoji_id). */
 const INFO_MENU_CUSTOM_EMOJI = {
@@ -241,7 +241,9 @@ export class MainKeyboard {
     }
     if (privacyUrl) {
       docsRow.push({
-        text: i18n ? i18n.t('menu.info.btn.privacy', lang) : 'Конфиденциальность',
+        text: i18n
+          ? i18n.t('menu.info.btn.privacy', lang)
+          : 'Конфиденциальность',
         url: privacyUrl,
         icon_custom_emoji_id: INFO_MENU_CUSTOM_EMOJI.privacy,
       });
@@ -317,11 +319,7 @@ export class MainKeyboard {
 
     const presetSet = new Set<number>();
     for (const n of STARS_QTY_PRESETS) {
-      if (
-        n >= minStars &&
-        n <= maxStars &&
-        n <= STARS_QTY_PRESET_CAP
-      ) {
+      if (n >= minStars && n <= maxStars && n <= STARS_QTY_PRESET_CAP) {
         presetSet.add(n);
       }
     }
@@ -329,9 +327,7 @@ export class MainKeyboard {
       presetSet.add(minStars);
     }
 
-    const merged = [...presetSet]
-      .sort((a, b) => a - b)
-      .slice(0, 6);
+    const merged = [...presetSet].sort((a, b) => a - b).slice(0, 6);
     const rows: any[][] = [];
 
     for (let i = 0; i < merged.length; i += 2) {

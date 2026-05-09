@@ -501,7 +501,7 @@ export class PaymentCheckerService {
 
   private async queuePaymentFraudNotification(payment: any): Promise<void> {
     try {
-      const supportUrl = process.env.SUPPORT_URL || 'https://t.me/dxminus';
+      const supportUrl = process.env.SUPPORT_URL || 'https://t.me/patriq_star';
 
       await this.prisma.notificationQueue.create({
         data: {
