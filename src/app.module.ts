@@ -28,6 +28,9 @@ const isScreenshotEnabled = process.env.ENABLE_SCREENSHOT === 'true' || isDev;
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+      // В k8s переменные приходят из ConfigMap/Secret в process.env до старта Node.
+      // Файл .env в контейнере (если появится) не должен перезатирать их.
+      ignoreEnvFile: process.env.NODE_ENV === 'production',
     }),
     EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),

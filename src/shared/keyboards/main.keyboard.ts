@@ -217,10 +217,6 @@ export class MainKeyboard {
     lang: SupportedLanguage = 'ru',
     i18n?: I18nService,
   ) {
-    const cacheKey = `agreement_${lang}_${i18n ? 'i18n' : 'default'}`;
-    const cached = getCachedKeyboard(cacheKey);
-    if (cached) return cached;
-
     const rulesUrl = trimUrl(process.env.AGREEMENT_URL);
     const privacyUrl = trimUrl(process.env.PRIVACY_POLICY_URL);
     const rows: any[][] = [];
@@ -260,7 +256,6 @@ export class MainKeyboard {
       keyboard = Markup.inlineKeyboard(rows);
     }
 
-    setCachedKeyboard(cacheKey, keyboard);
     return keyboard;
   }
 

@@ -6,6 +6,7 @@
 #   ./scripts/deploy.sh              # полный деплой (первый раз на новом сервере)
 #   ./scripts/deploy.sh --update     # обновление кода (git pull + build + restart)
 #   ./scripts/deploy.sh --hotfix     # быстрый деплой с Docker-кешем (~30с)
+#   ./scripts/deploy.sh --update-config  # только ConfigMap (AGREEMENT_URL и т.д.) + перезапуск подов
 #   ./scripts/deploy.sh --update-db  # обновление кода + prisma db push (если менялась схема)
 #   ./scripts/deploy.sh --restart    # перезапуск без пересборки
 #   ./scripts/deploy.sh --status     # показать статус всех компонентов
@@ -621,6 +622,19 @@ main() {
       ok "Перезапуск завершён"
       ;;
 
+    --update-config)
+      check_tools
+      log "Режим: обновление ConfigMap и перезапуск подов"
+      if [ ! -f "${K8S_DIR}/configmap.yaml" ]; then
+        err "Нет файла ${K8S_DIR}/configmap.yaml"
+        exit 1
+      fi
+      kubectl apply -f "${K8S_DIR}/configmap.yaml"
+      ok "ConfigMap применён (kubectl get configmap stars-bot-config -n ${NAMESPACE} -o yaml)"
+      restart_all_deployments
+      ok "Поды перезапущены — переменные из ConfigMap подхватятся только после рестарта!"
+      ;;
+
     # ─── Обновить секреты из .env ───────────
     --update-secrets)
       check_env_file
@@ -763,6 +777,7 @@ main() {
       echo "  --hotfix           Быстрый деплой с кешем Docker (~30с вместо ~2мин)"
       echo "  --update-db        Обновить код + prisma db push (если менялась схема)"
       echo "  --restart          Перезапустить бота без пересборки"
+      echo "  --update-config    Применить k8s/configmap.yaml и перезапустить поды (ссылки документов и др.)"
       echo "  --update-secrets   Обновить секреты из .env и перезапустить"
       echo "  --ingress          Только cert-manager + Ingress + TLS (WEBHOOK_DOMAIN + ACME_EMAIL в .env)"
       echo ""
