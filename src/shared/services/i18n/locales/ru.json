@@ -104,9 +104,9 @@
     "ton": "TON",
     "premium": "PREMIUM",
     "delivery": {
-      "stars": "<b>Куда доставить звёзды?</b>",
-      "ton": "<b>Куда доставить TON?</b>",
-      "premium": "<b>Куда доставить Premium?</b>"
+      "stars": "Куда доставить звёзды?",
+      "ton": "Куда доставить TON?",
+      "premium": "Куда доставить Premium?"
     },
     "recipient": {
       "self": "На этот Telegram-аккаунт",

@@ -253,19 +253,12 @@ export class MainKeyboard {
     let keyboard;
     if (!i18n) {
       rows.push([Markup.button.callback('Согласен', 'accept_agreement')]);
-      rows.push([Markup.button.callback('Не сейчас', 'decline_agreement')]);
       keyboard = Markup.inlineKeyboard(rows);
     } else {
       rows.push([
         Markup.button.callback(
           i18n.t('start.agreement.accept', lang),
           'accept_agreement',
-        ),
-      ]);
-      rows.push([
-        Markup.button.callback(
-          i18n.t('start.agreement.decline', lang),
-          'decline_agreement',
         ),
       ]);
       keyboard = Markup.inlineKeyboard(rows);
