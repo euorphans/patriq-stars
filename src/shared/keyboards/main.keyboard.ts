@@ -294,21 +294,21 @@ export class MainKeyboard {
     i18n: I18nService,
     lang: SupportedLanguage = 'ru',
   ) {
-    const cacheKey = `recipient_${lang}`;
+    const cacheKey = `recipient_self_first_${lang}`;
     const cached = getCachedKeyboard(cacheKey);
     if (cached) return cached;
 
     const keyboard = Markup.inlineKeyboard([
       [
         Markup.button.callback(
-          i18n.t('product.recipient.other', lang),
-          'recipient_other',
+          i18n.t('product.recipient.self', lang),
+          'recipient_self',
         ),
       ],
       [
         Markup.button.callback(
-          i18n.t('product.recipient.self', lang),
-          'recipient_self',
+          i18n.t('product.recipient.other', lang),
+          'recipient_other',
         ),
       ],
       [backInlineButton('back_to_main')],

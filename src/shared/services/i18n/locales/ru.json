@@ -109,8 +109,8 @@
       "premium": "Куда доставить Premium?"
     },
     "recipient": {
-      "self": "На этот Telegram-аккаунт",
-      "other": "Другому пользователю",
+      "self": "Себе",
+      "other": "Другу",
       "enter_username": "Введите @username получателя для доставки"
     },
     "username": {
