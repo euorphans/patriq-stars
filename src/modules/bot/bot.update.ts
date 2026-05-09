@@ -409,6 +409,18 @@ export class BotUpdate {
     return './images/main_menu.webp';
   }
 
+  /** Экран согласия: предпочитаем images/main2.webp, иначе public_offer.webp. */
+  private resolveAgreementScreenImage(): string {
+    const main2Absolute = path.join(process.cwd(), 'images', 'main2.webp');
+    if (fs.existsSync(main2Absolute)) {
+      return './images/main2.webp';
+    }
+    this.logger.warn(
+      `Agreement screen: images/main2.webp not found (${main2Absolute}), using public_offer.webp`,
+    );
+    return './images/public_offer.webp';
+  }
+
   /** Шапка экрана «Способ оплаты»: арт «в течение 5 минут» для Stars / Premium. */
   private paymentMethodsHeroImage(productType: string | undefined): string {
     const t = productType?.toLowerCase();
@@ -658,14 +670,12 @@ export class BotUpdate {
         if (startPayload) {
           ctx.session.pendingDeepLink = startPayload;
         }
-        const text = this.i18n.t('start.agreement', lang, {
-          agreementUrl: process.env.AGREEMENT_URL || '#',
-          privacyUrl: process.env.PRIVACY_POLICY_URL || '#',
-        });
+        const text = this.i18n.t('start.agreement', lang);
+        const agreementImage = this.resolveAgreementScreenImage();
 
         try {
           await ctx.replyWithPhoto(
-            { source: './images/public_offer.webp' },
+            { source: agreementImage },
             {
               caption: text,
               parse_mode: 'HTML',

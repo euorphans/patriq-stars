@@ -227,27 +227,48 @@ export class MainKeyboard {
     const cached = getCachedKeyboard(cacheKey);
     if (cached) return cached;
 
+    const rulesUrl = trimUrl(process.env.AGREEMENT_URL);
+    const privacyUrl = trimUrl(process.env.PRIVACY_POLICY_URL);
+    const rows: any[][] = [];
+
+    const docsRow: any[] = [];
+    if (rulesUrl) {
+      docsRow.push({
+        text: i18n ? i18n.t('menu.info.btn.rules', lang) : 'Правила',
+        url: rulesUrl,
+        icon_custom_emoji_id: INFO_MENU_CUSTOM_EMOJI.rules,
+      });
+    }
+    if (privacyUrl) {
+      docsRow.push({
+        text: i18n ? i18n.t('menu.info.btn.privacy', lang) : 'Конфиденциальность',
+        url: privacyUrl,
+        icon_custom_emoji_id: INFO_MENU_CUSTOM_EMOJI.privacy,
+      });
+    }
+    if (docsRow.length) {
+      rows.push(docsRow);
+    }
+
     let keyboard;
     if (!i18n) {
-      keyboard = Markup.inlineKeyboard([
-        [Markup.button.callback('Согласен', 'accept_agreement')],
-        [Markup.button.callback('Не сейчас', 'decline_agreement')],
-      ]);
+      rows.push([Markup.button.callback('Согласен', 'accept_agreement')]);
+      rows.push([Markup.button.callback('Не сейчас', 'decline_agreement')]);
+      keyboard = Markup.inlineKeyboard(rows);
     } else {
-      keyboard = Markup.inlineKeyboard([
-        [
-          Markup.button.callback(
-            i18n.t('start.agreement.accept', lang),
-            'accept_agreement',
-          ),
-        ],
-        [
-          Markup.button.callback(
-            i18n.t('start.agreement.decline', lang),
-            'decline_agreement',
-          ),
-        ],
+      rows.push([
+        Markup.button.callback(
+          i18n.t('start.agreement.accept', lang),
+          'accept_agreement',
+        ),
       ]);
+      rows.push([
+        Markup.button.callback(
+          i18n.t('start.agreement.decline', lang),
+          'decline_agreement',
+        ),
+      ]);
+      keyboard = Markup.inlineKeyboard(rows);
     }
 
     setCachedKeyboard(cacheKey, keyboard);
