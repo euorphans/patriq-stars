@@ -573,6 +573,47 @@ export class BotUpdate {
     };
   }
 
+  /** Экран выбора срока Premium: как у Stars — корона из главного меню, сроки 3/6/12, подсказка. */
+  private getPremiumDurationPickCaptionPayload(): {
+    caption: string;
+    caption_entities: any[];
+  } {
+    const base = '\u2B50';
+    const title = 'Покупка Premium';
+    const line1 = `${base} ${title}`;
+    const para2 = 'Доступно: 3, 6 или 12 месяцев.';
+    const p3pre = 'Выберите срок подписки ';
+    const p3bold = 'кнопкой.';
+    const caption = `${line1}\n\n${para2}\n\n${p3pre}${p3bold}`;
+
+    const para2Start = line1.length + 2;
+    const idx3 = para2Start + para2.indexOf('3');
+    const idx6 = para2Start + para2.indexOf('6');
+    const idx12 = para2Start + para2.indexOf('12');
+    const para3Start = para2Start + para2.length + 2;
+
+    return {
+      caption,
+      caption_entities: [
+        {
+          type: 'custom_emoji',
+          offset: 0,
+          length: 1,
+          custom_emoji_id: MAIN_MENU_PREMIUM_CUSTOM_EMOJI_ID,
+        },
+        { type: 'bold', offset: 2, length: title.length },
+        { type: 'bold', offset: idx3, length: 1 },
+        { type: 'bold', offset: idx6, length: 1 },
+        { type: 'bold', offset: idx12, length: 2 },
+        {
+          type: 'bold',
+          offset: para3Start + p3pre.length,
+          length: p3bold.length,
+        },
+      ],
+    };
+  }
+
   /** Экран выбора получателя для Premium: emoji «Premium» из главного меню + заголовок, emoji «получатель» + подзаголовок. */
   private getPremiumRecipientCaptionPayload(_lang: 'ru'): {
     caption: string;
@@ -2066,26 +2107,24 @@ export class BotUpdate {
     const lang = this.getUserLanguage(ctx);
 
     if (productType === 'premium') {
-      const text = this.i18n.t('product.quantity.premium', lang);
+      const premCap = this.getPremiumDurationPickCaptionPayload();
+      const premKb = MainKeyboard.getPremiumDurationKeyboard(
+        this.i18n,
+        lang,
+      ).reply_markup;
       const premiumDurationImage = this.resolvePremiumDurationImage();
 
       if (edit) {
         try {
           await this.editOrSendPhoto(ctx, premiumDurationImage, {
-            caption: text,
-            parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getPremiumDurationKeyboard(
-              this.i18n,
-              lang,
-            ).reply_markup,
+            caption: premCap.caption,
+            caption_entities: premCap.caption_entities,
+            reply_markup: premKb,
           });
         } catch {
-          await ctx.reply(text, {
-            parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getPremiumDurationKeyboard(
-              this.i18n,
-              lang,
-            ).reply_markup,
+          await ctx.reply(premCap.caption, {
+            entities: premCap.caption_entities,
+            reply_markup: premKb,
           });
         }
       } else {
@@ -2096,21 +2135,15 @@ export class BotUpdate {
           await ctx.replyWithPhoto(
             { source: premiumDurationImage },
             {
-              caption: text,
-              parse_mode: 'HTML',
-              reply_markup: MainKeyboard.getPremiumDurationKeyboard(
-                this.i18n,
-                lang,
-              ).reply_markup,
+              caption: premCap.caption,
+              caption_entities: premCap.caption_entities,
+              reply_markup: premKb,
             },
           );
         } catch {
-          await ctx.reply(text, {
-            parse_mode: 'HTML',
-            reply_markup: MainKeyboard.getPremiumDurationKeyboard(
-              this.i18n,
-              lang,
-            ).reply_markup,
+          await ctx.reply(premCap.caption, {
+            entities: premCap.caption_entities,
+            reply_markup: premKb,
           });
         }
       }
@@ -2292,7 +2325,7 @@ export class BotUpdate {
     const messageId = ctx.session.lastBotMessageId;
 
     if (productType === 'premium') {
-      const text = this.i18n.t('product.quantity.premium', lang);
+      const premCap = this.getPremiumDurationPickCaptionPayload();
       const keyboard = MainKeyboard.getPremiumDurationKeyboard(this.i18n, lang);
       const imagePath = this.resolvePremiumDurationImage();
       const media = await this.getMediaSource(imagePath);
@@ -2306,8 +2339,8 @@ export class BotUpdate {
             {
               type: 'photo',
               media,
-              caption: text,
-              parse_mode: 'HTML',
+              caption: premCap.caption,
+              caption_entities: premCap.caption_entities,
             },
             { reply_markup: keyboard.reply_markup },
           );
@@ -2320,8 +2353,8 @@ export class BotUpdate {
       }
 
       const msg = await this.sendCachedPhoto(ctx, imagePath, {
-        caption: text,
-        parse_mode: 'HTML',
+        caption: premCap.caption,
+        caption_entities: premCap.caption_entities,
         reply_markup: keyboard.reply_markup,
       });
       ctx.session.lastBotMessageId = msg.message_id;
