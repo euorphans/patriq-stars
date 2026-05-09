@@ -253,6 +253,12 @@ export class BotUpdate {
     },
     forceRefreshMedia = false,
   ): Promise<any> {
+    const deleteCurrentMessage = async () => {
+      try {
+        await ctx.deleteMessage();
+      } catch {}
+    };
+
     if (this.isImagesDisabled()) {
       const textOpts: any = { reply_markup: options.reply_markup };
       if (options.caption_entities && options.caption_entities.length > 0) {
@@ -260,99 +266,13 @@ export class BotUpdate {
       } else if (options.parse_mode) {
         textOpts.parse_mode = options.parse_mode;
       }
-      try {
-        return await ctx.editMessageText(options.caption || '', textOpts);
-      } catch {
-        return ctx.reply(options.caption || '', textOpts);
-      }
+      await deleteCurrentMessage();
+      return ctx.reply(options.caption || '', textOpts);
     }
 
     const uid = ctx.from?.id;
-    const t0 = Date.now();
-
-    if (!forceRefreshMedia && ctx.session.currentImage === imagePath) {
-      try {
-        const result = await ctx.editMessageCaption(
-          options.caption,
-          this.buildPhotoCaptionOptions(options) as any,
-        );
-        this.perfLog(
-          uid,
-          'editOrSendPhoto',
-          `editCaption [${imagePath}]`,
-          Date.now() - t0,
-        );
-        return result;
-      } catch {}
-    } else {
-      const media = await this.getMediaSource(imagePath);
-      this.perfLog(
-        uid,
-        'editOrSendPhoto',
-        `getMediaSource [${imagePath}] fileId=${typeof media === 'string'}`,
-        Date.now() - t0,
-      );
-      const t1 = Date.now();
-      try {
-        const mediaPayload: Record<string, unknown> = {
-          type: 'photo',
-          media,
-          caption: options.caption,
-        };
-        if (options.caption_entities && options.caption_entities.length > 0) {
-          mediaPayload.caption_entities = options.caption_entities;
-        } else if (options.parse_mode) {
-          mediaPayload.parse_mode = options.parse_mode;
-        }
-        const result = await ctx.editMessageMedia(
-          mediaPayload as any,
-          { reply_markup: options.reply_markup },
-        );
-
-        ctx.session.currentImage = imagePath;
-        this.cacheFileIdFromResult(imagePath, result);
-        this.perfLog(
-          uid,
-          'editOrSendPhoto',
-          `editMessageMedia [${imagePath}]`,
-          Date.now() - t1,
-        );
-        return result;
-      } catch (err: any) {
-        if (typeof media === 'string') {
-          await this.redisLock.deleteImageFileId(imagePath).catch(() => {});
-          try {
-            const mediaPayload2: Record<string, unknown> = {
-              type: 'photo',
-              media: { source: imagePath },
-              caption: options.caption,
-            };
-            if (options.caption_entities && options.caption_entities.length > 0) {
-              mediaPayload2.caption_entities = options.caption_entities;
-            } else if (options.parse_mode) {
-              mediaPayload2.parse_mode = options.parse_mode;
-            }
-            const result = await ctx.editMessageMedia(
-              mediaPayload2 as any,
-              { reply_markup: options.reply_markup },
-            );
-            ctx.session.currentImage = imagePath;
-            this.cacheFileIdFromResult(imagePath, result);
-            this.perfLog(
-              uid,
-              'editOrSendPhoto',
-              `editMessageMedia(upload) [${imagePath}]`,
-              Date.now() - t1,
-            );
-            return result;
-          } catch (e2: any) {
-            this.logger.debug(
-              `editMessageMedia retry failed for ${imagePath}: ${e2?.message || err?.message}`,
-            );
-          }
-        }
-      }
-    }
+    void forceRefreshMedia;
+    await deleteCurrentMessage();
 
     const t2 = Date.now();
     const result = await this.sendCachedPhoto(ctx, imagePath, options);
