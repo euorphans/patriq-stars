@@ -5,7 +5,6 @@ import {
   SupportedLanguage,
 } from '@/shared/services/i18n/i18n.service';
 import { backInlineButton } from '@/shared/keyboards/back-inline-button';
-import { ERROR_CUSTOM_EMOJI_ID } from '@/shared/utils/error-custom-emoji';
 
 const keyboardCache = new Map<string, { keyboard: any; expires: number }>();
 const KEYBOARD_CACHE_TTL = 300000;
@@ -450,7 +449,7 @@ export class MainKeyboard {
       let statusEmoji: string;
       let statusText: string;
       if (payment.status === 'CANCELLED') {
-        statusEmoji = '';
+        statusEmoji = '❌';
         statusText = i18n.t('purchases.status.cancelled', lang);
       } else if (payment.status === 'FAILED') {
         statusEmoji = '🔴';
@@ -495,17 +494,12 @@ export class MainKeyboard {
         productLabel = `${productEmoji} ${payment.product_type} x${payment.product_quantity}`;
       }
 
-      const label = `${statusEmoji ? `${statusEmoji} ` : ''}${productLabel} — ${amountText} (${statusText})`;
-      if (payment.status === 'CANCELLED') {
-        return [
-          {
-            text: label,
-            callback_data: `payment_details_${payment.id}`,
-            icon_custom_emoji_id: ERROR_CUSTOM_EMOJI_ID,
-          },
-        ];
-      }
-      return [Markup.button.callback(label, `payment_details_${payment.id}`)];
+      return [
+        Markup.button.callback(
+          `${statusEmoji} ${productLabel} — ${amountText} (${statusText})`,
+          `payment_details_${payment.id}`,
+        ),
+      ];
     });
 
     const filterButtons = [

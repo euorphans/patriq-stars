@@ -21,8 +21,6 @@ import {
   getProductEmoji,
   escapeHtml,
   formatDateTimeMoscow,
-  htmlErrorWithLeadingCustomEmoji,
-  htmlErrorPhotoCaptionOptions,
 } from '@/shared/utils';
 import { RapiraService } from '@/shared/services/rapira/rapira.service';
 import { PrismaService } from '@/shared/services/prisma/prisma.service';
@@ -191,8 +189,7 @@ export class BotUpdate {
     }
     if (options.caption_entities && options.caption_entities.length > 0) {
       out.caption_entities = options.caption_entities;
-    }
-    if (options.parse_mode) {
+    } else if (options.parse_mode) {
       out.parse_mode = options.parse_mode;
     }
     return out;
@@ -212,8 +209,7 @@ export class BotUpdate {
       const textOpts: any = { reply_markup: options.reply_markup };
       if (options.caption_entities && options.caption_entities.length > 0) {
         textOpts.entities = options.caption_entities;
-      }
-      if (options.parse_mode) {
+      } else if (options.parse_mode) {
         textOpts.parse_mode = options.parse_mode;
       }
       return ctx.reply(options.caption || '', textOpts);
@@ -261,8 +257,7 @@ export class BotUpdate {
       const textOpts: any = { reply_markup: options.reply_markup };
       if (options.caption_entities && options.caption_entities.length > 0) {
         textOpts.entities = options.caption_entities;
-      }
-      if (options.parse_mode) {
+      } else if (options.parse_mode) {
         textOpts.parse_mode = options.parse_mode;
       }
       try {
@@ -306,8 +301,7 @@ export class BotUpdate {
         };
         if (options.caption_entities && options.caption_entities.length > 0) {
           mediaPayload.caption_entities = options.caption_entities;
-        }
-        if (options.parse_mode) {
+        } else if (options.parse_mode) {
           mediaPayload.parse_mode = options.parse_mode;
         }
         const result = await ctx.editMessageMedia(
@@ -335,8 +329,7 @@ export class BotUpdate {
             };
             if (options.caption_entities && options.caption_entities.length > 0) {
               mediaPayload2.caption_entities = options.caption_entities;
-            }
-            if (options.parse_mode) {
+            } else if (options.parse_mode) {
               mediaPayload2.parse_mode = options.parse_mode;
             }
             const result = await ctx.editMessageMedia(
@@ -933,13 +926,7 @@ export class BotUpdate {
     ctx.answerCbQuery().catch(() => {});
     ctx.deleteMessage().catch(() => {});
     try {
-      const declined = htmlErrorWithLeadingCustomEmoji(
-        this.i18n.t('start.agreement.declined', lang),
-      );
-      await ctx.reply(declined.text, {
-        parse_mode: declined.parse_mode,
-        entities: declined.entities,
-      });
+      await ctx.reply(this.i18n.t('start.agreement.declined', lang));
     } catch (error: any) {
       if (error?.response?.error_code !== 403) {
         throw error;
@@ -1378,13 +1365,7 @@ export class BotUpdate {
       const lang = this.getUserLanguage(ctx);
 
       if (!payment || payment.user_telegram_id !== userId) {
-        const nf = htmlErrorWithLeadingCustomEmoji(
-          this.i18n.t('purchases.not_found', lang),
-        );
-        await ctx.reply(nf.text, {
-          parse_mode: nf.parse_mode,
-          entities: nf.entities,
-        });
+        await ctx.reply(this.i18n.t('purchases.not_found', lang));
         return;
       }
 
@@ -1399,7 +1380,7 @@ export class BotUpdate {
       let statusEmoji: string;
       let statusText: string;
       if (payment.status === 'CANCELLED') {
-        statusEmoji = '';
+        statusEmoji = '❌';
         statusText = this.i18n.t('purchases.status.cancelled', lang);
       } else if (payment.status === 'FAILED') {
         statusEmoji = '🔴';
@@ -1489,20 +1470,11 @@ export class BotUpdate {
       const tonscanBlock =
         tonscanLinks.length > 0 ? tonscanLinks.join('\n') : '';
 
-      const statusPrefix = statusEmoji ? `${statusEmoji} ` : '';
-      const detailsText = `${this.i18n.t('purchases.details.title', lang)}\n${statusPrefix}${this.i18n.t('purchases.details.status', lang)} ${statusText}\n🛍 ${this.i18n.t('purchases.details.product', lang)} ${productText}\n${amountText}\n💳 ${this.i18n.t('purchases.details.method', lang)} ${paymentMethodText}\n👤 ${this.i18n.t('purchases.details.recipient', lang)} ${recipientText}\n📅 ${this.i18n.t('purchases.details.date', lang)} ${formattedDate}\n🔑 ${this.i18n.t('purchases.details.order', lang)} <code>#${payment.order_number}</code>${tonscanBlock}`;
-
-      const detailOpts =
-        payment.status === 'CANCELLED'
-          ? htmlErrorPhotoCaptionOptions(detailsText)
-          : { caption: detailsText, parse_mode: 'HTML' as const };
+      const detailsText = `${this.i18n.t('purchases.details.title', lang)}\n${statusEmoji} ${this.i18n.t('purchases.details.status', lang)} ${statusText}\n🛍 ${this.i18n.t('purchases.details.product', lang)} ${productText}\n${amountText}\n💳 ${this.i18n.t('purchases.details.method', lang)} ${paymentMethodText}\n👤 ${this.i18n.t('purchases.details.recipient', lang)} ${recipientText}\n📅 ${this.i18n.t('purchases.details.date', lang)} ${formattedDate}\n🔑 ${this.i18n.t('purchases.details.order', lang)} <code>#${payment.order_number}</code>${tonscanBlock}`;
 
       await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
-        caption: detailOpts.caption,
-        parse_mode: detailOpts.parse_mode,
-        ...('caption_entities' in detailOpts
-          ? { caption_entities: detailOpts.caption_entities }
-          : {}),
+        caption: detailsText,
+        parse_mode: 'HTML',
         reply_markup: MainKeyboard.getPaymentDetailsKeyboard(
           this.i18n,
           lang,
@@ -1545,7 +1517,7 @@ export class BotUpdate {
 
       const noUsernameText =
         this.i18n.t('username.required.detailed', lang) ||
-        `<b>Для отправки себе необходим username</b>\n\n` +
+        `❌ <b>Для отправки себе необходим username</b>\n\n` +
           `Чтобы установить username:\n` +
           `1. Откройте настройки Telegram\n` +
           `2. Нажмите на "Имя пользователя"\n` +
@@ -1561,7 +1533,8 @@ export class BotUpdate {
 
       try {
         await this.editOrSendPhoto(ctx, imagePath, {
-          ...htmlErrorPhotoCaptionOptions(noUsernameText),
+          caption: noUsernameText,
+          parse_mode: 'HTML',
           reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
         });
       } catch (error: any) {
@@ -1879,39 +1852,31 @@ export class BotUpdate {
     const messageId = ctx.session.lastBotMessageId;
     if (!chatId || !messageId) return false;
 
+    const lang = this.getUserLanguage(ctx);
     const reply_markup = MainKeyboard.getBackButton(backCallback).reply_markup;
-    const err = htmlErrorWithLeadingCustomEmoji(errorText);
 
     try {
       await ctx.telegram.editMessageCaption(
         chatId,
         messageId,
         undefined,
-        err.text,
-        {
-          parse_mode: err.parse_mode,
-          caption_entities: err.caption_entities,
-          reply_markup,
-        },
+        errorText,
+        { parse_mode: 'HTML', reply_markup },
       );
       return true;
-    } catch (e: any) {
-      if (BotUpdate.isMessageNotModifiedError(e)) return true;
+    } catch (err: any) {
+      if (BotUpdate.isMessageNotModifiedError(err)) return true;
       try {
         await ctx.telegram.editMessageText(
           chatId,
           messageId,
           undefined,
-          err.text,
-          {
-            parse_mode: err.parse_mode,
-            entities: err.entities,
-            reply_markup,
-          },
+          errorText,
+          { parse_mode: 'HTML', reply_markup },
         );
         return true;
-      } catch (e2: any) {
-        if (BotUpdate.isMessageNotModifiedError(e2)) return true;
+      } catch (err2: any) {
+        if (BotUpdate.isMessageNotModifiedError(err2)) return true;
         return false;
       }
     }
@@ -1939,38 +1904,28 @@ export class BotUpdate {
       ).reply_markup;
     }
 
-    const err = htmlErrorWithLeadingCustomEmoji(errorText);
-
     try {
       await ctx.telegram.editMessageCaption(
         chatId,
         messageId,
         undefined,
-        err.text,
-        {
-          parse_mode: err.parse_mode,
-          caption_entities: err.caption_entities,
-          reply_markup,
-        },
+        errorText,
+        { parse_mode: 'HTML', reply_markup },
       );
       return true;
-    } catch (e: any) {
-      if (BotUpdate.isMessageNotModifiedError(e)) return true;
+    } catch (err: any) {
+      if (BotUpdate.isMessageNotModifiedError(err)) return true;
       try {
         await ctx.telegram.editMessageText(
           chatId,
           messageId,
           undefined,
-          err.text,
-          {
-            parse_mode: err.parse_mode,
-            entities: err.entities,
-            reply_markup,
-          },
+          errorText,
+          { parse_mode: 'HTML', reply_markup },
         );
         return true;
-      } catch (e2: any) {
-        if (BotUpdate.isMessageNotModifiedError(e2)) return true;
+      } catch (err2: any) {
+        if (BotUpdate.isMessageNotModifiedError(err2)) return true;
         return false;
       }
     }
@@ -2647,11 +2602,10 @@ export class BotUpdate {
       } else {
         const remaining = 3 - result.failedCount;
         await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
-          ...htmlErrorPhotoCaptionOptions(
-            this.i18n.t('captcha.wrong', lang, {
-              remaining: remaining.toString(),
-            }),
-          ),
+          caption: this.i18n.t('captcha.wrong', lang, {
+            remaining: remaining.toString(),
+          }),
+          parse_mode: 'HTML',
           reply_markup: Markup.inlineKeyboard([
             [
               Markup.button.callback(
@@ -2831,11 +2785,9 @@ export class BotUpdate {
         );
         const errorText =
           this.i18n.t('payment.platega_limit_exceeded', lang) ||
-          `<b>Сумма (${priceDetails.amount_rub.toFixed(2)} ₽) превышает лимит СБП/карты.</b>\n\nВыберите другой способ оплаты.`;
-        const plategaErr = htmlErrorWithLeadingCustomEmoji(errorText);
-        await ctx.reply(plategaErr.text, {
-          parse_mode: plategaErr.parse_mode,
-          entities: plategaErr.entities,
+          `❌ Сумма (${priceDetails.amount_rub.toFixed(2)} ₽) превышает лимит СБП/карты.\n\nВыберите другой способ оплаты.`;
+        await ctx.reply(errorText, {
+          parse_mode: 'HTML',
           reply_markup: MainKeyboard.getBackButton('back_to_main').reply_markup,
         });
         return;
@@ -3189,7 +3141,8 @@ export class BotUpdate {
           };
           const imagePath = imageMap[productType] || './images/main_menu.webp';
           await this.editOrSendPhoto(ctx, imagePath, {
-            ...htmlErrorPhotoCaptionOptions(errorText),
+            caption: errorText,
+            parse_mode: 'HTML',
             reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
           });
         }
@@ -3208,7 +3161,8 @@ export class BotUpdate {
           };
           const imagePath = imageMap[productType] || './images/main_menu.webp';
           await this.editOrSendPhoto(ctx, imagePath, {
-            ...htmlErrorPhotoCaptionOptions(errorText),
+            caption: errorText,
+            parse_mode: 'HTML',
             reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
           });
         }
@@ -3232,7 +3186,8 @@ export class BotUpdate {
             const errImage =
               imageMap2[productType] || './images/main_menu.webp';
             await this.editOrSendPhoto(ctx, errImage, {
-              ...htmlErrorPhotoCaptionOptions(errorText),
+              caption: errorText,
+              parse_mode: 'HTML',
               reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
             });
           }
@@ -3260,7 +3215,8 @@ export class BotUpdate {
             const imagePath =
               imageMap[productType] || './images/main_menu.webp';
             await this.editOrSendPhoto(ctx, imagePath, {
-              ...htmlErrorPhotoCaptionOptions(errorText),
+              caption: errorText,
+              parse_mode: 'HTML',
               reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
             });
           }
@@ -3288,7 +3244,8 @@ export class BotUpdate {
             const imagePath =
               imageMap[productType] || './images/main_menu.webp';
             await this.editOrSendPhoto(ctx, imagePath, {
-              ...htmlErrorPhotoCaptionOptions(errorText),
+              caption: errorText,
+              parse_mode: 'HTML',
               reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
             });
           }
@@ -3329,7 +3286,8 @@ export class BotUpdate {
         const edited = await this.editLastBotMessageWithError(ctx, errorText);
         if (!edited) {
           await this.editOrSendPhoto(ctx, imagePath, {
-            ...htmlErrorPhotoCaptionOptions(errorText),
+            caption: errorText,
+            parse_mode: 'HTML',
             reply_markup: MainKeyboard.getBackButton('back_to_recipient').reply_markup,
           });
         }
@@ -3358,13 +3316,7 @@ export class BotUpdate {
         ctx.deleteMessage().catch(() => {});
         const errorText = this.i18n.t('product.quantity.invalid', lang);
         const edited = await this.editQuantityMessageWithError(ctx, errorText);
-        if (!edited) {
-          const err = htmlErrorWithLeadingCustomEmoji(errorText);
-          await ctx.reply(err.text, {
-            parse_mode: err.parse_mode,
-            entities: err.entities,
-          });
-        }
+        if (!edited) await ctx.reply(errorText);
         ctx.session.awaitingQuantity = true;
         return;
       }
@@ -3385,13 +3337,7 @@ export class BotUpdate {
             ctx,
             errorText,
           );
-          if (!edited) {
-            const err = htmlErrorWithLeadingCustomEmoji(errorText);
-            await ctx.reply(err.text, {
-              parse_mode: err.parse_mode,
-              entities: err.entities,
-            });
-          }
+          if (!edited) await ctx.reply(errorText);
           ctx.session.awaitingQuantity = true;
           return;
         }
@@ -3415,13 +3361,7 @@ export class BotUpdate {
             ctx,
             errorText,
           );
-          if (!edited) {
-            const err = htmlErrorWithLeadingCustomEmoji(errorText);
-            await ctx.reply(err.text, {
-              parse_mode: err.parse_mode,
-              entities: err.entities,
-            });
-          }
+          if (!edited) await ctx.reply(errorText);
           ctx.session.awaitingQuantity = true;
           return;
         }

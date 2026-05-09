@@ -509,7 +509,7 @@ export class PaymentCheckerService {
           message_type: 'success',
           payment_id: payment.id,
           message_data: {
-            message: `<b>Произошла ошибка доставки</b>\n\nПожалуйста, обратитесь в поддержку: ${supportUrl}`,
+            message: `❌ <b>Произошла ошибка доставки</b>\n\nПожалуйста, обратитесь в поддержку: ${supportUrl}`,
             order_number: payment.order_number,
             product_type: payment.product_type,
             payment_message_id: payment.payment_message_id,
