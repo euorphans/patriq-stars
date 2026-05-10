@@ -53,9 +53,9 @@ export class TonWalletService implements OnModuleInit, OnModuleDestroy {
   private keyPair: { publicKey: Buffer; secretKey: Buffer } | null = null;
   private walletAddress: Address | null = null;
   private readonly WALLET_MNEMONIC: string[];
-  private readonly TON_SUBWALLET_ID = 698983191;
+  private readonly TON_SUBWALLET_ID: number;
   private readonly TON_WALLET_WORKCHAIN = 0;
-  private readonly TON_WALLET_TIMEOUT = 300;
+  private readonly TON_WALLET_TIMEOUT: number;
 
   /**
    * How far in the past `createdAt` is shifted when signing external messages
@@ -120,6 +120,19 @@ export class TonWalletService implements OnModuleInit, OnModuleDestroy {
       .map((word) => word.trim())
       .filter((word) => word.length > 0);
 
+    this.TON_SUBWALLET_ID = this.readEnvInt(
+      'TON_SUBWALLET_ID',
+      698983191,
+      0,
+      4294967295,
+    );
+    this.TON_WALLET_TIMEOUT = this.readEnvInt(
+      'TON_WALLET_TIMEOUT',
+      300,
+      1,
+      4194303,
+    );
+
     for (const key of toncenterKeys) {
       this.toncenterApis.push(
         axios.create({
@@ -136,6 +149,32 @@ export class TonWalletService implements OnModuleInit, OnModuleDestroy {
         `Toncenter API configured with ${this.toncenterApis.length} key(s) (effective RPS: ${this.toncenterApis.length * 80})`,
       );
     }
+
+    this.logger.log(
+      `TON wallet config: subwalletId=${this.TON_SUBWALLET_ID}, timeout=${this.TON_WALLET_TIMEOUT}s`,
+    );
+  }
+
+  private readEnvInt(
+    name: string,
+    fallback: number,
+    min: number,
+    max: number,
+  ): number {
+    const raw = process.env[name];
+    if (!raw || raw.trim().length === 0) {
+      return fallback;
+    }
+
+    const parsed = Number(raw);
+    if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+      this.logger.warn(
+        `${name}="${raw}" is invalid, using fallback ${fallback}`,
+      );
+      return fallback;
+    }
+
+    return parsed;
   }
 
   async onModuleInit() {

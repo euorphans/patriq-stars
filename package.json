@@ -17,7 +17,9 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix --max-warnings=-1",
-    "images:sync-from-new": "node scripts/sync-images-from-new.cjs"
+    "images:sync-from-new": "node scripts/sync-images-from-new.cjs",
+    "wallet:hlv3:create": "ts-node scripts/highload-v3-create.ts",
+    "wallet:hlv3:activate": "ts-node scripts/highload-v3-activate.ts"
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.95",

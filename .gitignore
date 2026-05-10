@@ -44,6 +44,7 @@ starsbot-data-*.dump
 *.pub
 *.pem
 id_rsa*
+.wallet.highload-v3.json
 
 *.tsbuildinfo
 .cache/

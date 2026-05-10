@@ -99,6 +99,16 @@ spec:
                 secretKeyRef:
                   name: stars-bot-secrets
                   key: TONCENTER_API_KEY
+            - name: TON_SUBWALLET_ID
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: TON_SUBWALLET_ID
+            - name: TON_WALLET_TIMEOUT
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: TON_WALLET_TIMEOUT
             - name: FRAGMENT_API_URL
               valueFrom:
                 secretKeyRef:
