@@ -58,12 +58,25 @@ export class BotModule implements OnModuleInit {
       }
       this.logger.error(`Unhandled bot error: ${msg}`);
     });
+
+    const isCronWorker = process.env.ENABLE_CRON === 'true';
+    const isBroadcastWorker = process.env.ENABLE_BROADCAST === 'true';
+    const isScreenshotWorker = process.env.ENABLE_SCREENSHOT === 'true';
+    const shouldManageWebhook =
+      !isCronWorker && !isBroadcastWorker && !isScreenshotWorker;
+
+    if (!shouldManageWebhook) {
+      this.logger.log('Skipping webhook setup in worker pod');
+      return;
+    }
+
     const webhookDomain = process.env.WEBHOOK_DOMAIN;
     const webhookPath = process.env.WEBHOOK_PATH || '/api/bot/webhook';
 
     if (webhookDomain) {
       const webhookUrl = `${webhookDomain}${webhookPath}`;
-      await this.setWebhookWithRetry(webhookUrl, 3);
+      // Do not block Nest bootstrap on Telegram API availability.
+      void this.setWebhookWithRetry(webhookUrl, 3);
     }
   }
 
