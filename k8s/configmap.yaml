@@ -33,5 +33,10 @@ data:
   FRONTEND_URL: "https://fh34hfhfw9efhjsdhkjsfd.lol"
   CORS_EXTRA_ORIGINS: ""
 
+  # TON streaming (Toncenter SSE): worker overrides TON_STREAMING_ENABLED=true
+  TON_STREAMING_ENABLED: "false"
+  TON_STREAMING_MIN_FINALITY: "confirmed"
+  TON_STREAMING_MIN_HINT_GAP_MS: "2000"
+
   # STAR_PRICE_USD, MIN_STARS_PURCHASE, MAX_STARS_PURCHASE, MIN_TON_PURCHASE, MAX_TON_PURCHASE — в .env → Secret
   # (см. deployment env secretKeyRef и ./scripts/deploy.sh --update-secrets).

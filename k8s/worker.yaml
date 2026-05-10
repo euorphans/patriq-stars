@@ -53,6 +53,8 @@ spec:
               value: "false"
             - name: ENABLE_SCREENSHOT
               value: "false"
+            - name: TON_STREAMING_ENABLED
+              value: "true"
             - name: LOG_LEVEL
               value: "verbose"
             - name: BOT_TOKEN

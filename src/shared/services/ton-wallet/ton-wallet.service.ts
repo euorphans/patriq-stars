@@ -91,6 +91,7 @@ export class TonWalletService implements OnModuleInit, OnModuleDestroy {
   private readonly BATCH_HASH_TTL_MS = 30 * 60 * 1000;
   private readonly BATCH_HASH_TTL_SECONDS = 30 * 60;
   private readonly BATCH_HASH_REDIS_PREFIX = 'batch_hash:';
+  private streamingHintInFlight = false;
 
   private readonly toncenterApis: AxiosInstance[] = [];
   private toncenterRoundRobin = 0;
@@ -1317,6 +1318,93 @@ export class TonWalletService implements OnModuleInit, OnModuleDestroy {
         `Error checking transaction by comment: ${error.message}`,
       );
       return { found: false, exhaustive: false };
+    }
+  }
+
+  /**
+   * Called by Toncenter streaming listener on confirmed/finalized wallet activity.
+   * This method is intentionally lightweight: it checks recent submitted queue items
+   * and marks them completed as soon as message body hash appears in indexer.
+   */
+  async processStreamingConfirmationHint(
+    finality: 'confirmed' | 'finalized',
+  ): Promise<void> {
+    if (this.streamingHintInFlight) {
+      return;
+    }
+    if (!this.walletAddress || this.toncenterApis.length === 0) {
+      return;
+    }
+
+    this.streamingHintInFlight = true;
+    try {
+      const recentCutoff = new Date(Date.now() - 60 * 60 * 1000);
+      const candidates = await this.prisma.fragmentQueue.findMany({
+        where: {
+          status: 'PROCESSING',
+          tx_hash: null,
+          outbound_submitted_at: { gte: recentCutoff },
+          ton_comment: { not: null },
+        },
+        select: {
+          id: true,
+          ton_comment: true,
+        },
+        orderBy: { outbound_submitted_at: 'desc' },
+        take: 30,
+      });
+
+      if (candidates.length === 0) {
+        return;
+      }
+
+      let markedCount = 0;
+      for (const item of candidates) {
+        if (!item.ton_comment) {
+          continue;
+        }
+        const [bodyHash] = await this.computeBodyHashesInPool([item.ton_comment]);
+        if (!bodyHash) {
+          continue;
+        }
+
+        const found = await this.findByBodyHashViaToncenter(bodyHash);
+        if (!found.ok || !found.found) {
+          continue;
+        }
+
+        const updateResult = await this.prisma.fragmentQueue.updateMany({
+          where: {
+            id: item.id,
+            status: 'PROCESSING',
+            tx_hash: null,
+          },
+          data: {
+            status: 'COMPLETED',
+            tx_hash: found.txHash,
+            retry_count: 0,
+            outbound_submitted_at: null,
+            external_out_msg_hash: null,
+          },
+        });
+
+        if (updateResult.count > 0) {
+          markedCount += 1;
+          await this.redisLock.markQueueItemCompleted(item.id, found.txHash);
+        }
+      }
+
+      if (markedCount > 0) {
+        this.logger.log(
+          `Streaming hint (${finality}): marked ${markedCount} queue item(s) COMPLETED`,
+        );
+      }
+    } catch (error: any) {
+      this.logger.warn(
+        `processStreamingConfirmationHint failed: ${error.message}`,
+      );
+    } finally {
+      this.streamingHintInFlight = false;
     }
   }
 }

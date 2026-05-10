@@ -54,6 +54,8 @@ spec:
               value: "false"
             - name: ENABLE_SCREENSHOT
               value: "false"
+            - name: TON_STREAMING_ENABLED
+              value: "false"
             - name: BOT_TOKEN
               valueFrom:
                 secretKeyRef:
