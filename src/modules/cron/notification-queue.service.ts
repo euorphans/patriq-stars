@@ -8,13 +8,6 @@ import { Telegraf, Markup } from 'telegraf';
 import { MainKeyboard } from '@/shared/keyboards/main.keyboard';
 import { backInlineButton } from '@/shared/keyboards/back-inline-button';
 import * as QRCode from 'qrcode';
-import { UserService } from '@/modules/user/user.service';
-import { I18nService } from '@/shared/services/i18n/i18n.service';
-import {
-  buildPurchaseFollowUpCaption,
-  PURCHASE_FOLLOWUP_IMAGE,
-  sendOrEditPaymentSuccessPhoto,
-} from '@/shared/utils/payment-success-notification';
 
 @Injectable()
 export class NotificationQueueService {
@@ -35,8 +28,6 @@ export class NotificationQueueService {
     private readonly prisma: PrismaService,
     private readonly redisLock: RedisLockService,
     private readonly eventLoopMonitor: EventLoopMonitorService,
-    private readonly userService: UserService,
-    private readonly i18n: I18nService,
     @InjectBot() private readonly bot: Telegraf,
   ) {}
 
@@ -491,37 +482,7 @@ export class NotificationQueueService {
       await deletePaymentDetailsMessage();
     }
 
-    if (!data.message && notification.payment_id) {
-      const payment = await this.prisma.payment.findUnique({
-        where: { id: notification.payment_id },
-        select: {
-          product_type: true,
-          product_quantity: true,
-        },
-      });
-      if (payment) {
-        const lang = await this.userService.getUserLanguage(
-          notification.user_telegram_id,
-        );
-        const caption = await buildPurchaseFollowUpCaption(
-          this.i18n,
-          lang,
-          payment,
-        );
-        const reply_markup = MainKeyboard.getPurchaseFollowUpKeyboard(
-          this.i18n,
-          lang,
-        ).reply_markup;
-        await sendOrEditPaymentSuccessPhoto(this.bot, {
-          userTelegramId: notification.user_telegram_id,
-          paymentMessageId: null,
-          detailsMessageId: null,
-          caption,
-          imagePath: PURCHASE_FOLLOWUP_IMAGE,
-          reply_markup,
-        });
-      }
-    }
+    // Do not send extra follow-up message after successful delivery.
   }
 
   private async sendCancelledNotification(
