@@ -9,6 +9,8 @@ metadata:
     app.kubernetes.io/component: ingress
   annotations:
     cert-manager.io/cluster-issuer: "__CLUSTER_ISSUER__"
+    # Ниже приоритет, чем у cm-acme-http-solver (иначе path `/` перехватывает ACME HTTP-01)
+    traefik.ingress.kubernetes.io/router.priority: "1"
 spec:
   ingressClassName: __INGRESS_CLASS__
   tls:

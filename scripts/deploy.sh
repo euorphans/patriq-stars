@@ -369,6 +369,10 @@ spec:
       - http01:
           ingress:
             ingressClassName: ${ic}
+            ingressTemplate:
+              metadata:
+                annotations:
+                  traefik.ingress.kubernetes.io/router.priority: "100"
 ---
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -384,6 +388,10 @@ spec:
       - http01:
           ingress:
             ingressClassName: ${ic}
+            ingressTemplate:
+              metadata:
+                annotations:
+                  traefik.ingress.kubernetes.io/router.priority: "100"
 EOF
   ok "ClusterIssuer обновлён (prod + staging)"
 }
