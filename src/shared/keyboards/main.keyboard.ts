@@ -579,6 +579,15 @@ export class MainKeyboard {
     ]);
   }
 
+  /** Зелёная кнопка оплаты (Bot API: InlineKeyboardButton.style = success). */
+  private static payUrlButton(text: string, url: string) {
+    return {
+      text,
+      url,
+      style: 'success',
+    };
+  }
+
   /** TON: одна ссылка ton:// и «Обратно». */
   static getTonPayKeyboard(
     tonLink: string,
@@ -586,7 +595,7 @@ export class MainKeyboard {
     lang: SupportedLanguage = 'ru',
   ) {
     return Markup.inlineKeyboard([
-      [Markup.button.url(i18n.t('payment.ton.pay', lang), tonLink)],
+      [MainKeyboard.payUrlButton(i18n.t('payment.ton.pay', lang), tonLink)],
       [backInlineButton('back_to_main')],
     ]);
   }
@@ -597,7 +606,7 @@ export class MainKeyboard {
     lang: SupportedLanguage = 'ru',
   ) {
     return Markup.inlineKeyboard([
-      [Markup.button.url(i18n.t('payment.pay', lang), paymentUrl)],
+      [MainKeyboard.payUrlButton(i18n.t('payment.pay', lang), paymentUrl)],
       [backInlineButton('back_to_main')],
     ]);
   }
