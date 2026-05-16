@@ -171,6 +171,18 @@ spec:
                   name: stars-bot-secrets
                   key: FREEKASSA_SECRET2
                   optional: true
+            - name: FREEKASSA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: FREEKASSA_API_KEY
+                  optional: true
+            - name: FREEKASSA_API_PAYER_IP
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: FREEKASSA_API_PAYER_IP
+                  optional: true
             - name: FREEKASSA_IP_WHITELIST
               valueFrom:
                 secretKeyRef:

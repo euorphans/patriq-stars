@@ -41,7 +41,7 @@ export const PAYMENT_USERNAME_WARNING_CUSTOM_EMOJI_ID = '5447644880824181073';
 /** Иконка перед «Получатель:» на экране выбора способа оплаты (caption_entities). */
 export const PAYMENT_RECIPIENT_CUSTOM_EMOJI_ID = '5391032818111363540';
 
-/** InlineKeyboard: СБП (Freekassa). */
+/** InlineKeyboard: СБП. */
 export const PAYMENT_METHOD_SBP_CUSTOM_EMOJI_ID = '5294247005701292072';
 
 /** InlineKeyboard: Heleket (криптовалюта). */

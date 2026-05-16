@@ -96,6 +96,7 @@ export class PaymentsService {
                 orderId: payment.order_number.toString(),
                 amountRub: parseFloat(data.amount_rub),
                 suggestedMethodId: data.freekassa_suggested_method_id,
+                payerEmail: `${data.user_telegram_id}@telegram.org`,
               }),
             {
               maxAttempts: 2,

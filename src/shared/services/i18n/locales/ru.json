@@ -144,8 +144,8 @@
     "username_warning_rest": "не меняйте @username до зачисления {product} на аккаунт.",
     "methods": "<b>Выберите удобный способ оплаты:</b>",
     "method": {
-      "freekassa": "💳 СБП (Freekassa)",
-      "freekassa_crypto": "🪙 Крипто (Freekassa)",
+      "freekassa": "💳 СБП",
+      "freekassa_crypto": "🪙 Криптовалюта",
       "heleket": "🪙 Криптовалюта",
       "ton": "💎 TON Wallet"
     },
