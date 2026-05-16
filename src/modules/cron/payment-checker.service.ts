@@ -706,7 +706,7 @@ export class PaymentCheckerService {
           ? '🪙 Крипто (Freekassa)'
           : payment.payment_method === 'FREEKASSA' &&
               payment.crypto_currency === 'CARD'
-            ? '💳 Карта 5.7 (Freekassa)'
+            ? '💳 Карта (Freekassa)'
             : paymentMethods[payment.payment_method] || payment.payment_method;
       const product =
         productNames[payment.product_type] || payment.product_type;

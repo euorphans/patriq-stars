@@ -44,6 +44,9 @@ export const PAYMENT_RECIPIENT_CUSTOM_EMOJI_ID = '5391032818111363540';
 /** InlineKeyboard: СБП. */
 export const PAYMENT_METHOD_SBP_CUSTOM_EMOJI_ID = '5294247005701292072';
 
+/** InlineKeyboard: банковская карта (Freekassa). */
+export const PAYMENT_METHOD_CARD_CUSTOM_EMOJI_ID = '5292085988611342379';
+
 /** InlineKeyboard: Heleket (криптовалюта). */
 export const PAYMENT_METHOD_HELEKET_CUSTOM_EMOJI_ID = '5294015055992471554';
 
@@ -405,14 +408,12 @@ export class MainKeyboard {
 
         case 'FREEKASSA_CARD':
           if (prices.freekassa) {
-            const cardLabel = i18n
-              .t('payment.method.freekassa_card', lang)
-              .replace(/^💳\s+/, '');
+            const cardLabel = i18n.t('payment.method.freekassa_card', lang);
             buttons.push([
               {
                 text: `${cardLabel} — ${prices.freekassa.rub.toFixed(2)} ₽`,
                 callback_data: `${actionPrefix}_freekassa_card`,
-                icon_custom_emoji_id: PAYMENT_METHOD_SBP_CUSTOM_EMOJI_ID,
+                icon_custom_emoji_id: PAYMENT_METHOD_CARD_CUSTOM_EMOJI_ID,
               },
             ]);
           }

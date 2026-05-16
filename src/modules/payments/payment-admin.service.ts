@@ -495,7 +495,7 @@ export class PaymentAdminService {
         payment.payment_method === 'FREEKASSA' &&
         payment.crypto_currency === 'CARD'
       ) {
-        methodLabel = '💳 Карта 5.7 (Freekassa)';
+        methodLabel = '💳 Карта (Freekassa)';
       }
 
       let amountText = '';

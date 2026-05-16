@@ -345,7 +345,7 @@ export class AdminKeyboard {
   ) {
     const METHOD_NAMES: Record<string, string> = {
       FREEKASSA: '💵 СБП (Freekassa)',
-      FREEKASSA_CARD: '💳 Карта 5.7 (Freekassa)',
+      FREEKASSA_CARD: '💳 Карта (Freekassa)',
       FREEKASSA_CRYPTO: '🪙 Крипто (Freekassa)',
       TON: '💎 TON',
     };
