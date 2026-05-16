@@ -19,6 +19,9 @@ import {
   PAYMENT_RECIPIENT_CUSTOM_EMOJI_ID,
   PAYMENT_USERNAME_WARNING_CUSTOM_EMOJI_ID,
   PAYMENT_METHOD_TON_CUSTOM_EMOJI_ID,
+  PAYMENT_METHOD_SBP_CUSTOM_EMOJI_ID,
+  PAYMENT_METHOD_CARD_CUSTOM_EMOJI_ID,
+  PAYMENT_METHOD_HELEKET_CUSTOM_EMOJI_ID,
 } from '@/shared/keyboards/main.keyboard';
 import { BotContext } from '@/shared/types/bot-context.interface';
 import { withRetry } from '@/shared/utils';
@@ -692,6 +695,219 @@ export class BotUpdate {
         length: hintBold.length,
       });
     }
+
+    return { caption, caption_entities: entities };
+  }
+
+  private fkPaymentMethodEmojiId(
+    paymentMethod: 'freekassa' | 'freekassa_card' | 'freekassa_crypto',
+  ): string {
+    if (paymentMethod === 'freekassa_card') {
+      return PAYMENT_METHOD_CARD_CUSTOM_EMOJI_ID;
+    }
+    if (paymentMethod === 'freekassa_crypto') {
+      return PAYMENT_METHOD_HELEKET_CUSTOM_EMOJI_ID;
+    }
+    return PAYMENT_METHOD_SBP_CUSTOM_EMOJI_ID;
+  }
+
+  private fkPaymentCaptionTitle(
+    lang: 'ru',
+    paymentMethod: 'freekassa' | 'freekassa_card' | 'freekassa_crypto',
+  ): string {
+    if (paymentMethod === 'freekassa_card') {
+      return this.i18n.t('payment.fk.caption_card', lang);
+    }
+    if (paymentMethod === 'freekassa_crypto') {
+      return this.i18n.t('payment.fk.caption_crypto', lang);
+    }
+    return this.i18n.t('payment.fk.caption_sbp', lang);
+  }
+
+  /**
+   * Экран оплаты Freekassa (СБП / карта / крипто) — тот же стиль, что TON и выбор способа:
+   * plain caption + caption_entities, без HTML и системных emoji.
+   */
+  private buildFkPaymentCaptionPayload(
+    lang: 'ru',
+    args: {
+      paymentMethod: 'freekassa' | 'freekassa_card' | 'freekassa_crypto';
+      productType: string;
+      quantity: number;
+      recipientDisplayPlain: string;
+      amountRub?: number;
+      amountCrypto?: number;
+      cryptoCurrency?: string;
+      orderNumber: string;
+      sbpStarsCapNotice?: string;
+    },
+  ): { caption: string; caption_entities: any[] } {
+    const baseStar = '\u2B50';
+    const entities: any[] = [];
+    let caption = '';
+
+    const title = this.fkPaymentCaptionTitle(lang, args.paymentMethod);
+    const titleLine = `${baseStar} ${title}`;
+    caption += titleLine + '\n\n';
+    entities.push({
+      type: 'custom_emoji',
+      offset: 0,
+      length: 1,
+      custom_emoji_id: this.fkPaymentMethodEmojiId(args.paymentMethod),
+    });
+    entities.push({
+      type: 'bold',
+      offset: 2,
+      length: title.length,
+    });
+
+    const normalizedType = args.productType.toUpperCase();
+    let productCustomEmojiId: string | undefined;
+    let productLinePlain: string;
+    if (normalizedType === 'PREMIUM') {
+      productCustomEmojiId = MAIN_MENU_PREMIUM_CUSTOM_EMOJI_ID;
+      const durationText = this.i18n.t(
+        `product.premium.duration.${args.quantity}` as any,
+        lang,
+      );
+      productLinePlain = `${baseStar} Товар: Premium на ${durationText}`;
+    } else if (normalizedType === 'STARS') {
+      productCustomEmojiId = MAIN_MENU_STARS_CUSTOM_EMOJI_ID;
+      productLinePlain = `${baseStar} Товар: ${args.quantity} звёзд`;
+    } else {
+      const productEmoji = getProductEmoji(normalizedType);
+      productLinePlain = `${baseStar} Товар: ${args.quantity} ${productEmoji}`;
+    }
+
+    const productLineStart = caption.length;
+    caption += productLinePlain + '\n';
+    if (productCustomEmojiId) {
+      entities.push({
+        type: 'custom_emoji',
+        offset: productLineStart,
+        length: 1,
+        custom_emoji_id: productCustomEmojiId,
+      });
+    }
+    const prodBold = 'Товар:';
+    const prodIdx = productLinePlain.indexOf(prodBold);
+    if (prodIdx >= 0) {
+      entities.push({
+        type: 'bold',
+        offset: productLineStart + prodIdx,
+        length: prodBold.length,
+      });
+    }
+
+    const recipientLinePlain = `${baseStar} Получатель: ${args.recipientDisplayPlain}`;
+    const recipientLineStart = caption.length;
+    caption += recipientLinePlain + '\n\n';
+    entities.push({
+      type: 'custom_emoji',
+      offset: recipientLineStart,
+      length: 1,
+      custom_emoji_id: PAYMENT_RECIPIENT_CUSTOM_EMOJI_ID,
+    });
+    const recBold = 'Получатель:';
+    const recIdx = recipientLinePlain.indexOf(recBold);
+    if (recIdx >= 0) {
+      entities.push({
+        type: 'bold',
+        offset: recipientLineStart + recIdx,
+        length: recBold.length,
+      });
+    }
+
+    if (args.sbpStarsCapNotice?.trim()) {
+      caption += `${args.sbpStarsCapNotice.trim()}\n\n`;
+    }
+
+    let productNameForWarning: string;
+    if (normalizedType === 'STARS') {
+      productNameForWarning = 'звёзд';
+    } else if (normalizedType === 'TON') {
+      productNameForWarning = 'TON';
+    } else if (normalizedType === 'PREMIUM') {
+      productNameForWarning = 'Premium';
+    } else {
+      productNameForWarning = 'товара';
+    }
+    const warningRest = this.i18n.t('payment.username_warning_rest', lang, {
+      product: productNameForWarning,
+    });
+    const importantLabel = 'Важно:';
+    const warnStart = caption.length;
+    caption += `${baseStar} ${importantLabel} ${warningRest}\n\n`;
+    entities.push({
+      type: 'custom_emoji',
+      offset: warnStart,
+      length: 1,
+      custom_emoji_id: PAYMENT_USERNAME_WARNING_CUSTOM_EMOJI_ID,
+    });
+    entities.push({
+      type: 'bold',
+      offset: warnStart + 2,
+      length: importantLabel.length,
+    });
+
+    const amountLabel = this.i18n.t('payment.ton.amount_label', lang);
+    const amountValue =
+      args.paymentMethod === 'freekassa_crypto' &&
+      args.amountCrypto != null &&
+      args.cryptoCurrency
+        ? `${args.amountCrypto.toFixed(2)} ${args.cryptoCurrency}`
+        : `${(args.amountRub ?? 0).toFixed(2)} ₽`;
+    const amountLine = `${amountLabel} ${amountValue}`;
+    const amountLineStart = caption.length;
+    caption += amountLine + '\n';
+    const amountLabelIdx = amountLine.indexOf(amountLabel);
+    if (amountLabelIdx >= 0) {
+      entities.push({
+        type: 'bold',
+        offset: amountLineStart + amountLabelIdx,
+        length: amountLabel.length,
+      });
+    }
+
+    const orderLabel = this.i18n.t('payment.ton.order_label', lang);
+    const orderHash = `#${args.orderNumber}`;
+    const orderLine = `${orderLabel} ${orderHash}`;
+    const orderLineStart = caption.length;
+    caption += orderLine + '\n\n';
+    const orderLabelIdx = orderLine.indexOf(orderLabel);
+    if (orderLabelIdx >= 0) {
+      entities.push({
+        type: 'bold',
+        offset: orderLineStart + orderLabelIdx,
+        length: orderLabel.length,
+      });
+    }
+    const hashIdx = orderLine.indexOf(orderHash);
+    if (hashIdx >= 0) {
+      entities.push({
+        type: 'code',
+        offset: orderLineStart + hashIdx,
+        length: orderHash.length,
+      });
+    }
+
+    const timeLine = this.i18n.t('payment.fk.time_window', lang);
+    const timeLineStart = caption.length;
+    caption += timeLine + '\n\n';
+    entities.push({
+      type: 'bold',
+      offset: timeLineStart,
+      length: timeLine.length,
+    });
+
+    const linkHint = this.i18n.t('payment.fk.link_hint', lang);
+    const linkStart = caption.length;
+    caption += linkHint;
+    entities.push({
+      type: 'bold',
+      offset: linkStart,
+      length: linkHint.length,
+    });
 
     return { caption, caption_entities: entities };
   }
@@ -3404,78 +3620,46 @@ export class BotUpdate {
           throw new Error('Payment URL was not generated');
         }
 
-        const paymentMethodDisplay =
-          paymentMethod === 'freekassa'
-            ? this.i18n.t('payment.method.freekassa', lang)
-            : paymentMethod === 'freekassa_card'
-              ? this.i18n.t('payment.method.freekassa_card', lang)
-              : paymentMethod === 'freekassa_crypto'
-                ? this.i18n.t('payment.method.freekassa_crypto', lang)
-                : this.i18n.t('payment.method.ton', lang);
-
-        let recipientDisplay: string;
+        let recipientDisplayPlain: string;
         if (payment.recipient_username && payment.recipient_name) {
-          recipientDisplay = `${escapeHtml(payment.recipient_name)} (@${payment.recipient_username})`;
+          recipientDisplayPlain = `${payment.recipient_name} (@${payment.recipient_username})`;
         } else if (payment.recipient_username) {
-          recipientDisplay = `@${payment.recipient_username}`;
+          recipientDisplayPlain = `@${payment.recipient_username}`;
         } else if (payment.recipient_name) {
-          recipientDisplay = escapeHtml(payment.recipient_name);
+          recipientDisplayPlain = payment.recipient_name;
         } else {
-          const userName = escapeHtml(
-            ctx.from?.first_name || this.i18n.t('common.you', lang),
-          );
+          const userName =
+            ctx.from?.first_name || this.i18n.t('common.you', lang);
           const userUsername = ctx.from?.username;
-          recipientDisplay = userUsername
+          recipientDisplayPlain = userUsername
             ? `${userName} (@${userUsername})`
             : userName;
         }
 
-        let amountDisplay: string;
-        if (
-          paymentMethod === 'freekassa_crypto' &&
-          payment.amount_crypto &&
-          payment.crypto_currency
-        ) {
-          amountDisplay = this.i18n.t('payment.other.amount_crypto', lang, {
-            amount: Number(payment.amount_crypto).toFixed(2),
-            currency: payment.crypto_currency,
-          });
-        } else {
-          amountDisplay = this.i18n.t('payment.other.amount', lang, {
-            amount: Number(payment.amount_rub).toFixed(2),
-          });
-        }
-
-        let productNameForWarning: string;
-        if (productType.toUpperCase() === 'STARS') {
-          productNameForWarning = 'ЗВЕЗД';
-        } else if (productType.toUpperCase() === 'TON') {
-          productNameForWarning = 'TON';
-        } else if (productType.toUpperCase() === 'PREMIUM') {
-          productNameForWarning = 'PREMIUM';
-        } else {
-          productNameForWarning = 'ТОВАРА';
-        }
-
-        const productLine = this.i18n.t('payment.product', lang, {
-          quantity: payment.product_quantity,
-          emoji: getProductEmoji(productType.toUpperCase()),
+        const paymentCaption = this.buildFkPaymentCaptionPayload(lang, {
+          paymentMethod,
+          productType,
+          quantity: effectiveQuantity,
+          recipientDisplayPlain,
+          amountRub: Number(payment.amount_rub),
+          amountCrypto: payment.amount_crypto
+            ? Number(payment.amount_crypto)
+            : undefined,
+          cryptoCurrency: payment.crypto_currency ?? undefined,
+          orderNumber: payment.order_number.toString(),
+          sbpStarsCapNotice: showSbpStarsCapNotice
+            ? this.i18n.t('payment.sbp_stars_cap', lang, {
+                max: limits.sbpLimitStars.toLocaleString('ru'),
+              })
+            : undefined,
         });
-        let paymentText = `${this.i18n.t('payment.other.title', lang, { method: paymentMethodDisplay })}\n${this.i18n.t('payment.other.recipient', lang, { recipient: recipientDisplay })}\n\n${productLine}\n\n`;
-        if (showSbpStarsCapNotice) {
-          paymentText +=
-            this.i18n.t('payment.sbp_stars_cap', lang, {
-              max: limits.sbpLimitStars.toLocaleString('ru'),
-            }) + '\n\n';
-        }
-        paymentText += `${this.i18n.t('payment.other.username_warning', lang, { product: productNameForWarning })}\n\n${amountDisplay}\n${this.i18n.t('payment.other.order', lang, { order: payment.order_number.toString() })}\n\n${this.i18n.t('payment.other.warning', lang)}\n\n${this.i18n.t('payment.other.link', lang)}`;
 
         const paymentMessage = await this.editOrSendPhoto(
           ctx,
           './images/main_menu.webp',
           {
-            caption: paymentText,
-            parse_mode: 'HTML',
+            caption: paymentCaption.caption,
+            caption_entities: paymentCaption.caption_entities,
             reply_markup: MainKeyboard.getPaymentUrlKeyboard(
               payment.payment_url,
               this.i18n,
