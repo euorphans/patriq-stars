@@ -5,7 +5,7 @@ export interface SessionData {
   recipientUsername?: string;
   recipientName?: string;
   quantity?: number;
-  paymentMethod?: 'freekassa' | 'freekassa_card' | 'freekassa_crypto' | 'ton';
+  paymentMethod?: 'freekassa' | 'freekassa_crypto' | 'ton';
   isForSelf?: boolean;
   isAnonymous?: boolean;
   awaitingUsername?: boolean;
@@ -125,7 +125,7 @@ export interface SessionData {
 
   captchaCorrectKey?: string;
   captchaOptions?: string[];
-  pendingPaymentMethod?: 'freekassa' | 'freekassa_card' | 'freekassa_crypto' | 'ton';
+  pendingPaymentMethod?: 'freekassa' | 'freekassa_crypto' | 'ton';
   awaitingCaptchaUnban?: boolean;
 
   // Broadcast target audience (Task 71)

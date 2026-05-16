@@ -332,52 +332,28 @@ export class PaymentCheckerService {
     this.isChecking = true;
 
     try {
-      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-
-      const [tonPayments, freekassaPayments] = await Promise.all([
-        this.prisma.payment.findMany({
-          where: {
-            status: { in: [PaymentStatus.PENDING, PaymentStatus.PROCESSING] },
-            payment_method: 'TON',
-            created_at: {
-              gte: new Date(Date.now() - TON_PAYMENT_WINDOW_MS),
-            },
+      const tonPayments = await this.prisma.payment.findMany({
+        where: {
+          status: { in: [PaymentStatus.PENDING, PaymentStatus.PROCESSING] },
+          payment_method: 'TON',
+          created_at: {
+            gte: new Date(Date.now() - TON_PAYMENT_WINDOW_MS),
           },
-          orderBy: { created_at: 'asc' },
-          take: this.MAX_PAYMENTS_PER_CYCLE,
-        }),
-        this.prisma.payment.findMany({
-          where: {
-            status: { in: [PaymentStatus.PENDING, PaymentStatus.PROCESSING] },
-            payment_method: 'FREEKASSA',
-            external_payment_id: { not: null },
-            created_at: { gte: thirtyMinutesAgo },
-          },
-          orderBy: { created_at: 'asc' },
-          take: this.MAX_PAYMENTS_PER_CYCLE,
-        }),
-      ]);
+        },
+        orderBy: { created_at: 'asc' },
+        take: this.MAX_PAYMENTS_PER_CYCLE,
+      });
 
-      const pendingPayments = [...tonPayments, ...freekassaPayments];
-
-      if (pendingPayments.length === 0) {
+      if (tonPayments.length === 0) {
         return;
       }
 
-      if (tonPayments.length > 0 || freekassaPayments.length > 0) {
-        this.logger.debug(
-          `Processing payments: TON=${tonPayments.length}, Freekassa=${freekassaPayments.length}`,
-        );
-      }
+      this.logger.debug(`Processing ${tonPayments.length} TON payments`);
 
       let completed = 0;
 
-      for (
-        let i = 0;
-        i < pendingPayments.length;
-        i += this.MAX_CONCURRENT_CHECKS
-      ) {
-        const batch = pendingPayments.slice(i, i + this.MAX_CONCURRENT_CHECKS);
+      for (let i = 0; i < tonPayments.length; i += this.MAX_CONCURRENT_CHECKS) {
+        const batch = tonPayments.slice(i, i + this.MAX_CONCURRENT_CHECKS);
 
         const results = await Promise.allSettled(
           batch.map((payment) => this.checkSinglePayment(payment)),
@@ -387,7 +363,7 @@ export class PaymentCheckerService {
           (r) => r.status === 'fulfilled' && r.value,
         ).length;
 
-        if (i + this.MAX_CONCURRENT_CHECKS < pendingPayments.length) {
+        if (i + this.MAX_CONCURRENT_CHECKS < tonPayments.length) {
           await new Promise((resolve) =>
             setTimeout(resolve, this.BATCH_DELAY_MS),
           );
@@ -587,11 +563,8 @@ export class PaymentCheckerService {
           : payment.payment_method === 'FREEKASSA' &&
                 payment.crypto_currency === 'USD'
               ? 'payment.method.freekassa_crypto'
-              : payment.payment_method === 'FREEKASSA' &&
-                  payment.crypto_currency === 'CARD'
-                ? 'payment.method.freekassa_card'
-                : payment.payment_method === 'FREEKASSA'
-                  ? 'payment.method.freekassa'
+              : payment.payment_method === 'FREEKASSA'
+                ? 'payment.method.freekassa'
                 : payment.payment_method === 'HELEKET'
                   ? 'payment.method.heleket'
                   : payment.payment_method;
@@ -728,10 +701,7 @@ export class PaymentCheckerService {
         payment.payment_method === 'FREEKASSA' &&
         payment.crypto_currency === 'USD'
           ? '🪙 Крипто (Freekassa)'
-          : payment.payment_method === 'FREEKASSA' &&
-              payment.crypto_currency === 'CARD'
-            ? '💳 Карта (Freekassa)'
-            : paymentMethods[payment.payment_method] || payment.payment_method;
+          : paymentMethods[payment.payment_method] || payment.payment_method;
       const product =
         productNames[payment.product_type] || payment.product_type;
       const productLine =

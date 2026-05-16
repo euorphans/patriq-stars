@@ -108,7 +108,7 @@ export class PaymentsController {
       }
 
       const payment =
-        await this.paymentsService.resolveFreekassaPayment(merchantOrderId);
+        await this.paymentsService.getPaymentByExternalId(merchantOrderId);
 
       if (!payment) {
         res.type('text/plain').send('YES');

@@ -145,7 +145,6 @@
     "methods": "<b>Выберите удобный способ оплаты:</b>",
     "method": {
       "freekassa": "💳 СБП",
-      "freekassa_card": "💳 Карта",
       "freekassa_crypto": "🪙 Криптовалюта",
       "heleket": "🪙 Криптовалюта",
       "ton": "💎 TON Wallet"

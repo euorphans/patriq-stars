@@ -2239,7 +2239,6 @@ ${methods
   .map((m) => {
     const names: Record<string, string> = {
       FREEKASSA: 'СБП (Freekassa)',
-      FREEKASSA_CARD: 'Карта (Freekassa)',
       FREEKASSA_CRYPTO: 'Крипто (Freekassa)',
       TON: 'TON',
     };
@@ -2271,7 +2270,6 @@ ${methods
 
     const METHOD_NAMES: Record<string, string> = {
       FREEKASSA: 'СБП (Freekassa)',
-      FREEKASSA_CARD: 'Карта (Freekassa)',
       FREEKASSA_CRYPTO: 'Крипто (Freekassa)',
       TON: 'TON',
     };
@@ -2291,7 +2289,6 @@ ${methods
   .map((m) => {
     const names: Record<string, string> = {
       FREEKASSA: 'СБП (Freekassa)',
-      FREEKASSA_CARD: 'Карта (Freekassa)',
       FREEKASSA_CRYPTO: 'Крипто (Freekassa)',
       TON: 'TON',
     };
@@ -2331,7 +2328,6 @@ ${methods
   .map((m) => {
     const names: Record<string, string> = {
       FREEKASSA: 'СБП (Freekassa)',
-      FREEKASSA_CARD: 'Карта (Freekassa)',
       FREEKASSA_CRYPTO: 'Крипто (Freekassa)',
       TON: 'TON',
     };
@@ -2371,7 +2367,6 @@ ${methods
   .map((m) => {
     const names: Record<string, string> = {
       FREEKASSA: 'СБП (Freekassa)',
-      FREEKASSA_CARD: 'Карта (Freekassa)',
       FREEKASSA_CRYPTO: 'Крипто (Freekassa)',
       TON: 'TON',
     };
@@ -4024,22 +4019,17 @@ ${methods
       const isFreekassaCrypto =
         payment.payment_method === 'FREEKASSA' &&
         payment.crypto_currency === 'USD';
-      const isFreekassaCard =
-        payment.payment_method === 'FREEKASSA' &&
-        payment.crypto_currency === 'CARD';
 
       const paymentMethodText =
         payment.payment_method === 'TON'
           ? 'TON'
           : isFreekassaCrypto
             ? 'Крипто (Freekassa)'
-            : isFreekassaCard
-              ? 'Карта (Freekassa)'
-              : payment.payment_method === 'FREEKASSA'
-                ? 'СБП РФ (Freekassa)'
-                : payment.payment_method === 'HELEKET'
-                  ? 'Криптовалюта (Heleket)'
-                  : escapeHtml(String(payment.payment_method));
+            : payment.payment_method === 'FREEKASSA'
+              ? 'СБП РФ (Freekassa)'
+              : payment.payment_method === 'HELEKET'
+                ? 'Криптовалюта (Heleket)'
+                : escapeHtml(String(payment.payment_method));
 
       const formattedDate = new Date(payment.created_at)
         .toLocaleString('ru-RU', {

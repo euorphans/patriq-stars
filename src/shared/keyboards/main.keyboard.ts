@@ -381,7 +381,6 @@ export class MainKeyboard {
 
     const methodOrder = enabledMethods || [
       'FREEKASSA',
-      'FREEKASSA_CARD',
       'FREEKASSA_CRYPTO',
       'TON',
     ];
@@ -397,21 +396,6 @@ export class MainKeyboard {
               {
                 text: `${freekassaLabel} — ${prices.freekassa.rub.toFixed(2)} ₽`,
                 callback_data: `${actionPrefix}_freekassa`,
-                icon_custom_emoji_id: PAYMENT_METHOD_SBP_CUSTOM_EMOJI_ID,
-              },
-            ]);
-          }
-          break;
-
-        case 'FREEKASSA_CARD':
-          if (prices.freekassa) {
-            const cardLabel = i18n
-              .t('payment.method.freekassa_card', lang)
-              .replace(/^💳\s+/, '');
-            buttons.push([
-              {
-                text: `${cardLabel} — ${prices.freekassa.rub.toFixed(2)} ₽`,
-                callback_data: `${actionPrefix}_freekassa_card`,
                 icon_custom_emoji_id: PAYMENT_METHOD_SBP_CUSTOM_EMOJI_ID,
               },
             ]);
@@ -579,15 +563,6 @@ export class MainKeyboard {
     ]);
   }
 
-  /** Зелёная кнопка оплаты (Bot API: InlineKeyboardButton.style = success). */
-  private static payUrlButton(text: string, url: string) {
-    return {
-      text,
-      url,
-      style: 'success',
-    };
-  }
-
   /** TON: одна ссылка ton:// и «Обратно». */
   static getTonPayKeyboard(
     tonLink: string,
@@ -595,7 +570,7 @@ export class MainKeyboard {
     lang: SupportedLanguage = 'ru',
   ) {
     return Markup.inlineKeyboard([
-      [MainKeyboard.payUrlButton(i18n.t('payment.ton.pay', lang), tonLink)],
+      [Markup.button.url(i18n.t('payment.ton.pay', lang), tonLink)],
       [backInlineButton('back_to_main')],
     ]);
   }
@@ -606,7 +581,7 @@ export class MainKeyboard {
     lang: SupportedLanguage = 'ru',
   ) {
     return Markup.inlineKeyboard([
-      [MainKeyboard.payUrlButton(i18n.t('payment.pay', lang), paymentUrl)],
+      [Markup.button.url(i18n.t('payment.pay', lang), paymentUrl)],
       [backInlineButton('back_to_main')],
     ]);
   }
