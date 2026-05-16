@@ -8,7 +8,7 @@ import { SettingsService } from '@/modules/settings/settings.service';
 import { RedisLockService } from '@/shared/services/redis/redis-lock.service';
 import { FraudService } from '@/modules/fraud/fraud.service';
 import { PaymentStatus } from '@prisma/client';
-import { getProductName } from '@/shared/utils';
+import { buildSalesNotificationPayload, getProductName } from '@/shared/utils';
 import { MainKeyboard } from '@/shared/keyboards/main.keyboard';
 import { UserService } from '@/modules/user/user.service';
 import { I18nService } from '@/shared/services/i18n/i18n.service';
@@ -441,99 +441,16 @@ export class PaymentAdminService {
         if (!claimed) return;
       }
 
-      const paymentMethods: Record<string, string> = {
-        FREEKASSA: '🏦 СБП (Freekassa)',
-        HELEKET: '🪙 Криптовалюта',
-        TON: '💎 TON',
-      };
-
-      const productNames: Record<string, string> = {
-        STARS: '⭐ STARS',
-        PREMIUM: '👑 PREMIUM',
-        TON: '💎 TON',
-      };
-
-      const timeStr =
-        new Date(payment.created_at)
-          .toLocaleString('ru-RU', {
-            timeZone: 'Europe/Moscow',
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-          })
-          .replace(',', '') + ' (МСК)';
-
-      const buyerInfo = payment.user_telegram_id
-        ? `ID: ${payment.user_telegram_id}`
-        : 'Не указан';
-      const recipient = payment.recipient_username || payment.recipient_name;
-      const recipientInfo = recipient ? `@${recipient}` : 'Не указан';
-
-      const product =
-        productNames[payment.product_type] || payment.product_type;
-      const productLine =
-        productNames[payment.product_type] != null
-          ? `${product} x${payment.product_quantity}`
-          : getProductName(payment);
-
-      const amountRub = parseFloat(payment.amount_rub?.toString() || '0');
-      const amountUsd = parseFloat(payment.amount_usd?.toString() || '0');
-      const amountTon = parseFloat(payment.amount_ton?.toString() || '0');
-      const netProfit = parseFloat(payment.net_profit_rub?.toString() || '0');
-
-      let methodLabel =
-        paymentMethods[payment.payment_method] || payment.payment_method;
-      if (
-        payment.payment_method === 'FREEKASSA' &&
-        payment.crypto_currency === 'USD'
-      ) {
-        methodLabel = '🪙 Крипто (Freekassa)';
-      } else if (
-        payment.payment_method === 'FREEKASSA' &&
-        payment.crypto_currency === 'CARD'
-      ) {
-        methodLabel = '💳 Карта (Freekassa)';
-      }
-
-      let amountText = '';
-      if (payment.payment_method === 'TON' && amountTon > 0) {
-        amountText = `${amountTon.toFixed(9)} TON`;
-      } else if (
-        (payment.payment_method === 'HELEKET' ||
-          (payment.payment_method === 'FREEKASSA' &&
-            payment.crypto_currency === 'USD')) &&
-        amountUsd > 0
-      ) {
-        amountText = `$${amountUsd.toFixed(2)}`;
-      } else {
-        amountText = `${amountRub.toFixed(2)} ₽`;
-      }
-
-      const text = `
-💰 <b>Новая продажа!</b>
-
-🕐 <b>Время:</b> ${timeStr}
-🆔 <b>Номер заказа:</b> <code>#${payment.order_number}</code>
-
-👤 <b>Покупатель:</b> ${buyerInfo}
-🎁 <b>Получатель:</b> ${recipientInfo}
-
-📦 <b>Товар:</b> ${productLine}
-💳 <b>Способ оплаты:</b> ${methodLabel}
-
-💵 <b>Сумма оплаты:</b> ${amountText}
-💸 <b>Наш доход:</b> ${netProfit.toFixed(2)} ₽
-      `;
+      const salesMessage = buildSalesNotificationPayload(payment);
 
       for (const channel of channels) {
         if (!channel.is_active) continue;
         try {
-          await this.adminBot.telegram.sendMessage(channel.channel_id, text, {
-            parse_mode: 'HTML',
-          });
+          await this.adminBot.telegram.sendMessage(
+            channel.channel_id,
+            salesMessage.text,
+            { entities: salesMessage.entities },
+          );
         } catch (error: any) {
           this.logger.error(
             `Failed to send to channel ${channel.channel_id}: ${error.message}`,

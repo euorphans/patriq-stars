@@ -1,5 +1,6 @@
 import { Markup } from 'telegraf';
 import { getProductEmoji } from '@/shared/utils';
+import { isFreekassaCryptoPayment } from '@/shared/utils/freekassa-payment.util';
 import {
   I18nService,
   SupportedLanguage,
@@ -67,6 +68,7 @@ const MAIN_MENU_CUSTOM_EMOJI = {
 /** Те же иконки, что у кнопок Stars / Premium в главном меню — для строки «Товар:» на экране оплаты. */
 export const MAIN_MENU_STARS_CUSTOM_EMOJI_ID = MAIN_MENU_CUSTOM_EMOJI.stars;
 export const MAIN_MENU_PREMIUM_CUSTOM_EMOJI_ID = MAIN_MENU_CUSTOM_EMOJI.premium;
+export const PROFILE_MENU_CUSTOM_EMOJI_ID = MAIN_MENU_CUSTOM_EMOJI.profile;
 
 /** Подсказка при вводе @username (звёзды и Premium — второй ряд подписи). */
 export const STARS_USERNAME_PROMPT_CUSTOM_EMOJI_ID = '5460795800101594035';
@@ -213,10 +215,11 @@ export class MainKeyboard {
 
     const keyboard = Markup.inlineKeyboard([
       [
-        Markup.button.callback(
-          i18n.t('profile.purchases', lang),
-          'my_purchases',
-        ),
+        {
+          text: i18n.t('profile.purchases', lang),
+          callback_data: 'my_purchases',
+          icon_custom_emoji_id: PROFILE_MENU_CUSTOM_EMOJI_ID,
+        },
       ],
       [backInlineButton('back_to_main')],
     ]);
@@ -509,8 +512,7 @@ export class MainKeyboard {
         amountText = `$${Number(payment.amount_usd).toFixed(2)}`;
       } else if (
         (payment.payment_method === 'HELEKET' ||
-          (payment.payment_method === 'FREEKASSA' &&
-            payment.crypto_currency === 'USD')) &&
+          isFreekassaCryptoPayment(payment)) &&
         payment.amount_usd
       ) {
         amountText = `$${Number(payment.amount_usd).toFixed(2)}`;
@@ -520,18 +522,18 @@ export class MainKeyboard {
 
       let productLabel: string;
       if (payment.product_type === 'STARS') {
-        productLabel = `⭐ ${payment.product_quantity} Stars`;
+        productLabel = `${payment.product_quantity} звёзд`;
       } else if (payment.product_type === 'TON') {
-        productLabel = `💎 ${payment.product_quantity} TON`;
+        productLabel = `${payment.product_quantity} TON`;
       } else if (payment.product_type === 'PREMIUM') {
-        productLabel = `👑 Premium`;
+        productLabel = 'Premium';
       } else {
-        productLabel = `${productEmoji} ${payment.product_type} x${payment.product_quantity}`;
+        productLabel = `${payment.product_type} x${payment.product_quantity}`;
       }
 
       return [
         Markup.button.callback(
-          `${statusEmoji} ${productLabel} — ${amountText} (${statusText})`,
+          `${statusEmoji} ${productLabel} — ${amountText} · ${statusText}`,
           `payment_details_${payment.id}`,
         ),
       ];

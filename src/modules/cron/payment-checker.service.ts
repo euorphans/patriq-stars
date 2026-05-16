@@ -11,7 +11,7 @@ import { RedisLockService } from '@/shared/services/redis/redis-lock.service';
 import { EventLoopMonitorService } from '@/modules/health/event-loop-monitor.service';
 import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf } from 'telegraf';
-import { getProductName } from '@/shared/utils';
+import { buildSalesNotificationPayload, getProductName } from '@/shared/utils';
 import { MainKeyboard } from '@/shared/keyboards/main.keyboard';
 import {
   buildPurchaseFollowUpCaption,
@@ -669,88 +669,7 @@ export class PaymentCheckerService {
         }
       }
 
-      const paymentMethods: Record<string, string> = {
-        FREEKASSA: '🏦 СБП (Freekassa)',
-        HELEKET: '🪙 Криптовалюта',
-        TON: '💎 TON',
-      };
-
-      const productNames: Record<string, string> = {
-        STARS: '⭐ STARS',
-        PREMIUM: '👑 PREMIUM',
-        TON: '💎 TON',
-      };
-
-      const timeStr =
-        new Date(payment.created_at)
-          .toLocaleString('ru-RU', {
-            timeZone: 'Europe/Moscow',
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-          })
-          .replace(',', '') + ' (МСК)';
-
-      const buyerId = payment.user_telegram_id;
-      const buyerInfo = buyerId ? `ID: ${buyerId}` : 'Не указан';
-
-      const recipient = payment.recipient_username || payment.recipient_name;
-      const recipientInfo = recipient ? `@${recipient}` : 'Не указан';
-
-      const paymentMethod =
-        payment.payment_method === 'FREEKASSA' &&
-        payment.crypto_currency === 'USD'
-          ? '🪙 Крипто (Freekassa)'
-          : payment.payment_method === 'FREEKASSA' &&
-              payment.crypto_currency === 'CARD'
-            ? '💳 Карта (Freekassa)'
-            : paymentMethods[payment.payment_method] || payment.payment_method;
-      const product =
-        productNames[payment.product_type] || payment.product_type;
-      const productLine =
-        productNames[payment.product_type] != null
-          ? `${product} x${payment.product_quantity}`
-          : getProductName(payment);
-
-      const amountRub = parseFloat(payment.amount_rub?.toString() || '0');
-      const amountUsd = parseFloat(payment.amount_usd?.toString() || '0');
-      const amountTon = parseFloat(payment.amount_ton?.toString() || '0');
-      const netProfit = parseFloat(payment.net_profit_rub?.toString() || '0');
-
-      let amountText = '';
-      if (payment.payment_method === 'TON' && amountTon > 0) {
-        amountText = `${amountTon.toFixed(9)} TON`;
-      } else if (
-        (payment.payment_method === 'HELEKET' ||
-          (payment.payment_method === 'FREEKASSA' &&
-            payment.crypto_currency === 'USD')) &&
-        amountUsd > 0
-      ) {
-        amountText = `$${amountUsd.toFixed(2)}`;
-      } else {
-        amountText = `${amountRub.toFixed(2)} ₽`;
-      }
-
-      const orderNumberLink = `<code>#${payment.order_number}</code>`;
-
-      const text = `
-💰 <b>Новая продажа!</b>
-
-🕐 <b>Время:</b> ${timeStr}
-🆔 <b>Номер заказа:</b> ${orderNumberLink}
-
-👤 <b>Покупатель:</b> ${buyerInfo}
-🎁 <b>Получатель:</b> ${recipientInfo}
-
-📦 <b>Товар:</b> ${productLine}
-💳 <b>Способ оплаты:</b> ${paymentMethod}
-
-💵 <b>Сумма оплаты:</b> ${amountText}
-💸 <b>Наш доход:</b> ${netProfit.toFixed(2)} ₽
-      `;
+      const salesMessage = buildSalesNotificationPayload(payment);
 
       for (const channel of channels) {
         if (!channel.is_active) {
@@ -758,9 +677,11 @@ export class PaymentCheckerService {
         }
 
         try {
-          await this.adminBot.telegram.sendMessage(channel.channel_id, text, {
-            parse_mode: 'HTML',
-          });
+          await this.adminBot.telegram.sendMessage(
+            channel.channel_id,
+            salesMessage.text,
+            { entities: salesMessage.entities },
+          );
         } catch (error: any) {
           const errorMessage = error.message || '';
 

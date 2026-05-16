@@ -15,6 +15,7 @@ import {
   MAIN_MENU_INFO_CUSTOM_EMOJI_ID,
   MAIN_MENU_PREMIUM_CUSTOM_EMOJI_ID,
   MAIN_MENU_STARS_CUSTOM_EMOJI_ID,
+  PROFILE_MENU_CUSTOM_EMOJI_ID,
   STARS_USERNAME_PROMPT_CUSTOM_EMOJI_ID,
   PAYMENT_RECIPIENT_CUSTOM_EMOJI_ID,
   PAYMENT_USERNAME_WARNING_CUSTOM_EMOJI_ID,
@@ -1167,6 +1168,306 @@ export class BotUpdate {
     };
   }
 
+  private buildProfileCaptionPayload(lang: 'ru'): {
+    caption: string;
+    caption_entities: any[];
+  } {
+    const title = this.i18n.t('profile.title', lang);
+    const subtitle = this.i18n.t('profile.subtitle', lang);
+    const baseStar = '\u2B50';
+    const caption = `${baseStar} ${title}\n\n${subtitle}`;
+    return {
+      caption,
+      caption_entities: [
+        {
+          type: 'custom_emoji',
+          offset: 0,
+          length: 1,
+          custom_emoji_id: PROFILE_MENU_CUSTOM_EMOJI_ID,
+        },
+        { type: 'bold', offset: 2, length: title.length },
+      ],
+    };
+  }
+
+  private buildPurchasesListCaptionPayload(
+    lang: 'ru',
+    args: {
+      totalCount: number;
+      completedCount: number;
+      page: number;
+      pageTotal: number;
+      isEmpty: boolean;
+      isPageEmpty: boolean;
+    },
+  ): { caption: string; caption_entities: any[] } {
+    const baseStar = '\u2B50';
+    const title = this.i18n.t('purchases.title', lang);
+    const entities: any[] = [
+      {
+        type: 'custom_emoji',
+        offset: 0,
+        length: 1,
+        custom_emoji_id: PROFILE_MENU_CUSTOM_EMOJI_ID,
+      },
+      { type: 'bold', offset: 2, length: title.length },
+    ];
+
+    let caption = `${baseStar} ${title}\n\n`;
+    const appendBoldLine = (label: string, value: string) => {
+      const start = caption.length;
+      caption += `${label} ${value}\n`;
+      const idx = caption.indexOf(label, start);
+      if (idx >= 0) {
+        entities.push({ type: 'bold', offset: idx, length: label.length });
+      }
+    };
+
+    appendBoldLine(
+      this.i18n.t('purchases.total_label', lang),
+      String(args.totalCount),
+    );
+    appendBoldLine(
+      this.i18n.t('purchases.completed_label', lang),
+      String(args.completedCount),
+    );
+
+    if (args.isEmpty) {
+      caption += `\n${this.i18n.t('purchases.empty', lang)}`;
+    } else if (args.isPageEmpty) {
+      caption += `\n${this.i18n.t('purchases.page_empty', lang)}`;
+    } else if (args.pageTotal > 1) {
+      const pageLine = this.i18n.t('purchases.page_info', lang, {
+        page: String(args.page + 1),
+        total: String(args.pageTotal),
+      });
+      caption += `\n${pageLine}`;
+    }
+
+    return { caption, caption_entities: entities };
+  }
+
+  private resolvePurchaseStatus(
+    payment: { status: string },
+    fq: { status: string } | undefined,
+    lang: 'ru',
+  ): string {
+    const deliveryPending =
+      payment.status === 'COMPLETED' &&
+      fq &&
+      (fq.status === 'PENDING' || fq.status === 'PROCESSING');
+    const deliveryFailed =
+      payment.status === 'COMPLETED' && fq && fq.status === 'FAILED';
+
+    if (payment.status === 'CANCELLED') {
+      return this.i18n.t('purchases.status.cancelled', lang);
+    }
+    if (payment.status === 'FAILED') {
+      return this.i18n.t('purchases.status.failed', lang);
+    }
+    if (payment.status === 'PENDING' || payment.status === 'PROCESSING') {
+      return this.i18n.t('purchases.status.processing', lang);
+    }
+    if (deliveryPending || deliveryFailed) {
+      return this.i18n.t('purchases.status.delivering', lang);
+    }
+    return this.i18n.t('purchases.status.completed', lang);
+  }
+
+  private paymentMethodLabelPlain(
+    lang: 'ru',
+    payment: { payment_method: string; crypto_currency?: string | null },
+  ): string {
+    if (payment.payment_method === 'TON') {
+      return 'TON';
+    }
+    if (isFreekassaCryptoPayment(payment)) {
+      return this.i18n.t('payment.method.freekassa_crypto', lang).replace(
+        /^🪙\s+/,
+        '',
+      );
+    }
+    if (isFreekassaCardPayment(payment)) {
+      return this.i18n.t('payment.method.freekassa_card', lang);
+    }
+    if (payment.payment_method === 'FREEKASSA') {
+      return this.i18n.t('payment.method.freekassa', lang).replace(/^💳\s+/, '');
+    }
+    if (payment.payment_method === 'HELEKET') {
+      return this.i18n.t('payment.method.heleket', lang).replace(/^🪙\s+/, '');
+    }
+    return payment.payment_method;
+  }
+
+  private purchaseProductLine(
+    lang: 'ru',
+    payment: { product_type: string; product_quantity: string },
+  ): { text: string; customEmojiId?: string } {
+    const t = payment.product_type.toUpperCase();
+    if (t === 'STARS') {
+      return {
+        text: `${payment.product_quantity} звёзд`,
+        customEmojiId: MAIN_MENU_STARS_CUSTOM_EMOJI_ID,
+      };
+    }
+    if (t === 'PREMIUM') {
+      const durationText = this.i18n.t(
+        `product.premium.duration.${payment.product_quantity}` as any,
+        lang,
+      );
+      return {
+        text: `Premium на ${durationText}`,
+        customEmojiId: MAIN_MENU_PREMIUM_CUSTOM_EMOJI_ID,
+      };
+    }
+    if (t === 'TON') {
+      return {
+        text: `${payment.product_quantity} TON`,
+        customEmojiId: PAYMENT_METHOD_TON_CUSTOM_EMOJI_ID,
+      };
+    }
+    return { text: `${payment.product_type} x${payment.product_quantity}` };
+  }
+
+  private buildPurchaseDetailsCaptionPayload(
+    lang: 'ru',
+    payment: any,
+    fq: { status: string; tx_hash?: string | null } | undefined,
+  ): { caption: string; caption_entities: any[] } {
+    const baseStar = '\u2B50';
+    const title = this.i18n.t('purchases.details.title', lang);
+    const entities: any[] = [
+      {
+        type: 'custom_emoji',
+        offset: 0,
+        length: 1,
+        custom_emoji_id: PROFILE_MENU_CUSTOM_EMOJI_ID,
+      },
+      { type: 'bold', offset: 2, length: title.length },
+    ];
+    let caption = `${baseStar} ${title}\n\n`;
+
+    const appendField = (label: string, value: string) => {
+      const start = caption.length;
+      caption += `${label} ${value}\n`;
+      const idx = caption.indexOf(label, start);
+      if (idx >= 0) {
+        entities.push({ type: 'bold', offset: idx, length: label.length });
+      }
+    };
+
+    appendField(
+      this.i18n.t('purchases.details.status', lang),
+      this.resolvePurchaseStatus(payment, fq, lang),
+    );
+
+    const product = this.purchaseProductLine(lang, payment);
+    const productLabel = this.i18n.t('purchases.details.product', lang);
+    const productLinePlain = product.customEmojiId
+      ? `${productLabel} ${baseStar} ${product.text}`
+      : `${productLabel} ${product.text}`;
+    const productStart = caption.length;
+    caption += `${productLinePlain}\n`;
+    const productLabelIdx = productLinePlain.indexOf(productLabel);
+    if (productLabelIdx >= 0) {
+      entities.push({
+        type: 'bold',
+        offset: productStart + productLabelIdx,
+        length: productLabel.length,
+      });
+    }
+    if (product.customEmojiId) {
+      const emojiOffset =
+        productStart + productLinePlain.indexOf(baseStar);
+      entities.push({
+        type: 'custom_emoji',
+        offset: emojiOffset,
+        length: 1,
+        custom_emoji_id: product.customEmojiId,
+      });
+    }
+
+    let amountValue: string;
+    if (payment.payment_method === 'TON' && payment.amount_ton) {
+      amountValue = `${Number(payment.amount_ton).toFixed(4)} TON`;
+    } else if (
+      (payment.payment_method === 'HELEKET' || isFreekassaCryptoPayment(payment)) &&
+      payment.amount_usd
+    ) {
+      amountValue = `$${Number(payment.amount_usd).toFixed(2)}`;
+    } else {
+      amountValue = `${Number(payment.amount_rub).toFixed(2)} ₽`;
+    }
+    appendField(this.i18n.t('purchases.details.amount', lang), amountValue);
+    appendField(
+      this.i18n.t('purchases.details.method', lang),
+      this.paymentMethodLabelPlain(lang, payment),
+    );
+
+    let recipientText: string;
+    if (payment.recipient_username) {
+      recipientText = `@${payment.recipient_username}`;
+    } else if (payment.recipient_name) {
+      recipientText = payment.recipient_name;
+    } else {
+      recipientText = payment.recipient || this.i18n.t('common.you', lang);
+    }
+    appendField(this.i18n.t('purchases.details.recipient', lang), recipientText);
+
+    const formattedDate = formatDateTimeMoscow(new Date(payment.created_at));
+    appendField(this.i18n.t('purchases.details.date', lang), formattedDate);
+
+    const orderLabel = this.i18n.t('purchases.details.order', lang);
+    const orderHash = `#${payment.order_number}`;
+    const orderStart = caption.length;
+    caption += `${orderLabel} ${orderHash}\n`;
+    const orderLabelIdx = caption.indexOf(orderLabel, orderStart);
+    if (orderLabelIdx >= 0) {
+      entities.push({
+        type: 'bold',
+        offset: orderLabelIdx,
+        length: orderLabel.length,
+      });
+    }
+    const hashIdx = caption.indexOf(orderHash, orderStart);
+    if (hashIdx >= 0) {
+      entities.push({
+        type: 'code',
+        offset: hashIdx,
+        length: orderHash.length,
+      });
+    }
+
+    const appendTonviewerLink = (txRaw: string, linkText: string) => {
+      const txid = this.normalizeTxForTonscan(txRaw.trim());
+      if (!txid) return;
+      caption += '\n';
+      const start = caption.length;
+      caption += linkText;
+      entities.push({
+        type: 'text_link',
+        offset: start,
+        length: linkText.length,
+        url: `https://tonviewer.com/transaction/${txid}`,
+      });
+    };
+
+    if (fq?.tx_hash) {
+      appendTonviewerLink(
+        fq.tx_hash,
+        this.i18n.t('purchases.details.tonscan_delivery', lang),
+      );
+    }
+    if (payment.payment_method === 'TON' && payment.provider_transaction_id) {
+      appendTonviewerLink(
+        payment.provider_transaction_id,
+        this.i18n.t('purchases.details.tonscan', lang),
+      );
+    }
+
+    return { caption: caption.trimEnd(), caption_entities: entities };
+  }
+
   /** Экран «Информация»: images/main2.webp (из images/new/main2.png); иначе запас — main_menu.webp. */
   private resolveInfoScreenImage(): string {
     const webpAbsolute = path.join(process.cwd(), 'images', 'main2.webp');
@@ -1988,11 +2289,11 @@ export class BotUpdate {
     this.resetInputFlags(ctx);
 
     const lang = this.getUserLanguage(ctx);
-    const text = this.i18n.t('profile.title', lang);
+    const profileCaption = this.buildProfileCaptionPayload(lang);
 
-    await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
-      caption: text,
-      parse_mode: 'HTML',
+    await this.editOrSendPhoto(ctx, this.resolveInfoScreenImage(), {
+      caption: profileCaption.caption,
+      caption_entities: profileCaption.caption_entities,
       reply_markup: MainKeyboard.getProfileMenu(this.i18n, lang).reply_markup,
     });
   }
@@ -2135,32 +2436,29 @@ export class BotUpdate {
       ? paymentsToShow.slice(0, ITEMS_PER_PAGE)
       : paymentsToShow;
 
-    let text = this.i18n.t('purchases.title', lang);
-    text += this.i18n.t('purchases.total', lang, { count: totalCount }) + '\n';
-    text += this.i18n.t('purchases.completed', lang, {
-      count: completedCount,
+    const filteredTotal =
+      filter === 'completed'
+        ? completedCount
+        : filter === 'failed'
+          ? totalCount - completedCount
+          : totalCount;
+    const pageTotal = Math.max(
+      1,
+      Math.ceil(filteredTotal / ITEMS_PER_PAGE),
+    );
+
+    const purchasesCaption = this.buildPurchasesListCaptionPayload(lang, {
+      totalCount,
+      completedCount,
+      page,
+      pageTotal,
+      isEmpty: displayPayments.length === 0 && page === 0,
+      isPageEmpty: displayPayments.length === 0 && page > 0,
     });
 
-    if (displayPayments.length === 0 && page === 0) {
-      text += this.i18n.t('purchases.empty', lang);
-    } else if (displayPayments.length === 0) {
-      text += this.i18n.t('purchases.page_empty', lang);
-    } else {
-      const filteredTotal =
-        filter === 'completed'
-          ? completedCount
-          : filter === 'failed'
-            ? totalCount - completedCount
-            : totalCount;
-      text += this.i18n.t('purchases.page_info', lang, {
-        page: String(page + 1),
-        total: String(Math.ceil(filteredTotal / ITEMS_PER_PAGE)),
-      });
-    }
-
-    await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
-      caption: text,
-      parse_mode: 'HTML',
+    await this.editOrSendPhoto(ctx, this.resolveInfoScreenImage(), {
+      caption: purchasesCaption.caption,
+      caption_entities: purchasesCaption.caption_entities,
       reply_markup: MainKeyboard.getMyPurchasesKeyboard(
         displayPayments,
         filter,
@@ -2199,121 +2497,15 @@ export class BotUpdate {
       }
 
       const fq = payment.fragment_queue?.[0];
-      const deliveryPending =
-        payment.status === 'COMPLETED' &&
-        fq &&
-        (fq.status === 'PENDING' || fq.status === 'PROCESSING');
-      const deliveryFailed =
-        payment.status === 'COMPLETED' && fq && fq.status === 'FAILED';
+      const detailsCaption = this.buildPurchaseDetailsCaptionPayload(
+        lang,
+        payment,
+        fq,
+      );
 
-      let statusEmoji: string;
-      let statusText: string;
-      if (payment.status === 'CANCELLED') {
-        statusEmoji = '❌';
-        statusText = this.i18n.t('purchases.status.cancelled', lang);
-      } else if (payment.status === 'FAILED') {
-        statusEmoji = '🔴';
-        statusText = this.i18n.t('purchases.status.failed', lang);
-      } else if (
-        payment.status === 'PENDING' ||
-        payment.status === 'PROCESSING'
-      ) {
-        statusEmoji = '⏳';
-        statusText = this.i18n.t('purchases.status.processing', lang);
-      } else if (deliveryPending) {
-        statusEmoji = '⏳';
-        statusText = this.i18n.t('purchases.status.delivering', lang);
-      } else if (deliveryFailed) {
-        statusEmoji = '⏳';
-        statusText = this.i18n.t('purchases.status.delivering', lang);
-      } else {
-        statusEmoji = '✅';
-        statusText = this.i18n.t('purchases.status.completed', lang);
-      }
-
-      const productEmoji = getProductEmoji(payment.product_type);
-      let productText: string;
-      if (payment.product_type === 'STARS') {
-        productText = `⭐ STARS x${payment.product_quantity}`;
-      } else if (payment.product_type === 'TON') {
-        productText = `💎 TON x${payment.product_quantity}`;
-      } else if (payment.product_type === 'PREMIUM') {
-        productText = `👑 Telegram Premium на ${payment.product_quantity} месяцев`;
-      } else {
-        productText = `${productEmoji} ${payment.product_type} x${payment.product_quantity}`;
-      }
-
-      const isFreekassaCrypto = isFreekassaCryptoPayment(payment);
-      const isFreekassaCard = isFreekassaCardPayment(payment);
-
-      const paymentMethodText =
-        payment.payment_method === 'TON'
-          ? this.i18n.t('payment.method.ton', lang)
-          : isFreekassaCrypto
-            ? this.i18n.t('payment.method.freekassa_crypto', lang)
-            : isFreekassaCard
-              ? this.i18n.t('payment.method.freekassa_card', lang)
-              : payment.payment_method === 'FREEKASSA'
-                ? this.i18n.t('payment.method.freekassa', lang)
-              : payment.payment_method === 'HELEKET'
-                ? this.i18n.t('payment.method.heleket', lang)
-                : payment.payment_method;
-
-      let recipientText: string;
-      if (payment.recipient_username) {
-        recipientText = `@${payment.recipient_username}`;
-      } else if (payment.recipient_name) {
-        recipientText = payment.recipient_name;
-      } else {
-        recipientText = payment.recipient || this.i18n.t('common.you', lang);
-      }
-
-      let amountText: string;
-      if (payment.payment_method === 'TON' && payment.amount_ton) {
-        amountText = `${this.i18n.t('purchases.details.amount', lang)} ${Number(payment.amount_ton).toFixed(4)} TON`;
-      } else if (payment.payment_method === 'TON' && payment.amount_usd) {
-        amountText = `${this.i18n.t('purchases.details.amount', lang)} $${Number(payment.amount_usd).toFixed(2)}`;
-      } else if (
-        (payment.payment_method === 'HELEKET' || isFreekassaCrypto) &&
-        payment.amount_usd
-      ) {
-        amountText = `${this.i18n.t('purchases.details.amount', lang)} $${Number(payment.amount_usd).toFixed(2)}`;
-      } else {
-        amountText = `${this.i18n.t('purchases.details.amount', lang)} ${Number(payment.amount_rub).toFixed(2)} ₽`;
-      }
-
-      const date = new Date(payment.created_at);
-      const formattedDate = formatDateTimeMoscow(date);
-
-      const tonscanLinks: string[] = [];
-
-      if (fq?.tx_hash) {
-        const tx = fq.tx_hash.trim();
-        const txid = this.normalizeTxForTonscan(tx);
-        if (txid) {
-          tonscanLinks.push(
-            this.i18n.t('purchases.details.tonscan_delivery', lang, { txid }),
-          );
-        }
-      }
-      if (payment.payment_method === 'TON' && payment.provider_transaction_id) {
-        const txid = this.normalizeTxForTonscan(
-          payment.provider_transaction_id.trim(),
-        );
-        if (txid) {
-          tonscanLinks.push(
-            this.i18n.t('purchases.details.tonscan', lang, { txid }),
-          );
-        }
-      }
-      const tonscanBlock =
-        tonscanLinks.length > 0 ? tonscanLinks.join('\n') : '';
-
-      const detailsText = `${this.i18n.t('purchases.details.title', lang)}\n${statusEmoji} ${this.i18n.t('purchases.details.status', lang)} ${statusText}\n🛍 ${this.i18n.t('purchases.details.product', lang)} ${productText}\n${amountText}\n💳 ${this.i18n.t('purchases.details.method', lang)} ${paymentMethodText}\n👤 ${this.i18n.t('purchases.details.recipient', lang)} ${recipientText}\n📅 ${this.i18n.t('purchases.details.date', lang)} ${formattedDate}\n🔑 ${this.i18n.t('purchases.details.order', lang)} <code>#${payment.order_number}</code>${tonscanBlock}`;
-
-      await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
-        caption: detailsText,
-        parse_mode: 'HTML',
+      await this.editOrSendPhoto(ctx, this.resolveInfoScreenImage(), {
+        caption: detailsCaption.caption,
+        caption_entities: detailsCaption.caption_entities,
         reply_markup: MainKeyboard.getPaymentDetailsKeyboard(this.i18n, lang)
           .reply_markup,
       });
