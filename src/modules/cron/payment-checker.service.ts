@@ -11,7 +11,11 @@ import { RedisLockService } from '@/shared/services/redis/redis-lock.service';
 import { EventLoopMonitorService } from '@/modules/health/event-loop-monitor.service';
 import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf } from 'telegraf';
-import { buildSalesNotificationPayload, getProductName } from '@/shared/utils';
+import {
+  buildSalesNotificationPayload,
+  getProductName,
+  sendSalesChannelNotification,
+} from '@/shared/utils';
 import { MainKeyboard } from '@/shared/keyboards/main.keyboard';
 import {
   buildPurchaseFollowUpCaption,
@@ -677,11 +681,17 @@ export class PaymentCheckerService {
         }
 
         try {
-          await this.adminBot.telegram.sendMessage(
+          const via = await sendSalesChannelNotification(
+            this.bot,
+            this.adminBot,
             channel.channel_id,
-            salesMessage.text,
-            { entities: salesMessage.entities },
+            salesMessage,
           );
+          if (via === 'admin') {
+            this.logger.warn(
+              `Sales channel ${channel.channel_id}: sent via admin bot (add main bot to channel for animated emoji)`,
+            );
+          }
         } catch (error: any) {
           const errorMessage = error.message || '';
 

@@ -20,6 +20,7 @@ import { SettingsService } from '@/modules/settings/settings.service';
 import {
   buildSalesNotificationPayload,
   getProductName,
+  sendSalesChannelNotification,
   withTransactionRetry,
 } from '@/shared/utils';
 import { WebhookGuard } from '@/shared/guards/webhook.guard';
@@ -606,11 +607,17 @@ export class PaymentsController {
         }
 
         try {
-          await this.adminBot.telegram.sendMessage(
+          const via = await sendSalesChannelNotification(
+            this.bot,
+            this.adminBot,
             channel.channel_id,
-            salesMessage.text,
-            { entities: salesMessage.entities },
+            salesMessage,
           );
+          if (via === 'admin') {
+            this.logger.warn(
+              `Sales channel ${channel.channel_id}: sent via admin bot (add main bot to channel for animated emoji)`,
+            );
+          }
         } catch (error: any) {
           const errorMessage = error.message || '';
 

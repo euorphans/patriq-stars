@@ -8,7 +8,11 @@ import { SettingsService } from '@/modules/settings/settings.service';
 import { RedisLockService } from '@/shared/services/redis/redis-lock.service';
 import { FraudService } from '@/modules/fraud/fraud.service';
 import { PaymentStatus } from '@prisma/client';
-import { buildSalesNotificationPayload, getProductName } from '@/shared/utils';
+import {
+  buildSalesNotificationPayload,
+  getProductName,
+  sendSalesChannelNotification,
+} from '@/shared/utils';
 import { MainKeyboard } from '@/shared/keyboards/main.keyboard';
 import { UserService } from '@/modules/user/user.service';
 import { I18nService } from '@/shared/services/i18n/i18n.service';
@@ -446,11 +450,17 @@ export class PaymentAdminService {
       for (const channel of channels) {
         if (!channel.is_active) continue;
         try {
-          await this.adminBot.telegram.sendMessage(
+          const via = await sendSalesChannelNotification(
+            this.bot,
+            this.adminBot,
             channel.channel_id,
-            salesMessage.text,
-            { entities: salesMessage.entities },
+            salesMessage,
           );
+          if (via === 'admin') {
+            this.logger.warn(
+              `Sales channel ${channel.channel_id}: sent via admin bot (add main bot to channel for animated emoji)`,
+            );
+          }
         } catch (error: any) {
           this.logger.error(
             `Failed to send to channel ${channel.channel_id}: ${error.message}`,
