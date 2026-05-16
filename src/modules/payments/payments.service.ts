@@ -284,6 +284,35 @@ export class PaymentsService {
     });
   }
 
+  async getPaymentByOrderNumber(orderNumber: number): Promise<Payment | null> {
+    if (!Number.isFinite(orderNumber) || orderNumber <= 0) {
+      return null;
+    }
+    return this.prisma.payment.findFirst({
+      where: { order_number: orderNumber },
+    });
+  }
+
+  async resolveFreekassaPayment(
+    merchantOrderId: string,
+  ): Promise<Payment | null> {
+    const trimmed = merchantOrderId.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    const byExternal = await this.getPaymentByExternalId(trimmed);
+    if (byExternal) {
+      return byExternal;
+    }
+
+    if (/^\d+$/.test(trimmed)) {
+      return this.getPaymentByOrderNumber(parseInt(trimmed, 10));
+    }
+
+    return null;
+  }
+
   async getPendingPayments(): Promise<Payment[]> {
     return this.prisma.payment.findMany({
       where: {
@@ -537,8 +566,43 @@ export class PaymentsService {
         }
         break;
 
-      case PaymentMethod.FREEKASSA:
+      case PaymentMethod.FREEKASSA: {
+        if (
+          payment.status !== PaymentStatus.PENDING &&
+          payment.status !== PaymentStatus.PROCESSING
+        ) {
+          return payment.status;
+        }
+        if (!payment.external_payment_id) {
+          return payment.status;
+        }
+
+        try {
+          const paidInfo = await this.freekassaService.getPaidOrderInfo(
+            payment.external_payment_id,
+          );
+          if (!paidInfo) {
+            return payment.status;
+          }
+
+          const result = await this.completePaymentWithQueue(payment.id, {
+            provider_transaction_id: paidInfo.fkOrderId
+              ? String(paidInfo.fkOrderId)
+              : undefined,
+          });
+
+          if (result?.payment) {
+            return result.payment.status;
+          }
+        } catch (error: any) {
+          this.logger.error(
+            `Error checking Freekassa payment ${payment.id}: ${error.message}`,
+          );
+          throw error;
+        }
+
         return payment.status;
+      }
 
       case PaymentMethod.TON: {
         try {

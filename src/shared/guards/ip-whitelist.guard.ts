@@ -22,7 +22,7 @@ export class IpWhitelistGuard implements CanActivate {
       if (process.env.NODE_ENV === 'production') {
         this.logger.error(
           `SECURITY: IP whitelist not configured for ${path}. ` +
-            `Blocking all requests. Set FREEKASSA_IP_WHITELIST or HELEKET_IP_WHITELIST.`,
+            `Blocking all requests. Set HELEKET_IP_WHITELIST (Freekassa uses built-in FK IPs if FREEKASSA_IP_WHITELIST is empty).`,
         );
         throw new ServiceUnavailableException(
           'Payment webhook not configured properly',
@@ -40,8 +40,8 @@ export class IpWhitelistGuard implements CanActivate {
     const isAllowed = this.isIpAllowed(clientIp, whitelist);
 
     if (!isAllowed) {
-      this.logger.warn(
-        `IP ${clientIp} rejected for ${path}. Not in whitelist.`,
+      this.logger.error(
+        `Payment webhook blocked: IP ${clientIp} not in whitelist for ${path}`,
       );
       throw new ForbiddenException('Access denied: IP not whitelisted');
     }
@@ -74,7 +74,16 @@ export class IpWhitelistGuard implements CanActivate {
   private getWhitelist(path: string): string[] {
     if (path.includes('/freekassa/')) {
       const env = process.env.FREEKASSA_IP_WHITELIST || '';
-      return env ? env.split(',').map((ip) => ip.trim()) : [];
+      if (env) {
+        return env.split(',').map((ip) => ip.trim()).filter(Boolean);
+      }
+      // Официальные IP оповещений Freekassa (docs.freekassa.ru §1.4)
+      return [
+        '168.119.157.136',
+        '168.119.60.227',
+        '178.154.197.79',
+        '51.250.54.238',
+      ];
     }
 
     if (path.includes('/heleket/')) {

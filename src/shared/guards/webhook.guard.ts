@@ -47,7 +47,11 @@ export class WebhookGuard implements CanActivate {
     }
 
     const merchantId = String(body.MERCHANT_ID ?? '').trim();
-    const amount = String(body.AMOUNT ?? '').trim();
+    const amountRaw = body.AMOUNT;
+    const amount =
+      amountRaw !== undefined && amountRaw !== null
+        ? String(amountRaw).trim().replace(',', '.')
+        : '';
     const orderId = String(body.MERCHANT_ORDER_ID ?? '').trim();
     const sign = String(body.SIGN ?? '').trim();
 
@@ -74,7 +78,9 @@ export class WebhookGuard implements CanActivate {
       .digest('hex');
 
     if (expectedSign.toLowerCase() !== sign.toLowerCase()) {
-      this.logger.error('Freekassa webhook: signature mismatch');
+      this.logger.error(
+        `Freekassa webhook: signature mismatch for order ${orderId} (check FREEKASSA_SECRET2)`,
+      );
       throw new UnauthorizedException('Invalid signature');
     }
 

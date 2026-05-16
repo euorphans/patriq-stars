@@ -24,6 +24,24 @@ interface FkApiCreateOrderResponse {
   message?: string;
 }
 
+interface FkApiOrderRow {
+  merchant_order_id?: string;
+  fk_order_id?: number;
+  amount?: number;
+  status?: number;
+}
+
+interface FkApiOrdersListResponse {
+  type?: string;
+  orders?: FkApiOrderRow[];
+  message?: string;
+}
+
+export interface FreekassaPaidOrderInfo {
+  fkOrderId?: number;
+  amount?: number;
+}
+
 /**
  * Freekassa:
  * - СБП (i=44): API https://api.fk.life/v1/orders/create → paymentt.kassa.ai
@@ -147,6 +165,74 @@ export class FreekassaService {
     return Date.now() * 1000 + Math.floor(Math.random() * 1000);
   }
 
+  private getShopId(): number {
+    const shopIdRaw = process.env.FREEKASSA_MERCHANT_ID?.trim();
+    if (!shopIdRaw) {
+      throw new Error('Freekassa API: FREEKASSA_MERCHANT_ID is required');
+    }
+    const shopId = parseInt(shopIdRaw, 10);
+    if (!Number.isFinite(shopId)) {
+      throw new Error('Freekassa API: FREEKASSA_MERCHANT_ID must be numeric');
+    }
+    return shopId;
+  }
+
+  private getNotificationUrl(): string | undefined {
+    const domain = process.env.WEBHOOK_DOMAIN?.trim().replace(/\/+$/, '');
+    if (!domain) {
+      return undefined;
+    }
+    return `${domain}/api/payments/freekassa/callback`;
+  }
+
+  /** POST /orders — статус 1 = оплачен (docs.freekassa.ru §2.3). */
+  async getPaidOrderInfo(
+    paymentId: string,
+  ): Promise<FreekassaPaidOrderInfo | null> {
+    const shopId = this.getShopId();
+    const body: Record<string, string | number> = {
+      shopId,
+      nonce: this.nextNonce(),
+      paymentId: paymentId.trim(),
+    };
+    body.signature = this.buildApiSignature(body);
+
+    try {
+      const { status, data } = await axios.post<FkApiOrdersListResponse>(
+        `${this.API_BASE_URL}/orders`,
+        body,
+        {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 20_000,
+          validateStatus: () => true,
+        },
+      );
+
+      if (status >= 400 || data.type === 'error') {
+        this.logger.warn(
+          `Freekassa API orders list failed (HTTP ${status}): ${this.formatApiError(null, data)}`,
+        );
+        return null;
+      }
+
+      const orders = data.orders ?? [];
+      const paid = orders.find((o) => o.status === 1);
+      if (!paid) {
+        return null;
+      }
+
+      return {
+        fkOrderId: paid.fk_order_id,
+        amount: paid.amount,
+      };
+    } catch (err: any) {
+      this.logger.warn(
+        `Freekassa API orders list error for paymentId=${paymentId}: ${err.message}`,
+      );
+      return null;
+    }
+  }
+
   private formatApiError(error: unknown, responseData?: unknown): string {
     const data = responseData as Record<string, unknown> | undefined;
     const parts: string[] = [];
@@ -190,15 +276,7 @@ export class FreekassaService {
   private async createPaymentViaApi(
     params: CreateFreekassaPaymentParams,
   ): Promise<{ id: string; url: string }> {
-    const shopIdRaw = process.env.FREEKASSA_MERCHANT_ID?.trim();
-    if (!shopIdRaw) {
-      throw new Error('Freekassa API: FREEKASSA_MERCHANT_ID is required');
-    }
-
-    const shopId = parseInt(shopIdRaw, 10);
-    if (!Number.isFinite(shopId)) {
-      throw new Error('Freekassa API: FREEKASSA_MERCHANT_ID must be numeric');
-    }
+    const shopId = this.getShopId();
 
     const amount = Number(params.amountRub);
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -235,6 +313,10 @@ export class FreekassaService {
       amount: amountStr,
       currency: 'RUB',
     };
+    const notificationUrl = this.getNotificationUrl();
+    if (notificationUrl) {
+      body.notification_url = notificationUrl;
+    }
     body.signature = this.buildApiSignature(body);
 
     this.logger.log(
