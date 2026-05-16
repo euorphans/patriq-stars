@@ -99,6 +99,7 @@ export class FreekassaService {
   private resolvePayerIpFromEnv(): string | undefined {
     return (
       process.env.FREEKASSA_API_PAYER_IP?.trim() ||
+      process.env.WEBHOOK_IP?.trim() ||
       process.env.SERVER_PUBLIC_IP?.trim() ||
       undefined
     );

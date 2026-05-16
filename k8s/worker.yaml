@@ -77,6 +77,12 @@ spec:
                 secretKeyRef:
                   name: stars-bot-secrets
                   key: WEBHOOK_DOMAIN
+            - name: WEBHOOK_IP
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: WEBHOOK_IP
+                  optional: true
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
