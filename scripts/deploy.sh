@@ -347,6 +347,13 @@ ensure_cert_manager() {
   kubectl wait --for=condition=Available deployment/cert-manager -n cert-manager --timeout=300s
   kubectl wait --for=condition=Available deployment/cert-manager-webhook -n cert-manager --timeout=300s
   kubectl wait --for=condition=Available deployment/cert-manager-cainjector -n cert-manager --timeout=120s 2>/dev/null || true
+
+  # Self-check HTTP-01: из пода cert-manager резолвить grim.llc через публичный DNS (не только CoreDNS 10.43.0.10)
+  kubectl patch deployment cert-manager -n cert-manager --type=merge -p \
+    '{"spec":{"template":{"spec":{"dnsConfig":{"nameservers":["8.8.8.8","1.1.1.1"],"options":[{"name":"ndots","value":"2"}]}}}}}' \
+    2>/dev/null || true
+  kubectl rollout status deployment/cert-manager -n cert-manager --timeout=120s 2>/dev/null || true
+
   ok "cert-manager готов"
 }
 

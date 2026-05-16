@@ -21,7 +21,8 @@ spec:
     - host: __PUBLIC_HOST__
       http:
         paths:
-          - path: /
+          # Только /api — приложение с globalPrefix api; /.well-known остаётся для ACME solver
+          - path: /api
             pathType: Prefix
             backend:
               service:
