@@ -176,6 +176,12 @@ spec:
                   name: stars-bot-secrets
                   key: FREEKASSA_IP_WHITELIST
                   optional: true
+            - name: FREEKASSA_SBP_CUR_ID
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: FREEKASSA_SBP_CUR_ID
+                  optional: true
             - name: FREEKASSA_CRYPTO_CUR_ID
               valueFrom:
                 secretKeyRef:

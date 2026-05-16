@@ -5,7 +5,10 @@ export interface CreateFreekassaPaymentParams {
   /** MERCHANT_ORDER_ID в форме Freekassa (у нас — order_number). */
   orderId: string;
   amountRub: number;
-  /** Параметр `i` — предлагаемый способ оплаты (см. список валют Freekassa). Не входит в подпись формы. */
+  /**
+   * Параметр `i` — ID способа оплаты в ЛК Freekassa (§8).
+   * СБП: 44 (СБП 4.2, paymentt.kassa.ai). Крипто: см. FREEKASSA_CRYPTO_CUR_ID (15 = USDT TRC20).
+   */
   suggestedMethodId?: number;
 }
 

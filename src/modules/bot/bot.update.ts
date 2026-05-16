@@ -3234,6 +3234,7 @@ export class BotUpdate {
       const pricingKey =
         paymentMethod === 'freekassa_crypto' ? 'heleket' : paymentMethod;
 
+      const sbpFkCurId = parseInt(process.env.FREEKASSA_SBP_CUR_ID || '44', 10);
       const cryptoFkCurId = parseInt(
         process.env.FREEKASSA_CRYPTO_CUR_ID || '15',
         10,
@@ -3361,7 +3362,11 @@ export class BotUpdate {
           Number.isFinite(cryptoFkCurId) &&
           cryptoFkCurId > 0
             ? cryptoFkCurId
-            : undefined,
+            : paymentMethod === 'freekassa' &&
+                Number.isFinite(sbpFkCurId) &&
+                sbpFkCurId > 0
+              ? sbpFkCurId
+              : undefined,
       });
 
       if (paymentMethod === 'ton') {
