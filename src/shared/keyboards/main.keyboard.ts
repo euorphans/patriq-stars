@@ -53,6 +53,9 @@ export const PAYMENT_METHOD_HELEKET_CUSTOM_EMOJI_ID = '5294015055992471554';
 /** InlineKeyboard: TON Wallet. */
 export const PAYMENT_METHOD_TON_CUSTOM_EMOJI_ID = '5294209201399153148';
 
+/** InlineKeyboard: «Оплатить» (ссылка на оплату). */
+export const PAYMENT_PAY_CUSTOM_EMOJI_ID = '5409048419211682843';
+
 /** Анимированные custom emoji (Bot API: InlineKeyboardButton.icon_custom_emoji_id). */
 const MAIN_MENU_CUSTOM_EMOJI = {
   stars: '5438496463044752972',
@@ -580,6 +583,16 @@ export class MainKeyboard {
     ]);
   }
 
+  /** URL-кнопка «Оплатить» (зелёная + custom emoji). */
+  private static payUrlButton(text: string, url: string) {
+    return {
+      text: text.replace(/^💳\s+/, ''),
+      url,
+      style: 'success' as const,
+      icon_custom_emoji_id: PAYMENT_PAY_CUSTOM_EMOJI_ID,
+    };
+  }
+
   /** TON: одна ссылка ton:// и «Обратно». */
   static getTonPayKeyboard(
     tonLink: string,
@@ -587,7 +600,7 @@ export class MainKeyboard {
     lang: SupportedLanguage = 'ru',
   ) {
     return Markup.inlineKeyboard([
-      [Markup.button.url(i18n.t('payment.ton.pay', lang), tonLink)],
+      [MainKeyboard.payUrlButton(i18n.t('payment.ton.pay', lang), tonLink)],
       [backInlineButton('back_to_main')],
     ]);
   }
@@ -598,7 +611,7 @@ export class MainKeyboard {
     lang: SupportedLanguage = 'ru',
   ) {
     return Markup.inlineKeyboard([
-      [Markup.button.url(i18n.t('payment.pay', lang), paymentUrl)],
+      [MainKeyboard.payUrlButton(i18n.t('payment.pay', lang), paymentUrl)],
       [backInlineButton('back_to_main')],
     ]);
   }
