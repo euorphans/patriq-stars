@@ -31,11 +31,20 @@ interface FkApiCreateOrderResponse {
  * Webhook: md5(MERCHANT_ID:AMOUNT:secret2:MERCHANT_ORDER_ID)
  * @see https://docs.freekassa.ru/
  */
+const IP_LOOKUP_URLS = [
+  'https://api.ipify.org',
+  'https://ifconfig.me/ip',
+  'https://icanhazip.com',
+];
+
 @Injectable()
 export class FreekassaService {
   private readonly logger = new Logger(FreekassaService.name);
   private readonly SCI_PAY_URL = 'https://pay.fk.money/';
   private readonly API_BASE_URL = 'https://api.fk.life/v1';
+
+  private cachedPayerIp: string | null = null;
+  private payerIpLookup: Promise<string> | null = null;
 
   private static readonly SBP_METHOD_ID = () =>
     parseInt(process.env.FREEKASSA_SBP_CUR_ID || '44', 10);
@@ -87,12 +96,75 @@ export class FreekassaService {
       .digest('hex');
   }
 
-  private resolvePayerIp(): string {
-    const fromEnv = process.env.FREEKASSA_API_PAYER_IP?.trim();
+  private resolvePayerIpFromEnv(): string | undefined {
+    return (
+      process.env.FREEKASSA_API_PAYER_IP?.trim() ||
+      process.env.SERVER_PUBLIC_IP?.trim() ||
+      undefined
+    );
+  }
+
+  private async resolvePayerIp(): Promise<string> {
+    const fromEnv = this.resolvePayerIpFromEnv();
     if (fromEnv) {
       return fromEnv;
     }
+
+    if (this.cachedPayerIp) {
+      return this.cachedPayerIp;
+    }
+
+    if (!this.payerIpLookup) {
+      this.payerIpLookup = this.fetchPublicIp();
+    }
+
+    this.cachedPayerIp = await this.payerIpLookup;
+    return this.cachedPayerIp;
+  }
+
+  private async fetchPublicIp(): Promise<string> {
+    for (const url of IP_LOOKUP_URLS) {
+      try {
+        const { data } = await axios.get<string>(url, { timeout: 5000 });
+        const ip = String(data).trim();
+        if (/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) {
+          this.logger.log(`Freekassa API: detected public IP ${ip}`);
+          return ip;
+        }
+      } catch {
+        /* try next */
+      }
+    }
+
+    this.logger.error(
+      'Freekassa API: set FREEKASSA_API_PAYER_IP to your server public outbound IP (ЛК Freekassa → API)',
+    );
     return '127.0.0.1';
+  }
+
+  private nextNonce(): number {
+    return Date.now() * 1000 + Math.floor(Math.random() * 1000);
+  }
+
+  private formatApiError(error: unknown, responseData?: unknown): string {
+    const data = responseData as Record<string, unknown> | undefined;
+    const parts: string[] = [];
+
+    if (data?.message) parts.push(String(data.message));
+    if (data?.error) parts.push(String(data.error));
+    if (data?.errors && typeof data.errors === 'object') {
+      parts.push(JSON.stringify(data.errors));
+    }
+
+    if (parts.length > 0) {
+      return parts.join('; ');
+    }
+
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return 'Unknown API error';
   }
 
   private isSbpMethod(methodId?: number): boolean {
@@ -143,37 +215,55 @@ export class FreekassaService {
       params.payerEmail?.trim() ||
       `order_${orderId}@telegram.org`;
 
-    const apiAmount = Number.isInteger(amount) ? amount : Number(amount.toFixed(2));
+    const amountStr = this.formatAmountForSign(amount);
+    const payerIp = await this.resolvePayerIp();
+
+    if (payerIp === '127.0.0.1' && !this.resolvePayerIpFromEnv()) {
+      this.logger.warn(
+        'Freekassa API: using 127.0.0.1 as ip — set FREEKASSA_API_PAYER_IP to avoid "Оплата временно не доступна"',
+      );
+    }
 
     const body: Record<string, string | number> = {
       shopId,
-      nonce: Date.now(),
+      nonce: this.nextNonce(),
       paymentId: orderId,
       i: paymentSystemId,
       email,
-      ip: this.resolvePayerIp(),
-      amount: apiAmount,
+      ip: payerIp,
+      amount: amountStr,
       currency: 'RUB',
     };
     body.signature = this.buildApiSignature(body);
 
     this.logger.log(
-      `Freekassa API create order ${orderId}, i=${paymentSystemId}, amount=${apiAmount}`,
+      `Freekassa API create order ${orderId}, i=${paymentSystemId}, amount=${amountStr}, ip=${payerIp}`,
     );
 
     try {
-      const { data } = await axios.post<FkApiCreateOrderResponse>(
+      await this.assertPaymentSystemAvailable(shopId, paymentSystemId);
+
+      const { status, data } = await axios.post<FkApiCreateOrderResponse>(
         `${this.API_BASE_URL}/orders/create`,
         body,
         {
           headers: { 'Content-Type': 'application/json' },
           timeout: 30_000,
+          validateStatus: () => true,
         },
       );
 
-      if (data.type === 'error') {
-        const errMsg = data.error || data.message || 'Unknown API error';
-        throw new Error(`Freekassa API error: ${errMsg}`);
+      if (status >= 400 || data.type === 'error' || !data.location) {
+        const errMsg = this.formatApiError(null, data);
+        this.logger.error(
+          `Freekassa API create rejected (HTTP ${status}): ${errMsg} | body=${JSON.stringify(data)}`,
+        );
+        if (errMsg.includes('временно не доступна')) {
+          throw new Error(
+            'СБП сейчас недоступен у платёжной системы. В ЛК Freekassa включите способ i=44 (СБП 4.2) и укажите публичный IP сервера в FREEKASSA_API_PAYER_IP.',
+          );
+        }
+        throw new Error(`Freekassa API: ${errMsg}`);
       }
 
       const location = data.location?.trim();
@@ -191,12 +281,48 @@ export class FreekassaService {
 
       return { id: orderId, url: location };
     } catch (error: any) {
-      const detail =
-        error.response?.data?.message ||
-        error.response?.data?.error ||
-        error.message;
-      this.logger.error(`Freekassa API create failed: ${detail}`);
-      throw error;
+      const responseData = error.response?.data;
+      const detail = this.formatApiError(error, responseData);
+      this.logger.error(
+        `Freekassa API create failed: ${detail}` +
+          (responseData ? ` | response=${JSON.stringify(responseData)}` : ''),
+      );
+
+      throw new Error(`Freekassa API: ${detail}`);
+    }
+  }
+
+  /** POST /currencies/{id}/status — диагностика перед созданием заказа */
+  private async assertPaymentSystemAvailable(
+    shopId: number,
+    paymentSystemId: number,
+  ): Promise<void> {
+    const body: Record<string, string | number> = {
+      shopId,
+      nonce: this.nextNonce(),
+    };
+    body.signature = this.buildApiSignature(body);
+
+    try {
+      const { data } = await axios.post<{ type?: string; message?: string }>(
+        `${this.API_BASE_URL}/currencies/${paymentSystemId}/status`,
+        body,
+        {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 15_000,
+          validateStatus: () => true,
+        },
+      );
+
+      if (data.type !== 'success') {
+        this.logger.warn(
+          `Freekassa: payment system ${paymentSystemId} status check: ${JSON.stringify(data)}`,
+        );
+      }
+    } catch (err: any) {
+      this.logger.warn(
+        `Freekassa: could not check status for i=${paymentSystemId}: ${err.message}`,
+      );
     }
   }
 
