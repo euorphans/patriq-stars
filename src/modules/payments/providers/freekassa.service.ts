@@ -63,6 +63,17 @@ export class FreekassaService {
 
   private cachedPayerIp: string | null = null;
   private payerIpLookup: Promise<string> | null = null;
+  /** Freekassa требует строго возрастающий nonce на все запросы API. */
+  private lastApiNonce = 0;
+  private nonceChain: Promise<unknown> = Promise.resolve();
+  private paidOrdersCache: {
+    fetchedAt: number;
+    byPaymentId: Map<string, FreekassaPaidOrderInfo>;
+  } | null = null;
+  private paidOrdersFetchInFlight: Promise<
+    Map<string, FreekassaPaidOrderInfo>
+  > | null = null;
+  private readonly paidOrdersCacheTtlMs = 4_000;
 
   private static readonly SBP_METHOD_ID = () =>
     parseInt(process.env.FREEKASSA_SBP_CUR_ID || '44', 10);
@@ -161,8 +172,30 @@ export class FreekassaService {
     return '127.0.0.1';
   }
 
-  private nextNonce(): number {
-    return Date.now() * 1000 + Math.floor(Math.random() * 1000);
+  private async allocateNonce(): Promise<number> {
+    const run = this.nonceChain.then(async () => {
+      const now = Date.now();
+      this.lastApiNonce =
+        this.lastApiNonce < now ? now : this.lastApiNonce + 1;
+      return this.lastApiNonce;
+    });
+    this.nonceChain = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
+  private formatApiDateTime(date: Date): string {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return (
+      `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ` +
+      `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`
+    );
+  }
+
+  private invalidatePaidOrdersCache(): void {
+    this.paidOrdersCache = null;
   }
 
   private getShopId(): number {
@@ -185,15 +218,43 @@ export class FreekassaService {
     return `${domain}/api/payments/freekassa/callback`;
   }
 
-  /** POST /orders — статус 1 = оплачен (docs.freekassa.ru §2.3). */
-  async getPaidOrderInfo(
-    paymentId: string,
-  ): Promise<FreekassaPaidOrderInfo | null> {
+  /**
+   * Один запрос POST /orders на цикл (кэш ~4 с) — иначе при параллельных проверках
+   * ловим «nonce already exist».
+   */
+  private async fetchPaidOrdersByPaymentId(): Promise<
+    Map<string, FreekassaPaidOrderInfo>
+  > {
+    const now = Date.now();
+    if (
+      this.paidOrdersCache &&
+      now - this.paidOrdersCache.fetchedAt < this.paidOrdersCacheTtlMs
+    ) {
+      return this.paidOrdersCache.byPaymentId;
+    }
+
+    if (this.paidOrdersFetchInFlight) {
+      return this.paidOrdersFetchInFlight;
+    }
+
+    this.paidOrdersFetchInFlight = this.loadPaidOrdersFromApi(now).finally(
+      () => {
+        this.paidOrdersFetchInFlight = null;
+      },
+    );
+    return this.paidOrdersFetchInFlight;
+  }
+
+  private async loadPaidOrdersFromApi(
+    now: number,
+  ): Promise<Map<string, FreekassaPaidOrderInfo>> {
     const shopId = this.getShopId();
+    const dateFrom = new Date(now - 35 * 60 * 1000);
     const body: Record<string, string | number> = {
       shopId,
-      nonce: this.nextNonce(),
-      paymentId: paymentId.trim(),
+      nonce: await this.allocateNonce(),
+      orderStatus: 1,
+      dateFrom: this.formatApiDateTime(dateFrom),
     };
     body.signature = this.buildApiSignature(body);
 
@@ -212,25 +273,40 @@ export class FreekassaService {
         this.logger.warn(
           `Freekassa API orders list failed (HTTP ${status}): ${this.formatApiError(null, data)}`,
         );
-        return null;
+        return this.paidOrdersCache?.byPaymentId ?? new Map();
       }
 
-      const orders = data.orders ?? [];
-      const paid = orders.find((o) => o.status === 1);
-      if (!paid) {
-        return null;
+      const map = new Map<string, FreekassaPaidOrderInfo>();
+      for (const order of data.orders ?? []) {
+        if (order.status !== 1) {
+          continue;
+        }
+        const paymentId = String(order.merchant_order_id ?? '').trim();
+        if (!paymentId) {
+          continue;
+        }
+        map.set(paymentId, {
+          fkOrderId: order.fk_order_id,
+          amount: order.amount,
+        });
       }
 
-      return {
-        fkOrderId: paid.fk_order_id,
-        amount: paid.amount,
-      };
+      this.paidOrdersCache = { fetchedAt: now, byPaymentId: map };
+      return map;
     } catch (err: any) {
       this.logger.warn(
-        `Freekassa API orders list error for paymentId=${paymentId}: ${err.message}`,
+        `Freekassa API orders list error: ${err.message}`,
       );
-      return null;
+      return this.paidOrdersCache?.byPaymentId ?? new Map();
     }
+  }
+
+  /** POST /orders — статус 1 = оплачен (docs.freekassa.ru §2.3). */
+  async getPaidOrderInfo(
+    paymentId: string,
+  ): Promise<FreekassaPaidOrderInfo | null> {
+    const map = await this.fetchPaidOrdersByPaymentId();
+    return map.get(paymentId.trim()) ?? null;
   }
 
   private formatApiError(error: unknown, responseData?: unknown): string {
@@ -305,7 +381,7 @@ export class FreekassaService {
 
     const body: Record<string, string | number> = {
       shopId,
-      nonce: this.nextNonce(),
+      nonce: await this.allocateNonce(),
       paymentId: orderId,
       i: paymentSystemId,
       email,
@@ -362,6 +438,8 @@ export class FreekassaService {
 
       this.logger.debug(`Freekassa API payment URL for order ${orderId}: ${location}`);
 
+      this.invalidatePaidOrdersCache();
+
       return { id: orderId, url: location };
     } catch (error: any) {
       const responseData = error.response?.data;
@@ -382,7 +460,7 @@ export class FreekassaService {
   ): Promise<void> {
     const body: Record<string, string | number> = {
       shopId,
-      nonce: this.nextNonce(),
+      nonce: await this.allocateNonce(),
     };
     body.signature = this.buildApiSignature(body);
 
