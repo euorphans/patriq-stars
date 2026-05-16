@@ -7,8 +7,8 @@ export interface CreateFreekassaPaymentParams {
   orderId: string;
   amountRub: number;
   /**
-   * ID способа оплаты (§8 / API `i`): СБП 4.2 = 44, USDT TRC20 = 15.
-   * СБП создаётся через API → paymentt.kassa.ai; крипто — SCI pay.fk.money.
+   * ID способа оплаты (§8 / API `i`): СБП 4.2 = 44, карты 5.7 = 36, USDT TRC20 = 15.
+   * СБП и карты — API → paymentt.kassa.ai; крипто — SCI pay.fk.money.
    */
   suggestedMethodId?: number;
   /** Email плательщика (обязателен для API СБП). */
@@ -26,7 +26,7 @@ interface FkApiCreateOrderResponse {
 
 /**
  * Freekassa:
- * - СБП (i=44): API https://api.fk.life/v1/orders/create → paymentt.kassa.ai
+ * - СБП (i=44), карты 5.7 (i=36): API https://api.fk.life/v1/orders/create → paymentt.kassa.ai
  * - Крипто и др.: SCI GET https://pay.fk.money/
  * Webhook: md5(MERCHANT_ID:AMOUNT:secret2:MERCHANT_ORDER_ID)
  * @see https://docs.freekassa.ru/
@@ -48,6 +48,13 @@ export class FreekassaService {
 
   private static readonly SBP_METHOD_ID = () =>
     parseInt(process.env.FREEKASSA_SBP_CUR_ID || '44', 10);
+
+  private static readonly CARD_METHOD_ID = () =>
+    parseInt(process.env.FREEKASSA_CARD_CUR_ID || '36', 10);
+
+  private static apiMethodIds(): number[] {
+    return [FreekassaService.SBP_METHOD_ID(), FreekassaService.CARD_METHOD_ID()];
+  }
 
   formatAmountForSign(amountRub: number): string {
     return amountRub.toFixed(2);
@@ -168,25 +175,23 @@ export class FreekassaService {
     return 'Unknown API error';
   }
 
-  private isSbpMethod(methodId?: number): boolean {
-    const sbpId = FreekassaService.SBP_METHOD_ID();
-    return (
-      typeof methodId === 'number' &&
-      Number.isFinite(methodId) &&
-      methodId === sbpId
-    );
+  private usesApiMethod(methodId?: number): boolean {
+    if (typeof methodId !== 'number' || !Number.isFinite(methodId)) {
+      return false;
+    }
+    return FreekassaService.apiMethodIds().includes(methodId);
   }
 
   async createPayment(
     params: CreateFreekassaPaymentParams,
   ): Promise<{ id: string; url: string }> {
-    if (this.isSbpMethod(params.suggestedMethodId)) {
+    if (this.usesApiMethod(params.suggestedMethodId)) {
       return this.createPaymentViaApi(params);
     }
     return this.createPaymentViaSci(params);
   }
 
-  /** API v1 — СБП 4.2, страница оплаты paymentt.kassa.ai */
+  /** API v1 — СБП / карты, страница оплаты paymentt.kassa.ai */
   private async createPaymentViaApi(
     params: CreateFreekassaPaymentParams,
   ): Promise<{ id: string; url: string }> {
@@ -261,7 +266,7 @@ export class FreekassaService {
         );
         if (errMsg.includes('временно не доступна')) {
           throw new Error(
-            'СБП сейчас недоступен у платёжной системы. В ЛК Freekassa включите способ i=44 (СБП 4.2) и укажите публичный IP сервера в FREEKASSA_API_PAYER_IP.',
+            `Способ оплаты i=${paymentSystemId} недоступен. В ЛК Freekassa включите метод и укажите публичный IP (WEBHOOK_IP / FREEKASSA_API_PAYER_IP).`,
           );
         }
         throw new Error(`Freekassa API: ${errMsg}`);

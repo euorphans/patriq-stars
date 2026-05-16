@@ -27,6 +27,12 @@ import {
   escapeHtml,
   formatDateTimeMoscow,
 } from '@/shared/utils';
+import {
+  FREEKASSA_CARD_MARKER,
+  FREEKASSA_CRYPTO_MARKER,
+  isFreekassaCardPayment,
+  isFreekassaCryptoPayment,
+} from '@/shared/utils/freekassa-payment.util';
 import { RapiraService } from '@/shared/services/rapira/rapira.service';
 import { PrismaService } from '@/shared/services/prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -2021,17 +2027,18 @@ export class BotUpdate {
         productText = `${productEmoji} ${payment.product_type} x${payment.product_quantity}`;
       }
 
-      const isFreekassaCrypto =
-        payment.payment_method === 'FREEKASSA' &&
-        payment.crypto_currency === 'USD';
+      const isFreekassaCrypto = isFreekassaCryptoPayment(payment);
+      const isFreekassaCard = isFreekassaCardPayment(payment);
 
       const paymentMethodText =
         payment.payment_method === 'TON'
           ? this.i18n.t('payment.method.ton', lang)
           : isFreekassaCrypto
             ? this.i18n.t('payment.method.freekassa_crypto', lang)
-            : payment.payment_method === 'FREEKASSA'
-              ? this.i18n.t('payment.method.freekassa', lang)
+            : isFreekassaCard
+              ? this.i18n.t('payment.method.freekassa_card', lang)
+              : payment.payment_method === 'FREEKASSA'
+                ? this.i18n.t('payment.method.freekassa', lang)
               : payment.payment_method === 'HELEKET'
                 ? this.i18n.t('payment.method.heleket', lang)
                 : payment.payment_method;
@@ -3128,13 +3135,14 @@ export class BotUpdate {
     }
   }
 
-  @Action(/^payment_(freekassa|freekassa_crypto|ton)$/)
+  @Action(/^payment_(freekassa|freekassa_card|freekassa_crypto|ton)$/)
   async selectPaymentMethod(@Ctx() ctx: BotContext): Promise<void> {
     const match = ctx.match;
     if (!match) return;
 
     const paymentMethod = match[1] as
       | 'freekassa'
+      | 'freekassa_card'
       | 'freekassa_crypto'
       | 'ton';
     const userId = ctx.from?.id;
@@ -3168,7 +3176,7 @@ export class BotUpdate {
 
   private async processPaymentCreation(
     ctx: BotContext,
-    paymentMethod: 'freekassa' | 'freekassa_crypto' | 'ton',
+    paymentMethod: 'freekassa' | 'freekassa_card' | 'freekassa_crypto' | 'ton',
   ): Promise<void> {
     const userId = ctx.from?.id;
 
@@ -3188,7 +3196,7 @@ export class BotUpdate {
 
   private async doProcessPaymentCreation(
     ctx: BotContext,
-    paymentMethod: 'freekassa' | 'freekassa_crypto' | 'ton',
+    paymentMethod: 'freekassa' | 'freekassa_card' | 'freekassa_crypto' | 'ton',
   ): Promise<void> {
     const { productType, quantity, recipientUsername, recipientName } =
       ctx.session;
@@ -3229,12 +3237,21 @@ export class BotUpdate {
       if (!userId) return;
 
       const limits = await this.settingsService.getPurchaseLimits();
-      const isSbpOrCard = paymentMethod === 'freekassa';
+      const isSbpOrCard =
+        paymentMethod === 'freekassa' || paymentMethod === 'freekassa_card';
 
       const pricingKey =
-        paymentMethod === 'freekassa_crypto' ? 'heleket' : paymentMethod;
+        paymentMethod === 'freekassa_crypto'
+          ? 'heleket'
+          : paymentMethod === 'freekassa_card'
+            ? 'freekassa'
+            : paymentMethod;
 
       const sbpFkCurId = parseInt(process.env.FREEKASSA_SBP_CUR_ID || '44', 10);
+      const cardFkCurId = parseInt(
+        process.env.FREEKASSA_CARD_CUR_ID || '36',
+        10,
+      );
       const cryptoFkCurId = parseInt(
         process.env.FREEKASSA_CRYPTO_CUR_ID || '15',
         10,
@@ -3323,7 +3340,9 @@ export class BotUpdate {
       }
 
       const prismaPaymentMethod =
-        paymentMethod === 'freekassa' || paymentMethod === 'freekassa_crypto'
+        paymentMethod === 'freekassa' ||
+        paymentMethod === 'freekassa_card' ||
+        paymentMethod === 'freekassa_crypto'
           ? 'FREEKASSA'
           : paymentMethod.toUpperCase();
 
@@ -3350,8 +3369,10 @@ export class BotUpdate {
           paymentMethod === 'ton'
             ? 'TON'
             : paymentMethod === 'freekassa_crypto'
-              ? 'USD'
-              : undefined,
+              ? FREEKASSA_CRYPTO_MARKER
+              : paymentMethod === 'freekassa_card'
+                ? FREEKASSA_CARD_MARKER
+                : undefined,
         usd_rate: priceDetails.usd_rate.toString(),
         service_markup_percent: priceDetails.service_markup_percent.toString(),
         payment_system_fee_percent: priceDetails.payment_fee_percent.toString(),
@@ -3362,11 +3383,15 @@ export class BotUpdate {
           Number.isFinite(cryptoFkCurId) &&
           cryptoFkCurId > 0
             ? cryptoFkCurId
-            : paymentMethod === 'freekassa' &&
-                Number.isFinite(sbpFkCurId) &&
-                sbpFkCurId > 0
-              ? sbpFkCurId
-              : undefined,
+            : paymentMethod === 'freekassa_card' &&
+                Number.isFinite(cardFkCurId) &&
+                cardFkCurId > 0
+              ? cardFkCurId
+              : paymentMethod === 'freekassa' &&
+                  Number.isFinite(sbpFkCurId) &&
+                  sbpFkCurId > 0
+                ? sbpFkCurId
+                : undefined,
       });
 
       if (paymentMethod === 'ton') {
@@ -3382,9 +3407,11 @@ export class BotUpdate {
         const paymentMethodDisplay =
           paymentMethod === 'freekassa'
             ? this.i18n.t('payment.method.freekassa', lang)
-            : paymentMethod === 'freekassa_crypto'
-              ? this.i18n.t('payment.method.freekassa_crypto', lang)
-              : this.i18n.t('payment.method.ton', lang);
+            : paymentMethod === 'freekassa_card'
+              ? this.i18n.t('payment.method.freekassa_card', lang)
+              : paymentMethod === 'freekassa_crypto'
+                ? this.i18n.t('payment.method.freekassa_crypto', lang)
+                : this.i18n.t('payment.method.ton', lang);
 
         let recipientDisplay: string;
         if (payment.recipient_username && payment.recipient_name) {

@@ -563,8 +563,11 @@ export class PaymentCheckerService {
           : payment.payment_method === 'FREEKASSA' &&
                 payment.crypto_currency === 'USD'
               ? 'payment.method.freekassa_crypto'
-              : payment.payment_method === 'FREEKASSA'
-                ? 'payment.method.freekassa'
+              : payment.payment_method === 'FREEKASSA' &&
+                  payment.crypto_currency === 'CARD'
+                ? 'payment.method.freekassa_card'
+                : payment.payment_method === 'FREEKASSA'
+                  ? 'payment.method.freekassa'
                 : payment.payment_method === 'HELEKET'
                   ? 'payment.method.heleket'
                   : payment.payment_method;
@@ -701,7 +704,10 @@ export class PaymentCheckerService {
         payment.payment_method === 'FREEKASSA' &&
         payment.crypto_currency === 'USD'
           ? '🪙 Крипто (Freekassa)'
-          : paymentMethods[payment.payment_method] || payment.payment_method;
+          : payment.payment_method === 'FREEKASSA' &&
+              payment.crypto_currency === 'CARD'
+            ? '💳 Карта 5.7 (Freekassa)'
+            : paymentMethods[payment.payment_method] || payment.payment_method;
       const product =
         productNames[payment.product_type] || payment.product_type;
       const productLine =

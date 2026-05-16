@@ -491,6 +491,11 @@ export class PaymentAdminService {
         payment.crypto_currency === 'USD'
       ) {
         methodLabel = '🪙 Крипто (Freekassa)';
+      } else if (
+        payment.payment_method === 'FREEKASSA' &&
+        payment.crypto_currency === 'CARD'
+      ) {
+        methodLabel = '💳 Карта 5.7 (Freekassa)';
       }
 
       let amountText = '';

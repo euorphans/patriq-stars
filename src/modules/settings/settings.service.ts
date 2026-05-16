@@ -311,7 +311,7 @@ export class SettingsService implements OnModuleInit {
       }
     }
 
-    const methods = ['FREEKASSA', 'FREEKASSA_CRYPTO', 'TON'];
+    const methods = ['FREEKASSA', 'FREEKASSA_CARD', 'FREEKASSA_CRYPTO', 'TON'];
     for (const method of methods) {
       const key = `payment_method_enabled_${method}`;
       const existing = await this.getSetting(key);
@@ -331,13 +331,19 @@ export class SettingsService implements OnModuleInit {
         await this.prisma.botSettings
           .deleteMany({ where: { setting_key: 'payment_method_enabled_PLATEGA' } })
           .catch(() => {});
-        if (!order.includes('FREEKASSA_CRYPTO')) {
+        if (!order.includes('FREEKASSA_CARD')) {
           const fkIdx = order.indexOf('FREEKASSA');
           if (fkIdx >= 0) {
-            order.splice(fkIdx + 1, 0, 'FREEKASSA_CRYPTO');
+            order.splice(fkIdx + 1, 0, 'FREEKASSA_CARD');
           } else {
-            order.push('FREEKASSA_CRYPTO');
+            order.push('FREEKASSA_CARD');
           }
+        }
+        if (!order.includes('FREEKASSA_CRYPTO')) {
+          const cardIdx = order.indexOf('FREEKASSA_CARD');
+          const fkIdx = order.indexOf('FREEKASSA');
+          const insertAt = cardIdx >= 0 ? cardIdx + 1 : fkIdx >= 0 ? fkIdx + 1 : order.length;
+          order.splice(insertAt, 0, 'FREEKASSA_CRYPTO');
         }
         const newMethods = methods.filter((m) => !order.includes(m));
         if (
@@ -392,7 +398,7 @@ export class SettingsService implements OnModuleInit {
   }
 
   async getPaymentMethodsOrder(): Promise<string[]> {
-    const validMethods = ['FREEKASSA', 'FREEKASSA_CRYPTO', 'TON'];
+    const validMethods = ['FREEKASSA', 'FREEKASSA_CARD', 'FREEKASSA_CRYPTO', 'TON'];
     const value = await this.getSetting('payment_methods_order');
     if (!value) {
       return validMethods;

@@ -629,7 +629,10 @@ export class PaymentsController {
         payment.payment_method === 'FREEKASSA' &&
         payment.crypto_currency === 'USD'
           ? '🪙 Крипто (Freekassa)'
-          : paymentMethods[payment.payment_method] || payment.payment_method;
+          : payment.payment_method === 'FREEKASSA' &&
+              payment.crypto_currency === 'CARD'
+            ? '💳 Карта 5.7 (Freekassa)'
+            : paymentMethods[payment.payment_method] || payment.payment_method;
       const product =
         productNames[payment.product_type] || payment.product_type;
       const productLine =
