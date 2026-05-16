@@ -2005,14 +2005,22 @@ export class BotUpdate {
         productText = `${productEmoji} ${payment.product_type} x${payment.product_quantity}`;
       }
 
+      const isFreekassaCrypto =
+        payment.payment_method === 'FREEKASSA' &&
+        payment.crypto_currency === 'USD';
+
       const paymentMethodText =
         payment.payment_method === 'TON'
           ? this.i18n.t('payment.method.ton', lang)
           : payment.payment_method === 'PLATEGA'
             ? this.i18n.t('payment.method.platega', lang)
-            : payment.payment_method === 'HELEKET'
-              ? this.i18n.t('payment.method.heleket', lang)
-              : payment.payment_method;
+            : isFreekassaCrypto
+              ? this.i18n.t('payment.method.freekassa_crypto', lang)
+              : payment.payment_method === 'FREEKASSA'
+                ? this.i18n.t('payment.method.freekassa', lang)
+                : payment.payment_method === 'HELEKET'
+                  ? this.i18n.t('payment.method.heleket', lang)
+                  : payment.payment_method;
 
       let recipientText: string;
       if (payment.recipient_username) {
@@ -2028,7 +2036,10 @@ export class BotUpdate {
         amountText = `${this.i18n.t('purchases.details.amount', lang)} ${Number(payment.amount_ton).toFixed(4)} TON`;
       } else if (payment.payment_method === 'TON' && payment.amount_usd) {
         amountText = `${this.i18n.t('purchases.details.amount', lang)} $${Number(payment.amount_usd).toFixed(2)}`;
-      } else if (payment.payment_method === 'HELEKET' && payment.amount_usd) {
+      } else if (
+        (payment.payment_method === 'HELEKET' || isFreekassaCrypto) &&
+        payment.amount_usd
+      ) {
         amountText = `${this.i18n.t('purchases.details.amount', lang)} $${Number(payment.amount_usd).toFixed(2)}`;
       } else {
         amountText = `${this.i18n.t('purchases.details.amount', lang)} ${Number(payment.amount_rub).toFixed(2)} ₽`;
@@ -3103,12 +3114,16 @@ export class BotUpdate {
     }
   }
 
-  @Action(/^payment_(platega|heleket|ton)$/)
+  @Action(/^payment_(platega|freekassa|freekassa_crypto|ton)$/)
   async selectPaymentMethod(@Ctx() ctx: BotContext): Promise<void> {
     const match = ctx.match;
     if (!match) return;
 
-    const paymentMethod = match[1] as 'platega' | 'heleket' | 'ton';
+    const paymentMethod = match[1] as
+      | 'platega'
+      | 'freekassa'
+      | 'freekassa_crypto'
+      | 'ton';
     const userId = ctx.from?.id;
 
     if (
@@ -3140,7 +3155,7 @@ export class BotUpdate {
 
   private async processPaymentCreation(
     ctx: BotContext,
-    paymentMethod: 'platega' | 'heleket' | 'ton',
+    paymentMethod: 'platega' | 'freekassa' | 'freekassa_crypto' | 'ton',
   ): Promise<void> {
     const userId = ctx.from?.id;
 
@@ -3160,7 +3175,7 @@ export class BotUpdate {
 
   private async doProcessPaymentCreation(
     ctx: BotContext,
-    paymentMethod: 'platega' | 'heleket' | 'ton',
+    paymentMethod: 'platega' | 'freekassa' | 'freekassa_crypto' | 'ton',
   ): Promise<void> {
     const { productType, quantity, recipientUsername, recipientName } =
       ctx.session;
@@ -3201,7 +3216,16 @@ export class BotUpdate {
       if (!userId) return;
 
       const limits = await this.settingsService.getPurchaseLimits();
-      const isSbpOrCard = paymentMethod === 'platega';
+      const isSbpOrCard =
+        paymentMethod === 'platega' || paymentMethod === 'freekassa';
+
+      const pricingKey =
+        paymentMethod === 'freekassa_crypto' ? 'heleket' : paymentMethod;
+
+      const cryptoFkCurId = parseInt(
+        process.env.FREEKASSA_CRYPTO_CUR_ID || '15',
+        10,
+      );
 
       let effectiveQuantity = quantity;
       let showSbpStarsCapNotice = false;
@@ -3220,7 +3244,7 @@ export class BotUpdate {
         this.pricingService.calculatePriceForPaymentSystemDetailed(
           productType.toUpperCase(),
           effectiveQuantity,
-          paymentMethod,
+          pricingKey,
         ),
       ]);
 
@@ -3285,14 +3309,19 @@ export class BotUpdate {
         }).catch(() => {});
       }
 
+      const prismaPaymentMethod =
+        paymentMethod === 'freekassa' || paymentMethod === 'freekassa_crypto'
+          ? 'FREEKASSA'
+          : paymentMethod.toUpperCase();
+
       const payment = await this.paymentsService.createPayment({
         user_id: dbUser.id,
         user_telegram_id: userId,
         recipient: recipientUsername || recipientName || 'self',
         recipient_username: recipientUsername,
         recipient_name: recipientName,
-        payment_method: paymentMethod.toUpperCase() as any,
-        payment_system: paymentMethod.toUpperCase() as any,
+        payment_method: prismaPaymentMethod as any,
+        payment_system: prismaPaymentMethod as any,
         product_type: productType.toUpperCase() as any,
         product_quantity: effectiveQuantity.toString(),
         amount_rub: priceDetails.amount_rub.toString(),
@@ -3300,14 +3329,14 @@ export class BotUpdate {
         amount_crypto:
           paymentMethod === 'ton'
             ? amountTon?.toString()
-            : paymentMethod === 'heleket'
+            : paymentMethod === 'freekassa_crypto'
               ? priceDetails.amount_usd.toString()
               : undefined,
         amount_ton: amountTon?.toString(),
         crypto_currency:
           paymentMethod === 'ton'
             ? 'TON'
-            : paymentMethod === 'heleket'
+            : paymentMethod === 'freekassa_crypto'
               ? 'USD'
               : undefined,
         usd_rate: priceDetails.usd_rate.toString(),
@@ -3315,6 +3344,12 @@ export class BotUpdate {
         payment_system_fee_percent: priceDetails.payment_fee_percent.toString(),
         purchase_price_usd: priceDetails.purchase_price_usd.toString(),
         net_profit_rub: priceDetails.net_profit_rub.toString(),
+        freekassa_suggested_method_id:
+          paymentMethod === 'freekassa_crypto' &&
+          Number.isFinite(cryptoFkCurId) &&
+          cryptoFkCurId > 0
+            ? cryptoFkCurId
+            : undefined,
       });
 
       if (paymentMethod === 'ton') {
@@ -3330,9 +3365,11 @@ export class BotUpdate {
         const paymentMethodDisplay =
           paymentMethod === 'platega'
             ? this.i18n.t('payment.method.platega', lang)
-            : paymentMethod === 'heleket'
-              ? this.i18n.t('payment.method.heleket', lang)
-              : this.i18n.t('payment.method.platega', lang);
+            : paymentMethod === 'freekassa'
+              ? this.i18n.t('payment.method.freekassa', lang)
+              : paymentMethod === 'freekassa_crypto'
+                ? this.i18n.t('payment.method.freekassa_crypto', lang)
+                : this.i18n.t('payment.method.ton', lang);
 
         let recipientDisplay: string;
         if (payment.recipient_username && payment.recipient_name) {
@@ -3353,7 +3390,7 @@ export class BotUpdate {
 
         let amountDisplay: string;
         if (
-          paymentMethod === 'heleket' &&
+          paymentMethod === 'freekassa_crypto' &&
           payment.amount_crypto &&
           payment.crypto_currency
         ) {

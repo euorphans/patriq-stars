@@ -185,6 +185,8 @@ export class BotAdminUpdate {
     switch (system) {
       case 'PLATEGA':
         return 'Platega';
+      case 'FREEKASSA':
+        return 'Freekassa';
       case 'HELEKET':
         return 'Heleket';
       case 'TON':
@@ -2065,13 +2067,13 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
       await ctx.deleteMessage();
     } catch {}
 
-    const [plategaFeeRecord, heleketFeeRecord, tonFeeRecord] =
+    const [plategaFeeRecord, freekassaFeeRecord, tonFeeRecord] =
       await Promise.all([
         this.prisma.paymentFee.findUnique({
           where: { payment_system: 'PLATEGA' },
         }),
         this.prisma.paymentFee.findUnique({
-          where: { payment_system: 'HELEKET' },
+          where: { payment_system: 'FREEKASSA' },
         }),
         this.prisma.paymentFee.findUnique({
           where: { payment_system: 'TON' },
@@ -2081,8 +2083,8 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
     const plategaFee = plategaFeeRecord
       ? Number(plategaFeeRecord.fee_percent)
       : 0;
-    const heleketFee = heleketFeeRecord
-      ? Number(heleketFeeRecord.fee_percent)
+    const freekassaFee = freekassaFeeRecord
+      ? Number(freekassaFeeRecord.fee_percent)
       : 0;
     const tonFee = tonFeeRecord ? Number(tonFeeRecord.fee_percent) : 0;
     const text = `
@@ -2090,7 +2092,7 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
 
 Текущие комиссии:
 • Platega: ${plategaFee.toFixed(1)}%
-• Heleket: ${heleketFee.toFixed(1)}%
+• Freekassa: ${freekassaFee.toFixed(1)}%
 • TON: ${tonFee.toFixed(1)}%
 
 Выберите систему для изменения:
@@ -2100,7 +2102,7 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
       parse_mode: 'HTML',
       reply_markup: AdminKeyboard.getPaymentSystemsMenu(
         plategaFee,
-        heleketFee,
+        freekassaFee,
         tonFee,
       ).reply_markup,
     });
@@ -2112,10 +2114,10 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
     await this.handleFeeSelection(ctx, 'PLATEGA', 'Platega');
   }
 
-  @Action('fee_heleket')
-  async feeHeleket(@Ctx() ctx: BotContext): Promise<void> {
+  @Action('fee_freekassa')
+  async feeFreekassa(@Ctx() ctx: BotContext): Promise<void> {
     if (!(await this.checkAccess(ctx))) return;
-    await this.handleFeeSelection(ctx, 'HELEKET', 'Heleket');
+    await this.handleFeeSelection(ctx, 'FREEKASSA', 'Freekassa');
   }
 
   @Action('fee_ton')
@@ -2164,13 +2166,13 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
       await ctx.deleteMessage();
     } catch {}
 
-    const [plategaMarkupRecord, heleketMarkupRecord, tonMarkupRecord] =
+    const [plategaMarkupRecord, freekassaMarkupRecord, tonMarkupRecord] =
       await Promise.all([
         this.prisma.serviceMarkup.findUnique({
           where: { payment_system: 'PLATEGA' },
         }),
         this.prisma.serviceMarkup.findUnique({
-          where: { payment_system: 'HELEKET' },
+          where: { payment_system: 'FREEKASSA' },
         }),
         this.prisma.serviceMarkup.findUnique({
           where: { payment_system: 'TON' },
@@ -2180,8 +2182,8 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
     const plategaMarkup = plategaMarkupRecord
       ? Number(plategaMarkupRecord.markup_percent)
       : 0;
-    const heleketMarkup = heleketMarkupRecord
-      ? Number(heleketMarkupRecord.markup_percent)
+    const freekassaMarkup = freekassaMarkupRecord
+      ? Number(freekassaMarkupRecord.markup_percent)
       : 0;
     const tonMarkup = tonMarkupRecord
       ? Number(tonMarkupRecord.markup_percent)
@@ -2191,7 +2193,7 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
 
 Текущая наценка сервиса (чистая прибыль):
 • Platega: ${plategaMarkup.toFixed(1)}%
-• Heleket: ${heleketMarkup.toFixed(1)}%
+• Freekassa: ${freekassaMarkup.toFixed(1)}%
 • TON: ${tonMarkup.toFixed(1)}%
 
 Выберите систему для изменения наценки:
@@ -2201,13 +2203,13 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
       parse_mode: 'HTML',
       reply_markup: AdminKeyboard.getServiceMarkupMenu(
         plategaMarkup,
-        heleketMarkup,
+        freekassaMarkup,
         tonMarkup,
       ).reply_markup,
     });
   }
 
-  @Action(/^markup_(platega|heleket|ton)$/)
+  @Action(/^markup_(platega|freekassa|ton)$/)
   async selectMarkupSystem(@Ctx() ctx: BotContext): Promise<void> {
     if (!(await this.checkAccess(ctx))) return;
     const match = ctx.match;
@@ -2263,7 +2265,7 @@ ${methods
   .map((m) => {
     const names: Record<string, string> = {
       PLATEGA: 'СБП (Platega)',
-      HELEKET: 'Криптовалюта',
+      FREEKASSA: 'СБП (Freekassa)',
       TON: 'TON',
     };
     return `${m.enabled ? '🟢' : '🔴'} ${names[m.method] || m.method}`;
@@ -2294,7 +2296,7 @@ ${methods
 
     const METHOD_NAMES: Record<string, string> = {
       PLATEGA: 'СБП (Platega)',
-      HELEKET: 'Криптовалюта',
+      FREEKASSA: 'СБП (Freekassa)',
       TON: 'TON',
     };
     const name = METHOD_NAMES[method] || method;
@@ -2313,7 +2315,7 @@ ${methods
   .map((m) => {
     const names: Record<string, string> = {
       PLATEGA: 'СБП (Platega)',
-      HELEKET: 'Криптовалюта',
+      FREEKASSA: 'СБП (Freekassa)',
       TON: 'TON',
     };
     return `${m.enabled ? '🟢' : '🔴'} ${names[m.method] || m.method}`;
@@ -2352,7 +2354,7 @@ ${methods
   .map((m) => {
     const names: Record<string, string> = {
       PLATEGA: 'СБП (Platega)',
-      HELEKET: 'Криптовалюта',
+      FREEKASSA: 'СБП (Freekassa)',
       TON: 'TON',
     };
     return `${m.enabled ? '🟢' : '🔴'} ${names[m.method] || m.method}`;
@@ -2391,7 +2393,7 @@ ${methods
   .map((m) => {
     const names: Record<string, string> = {
       PLATEGA: 'СБП (Platega)',
-      HELEKET: 'Криптовалюта',
+      FREEKASSA: 'СБП (Freekassa)',
       TON: 'TON',
     };
     return `${m.enabled ? '🟢' : '🔴'} ${names[m.method] || m.method}`;
@@ -4038,14 +4040,22 @@ ${methods
         productName = escapeHtml(payment.product_type);
       }
 
+      const isFreekassaCrypto =
+        payment.payment_method === 'FREEKASSA' &&
+        payment.crypto_currency === 'USD';
+
       const paymentMethodText =
         payment.payment_method === 'TON'
           ? 'TON'
           : payment.payment_method === 'PLATEGA'
-            ? 'СБП РФ'
-            : payment.payment_method === 'HELEKET'
-              ? 'Криптовалюта'
-              : escapeHtml(String(payment.payment_method));
+            ? 'СБП РФ (Platega)'
+            : isFreekassaCrypto
+              ? 'Крипто (Freekassa)'
+              : payment.payment_method === 'FREEKASSA'
+                ? 'СБП РФ (Freekassa)'
+                : payment.payment_method === 'HELEKET'
+                  ? 'Криптовалюта (Heleket)'
+                  : escapeHtml(String(payment.payment_method));
 
       const formattedDate = new Date(payment.created_at)
         .toLocaleString('ru-RU', {
@@ -4091,7 +4101,15 @@ ${methods
       let paymentFeeSum = 0;
       if (payment.payment_method === 'PLATEGA') {
         paymentFeeSum = amountRub * (paymentFeePercent / 100);
-      } else if (payment.payment_method === 'HELEKET') {
+      } else if (
+        payment.payment_method === 'FREEKASSA' &&
+        !isFreekassaCrypto
+      ) {
+        paymentFeeSum = amountRub * (paymentFeePercent / 100);
+      } else if (
+        payment.payment_method === 'HELEKET' ||
+        isFreekassaCrypto
+      ) {
         paymentFeeSum = amountUsd * (paymentFeePercent / 100);
       }
 
@@ -4111,7 +4129,10 @@ ${methods
         serviceMarkupSum = serviceMarkupSum * tonRate;
         netProfit = serviceMarkupSum;
         amountDisplay = `${amountTon.toFixed(4)} TON`;
-      } else if (payment.payment_method === 'HELEKET') {
+      } else if (
+        payment.payment_method === 'HELEKET' ||
+        isFreekassaCrypto
+      ) {
         currency = '$';
         serviceMarkupSum = purchasePrice * (serviceMarkupPercent / 100);
         netProfit = Number(payment.net_profit_rub || 0) / rate;
@@ -4130,9 +4151,12 @@ ${methods
       }
 
       if (paymentFeePercent > 0) {
-        if (payment.payment_method === 'HELEKET') {
+        if (payment.payment_method === 'HELEKET' || isFreekassaCrypto) {
           feeDisplay = `\n\n💸 <b>КОМИССИЯ ПЛАТЁЖНОЙ СИСТЕМЫ</b>\n├ Процент: ${paymentFeePercent.toFixed(2)}%\n└ Сумма: ${paymentFeeSum.toFixed(2)} $`;
-        } else if (payment.payment_method === 'PLATEGA') {
+        } else if (
+          payment.payment_method === 'PLATEGA' ||
+          (payment.payment_method === 'FREEKASSA' && !isFreekassaCrypto)
+        ) {
           feeDisplay = `\n\n💸 <b>КОМИССИЯ ПЛАТЁЖНОЙ СИСТЕМЫ</b>\n├ Процент: ${paymentFeePercent.toFixed(2)}%\n└ Сумма: ${paymentFeeSum.toFixed(2)} ₽`;
         }
       }

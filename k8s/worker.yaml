@@ -169,6 +169,36 @@ spec:
                   name: stars-bot-secrets
                   key: HELEKET_IP_WHITELIST
                   optional: true
+            - name: FREEKASSA_MERCHANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: FREEKASSA_MERCHANT_ID
+                  optional: true
+            - name: FREEKASSA_SECRET1
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: FREEKASSA_SECRET1
+                  optional: true
+            - name: FREEKASSA_SECRET2
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: FREEKASSA_SECRET2
+                  optional: true
+            - name: FREEKASSA_IP_WHITELIST
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: FREEKASSA_IP_WHITELIST
+                  optional: true
+            - name: FREEKASSA_CRYPTO_CUR_ID
+              valueFrom:
+                secretKeyRef:
+                  name: stars-bot-secrets
+                  key: FREEKASSA_CRYPTO_CUR_ID
+                  optional: true
             - name: TELEGRAM_API_ID
               valueFrom:
                 secretKeyRef:

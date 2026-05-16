@@ -367,22 +367,35 @@ export class PaymentAdminService {
       let amountText = '';
       if (payment.payment_method === 'TON' && amountTon > 0) {
         amountText = `${amountTon.toFixed(9)} TON`;
-      } else if (payment.payment_method === 'HELEKET' && amountUsd > 0) {
+      } else if (
+        (payment.payment_method === 'HELEKET' ||
+          (payment.payment_method === 'FREEKASSA' &&
+            payment.crypto_currency === 'USD')) &&
+        amountUsd > 0
+      ) {
         amountText = `$${amountUsd.toFixed(2)}`;
       } else {
         amountText = `${amountRub.toFixed(2)} ₽`;
       }
 
-      let plategaLine = '';
+      let providerLine = '';
       if (payment.payment_method === 'PLATEGA' && payment.external_payment_id) {
-        plategaLine = `\n🔗 <b>Операция Platega:</b> <code>${payment.external_payment_id}</code>`;
+        providerLine = `\n🔗 <b>Операция Platega:</b> <code>${payment.external_payment_id}</code>`;
+      } else if (
+        payment.payment_method === 'FREEKASSA' &&
+        payment.external_payment_id
+      ) {
+        providerLine = `\n🔗 <b>Заказ Freekassa:</b> <code>${payment.external_payment_id}</code>`;
+        if (payment.provider_transaction_id) {
+          providerLine += `\n🔗 <b>Операция FK:</b> <code>${payment.provider_transaction_id}</code>`;
+        }
       }
 
       const text = `
 🚨 <b>ПОЙМАН МОШЕННИК!</b>
 
 🕐 <b>Время:</b> ${timeStr}
-🆔 <b>Номер заказа:</b> <code>#${payment.order_number}</code>${plategaLine}
+🆔 <b>Номер заказа:</b> <code>#${payment.order_number}</code>${providerLine}
 
 👤 <b>Покупатель:</b> ${buyerInfo}
 🎁 <b>Получатель:</b> ${recipientInfo}
@@ -432,6 +445,7 @@ export class PaymentAdminService {
 
       const paymentMethods: Record<string, string> = {
         PLATEGA: '🏦 СБП РФ',
+        FREEKASSA: '🏦 СБП (Freekassa)',
         HELEKET: '🪙 Криптовалюта',
         TON: '💎 TON',
       };
@@ -473,10 +487,24 @@ export class PaymentAdminService {
       const amountTon = parseFloat(payment.amount_ton?.toString() || '0');
       const netProfit = parseFloat(payment.net_profit_rub?.toString() || '0');
 
+      let methodLabel =
+        paymentMethods[payment.payment_method] || payment.payment_method;
+      if (
+        payment.payment_method === 'FREEKASSA' &&
+        payment.crypto_currency === 'USD'
+      ) {
+        methodLabel = '🪙 Крипто (Freekassa)';
+      }
+
       let amountText = '';
       if (payment.payment_method === 'TON' && amountTon > 0) {
         amountText = `${amountTon.toFixed(9)} TON`;
-      } else if (payment.payment_method === 'HELEKET' && amountUsd > 0) {
+      } else if (
+        (payment.payment_method === 'HELEKET' ||
+          (payment.payment_method === 'FREEKASSA' &&
+            payment.crypto_currency === 'USD')) &&
+        amountUsd > 0
+      ) {
         amountText = `$${amountUsd.toFixed(2)}`;
       } else {
         amountText = `${amountRub.toFixed(2)} ₽`;
@@ -492,7 +520,7 @@ export class PaymentAdminService {
 🎁 <b>Получатель:</b> ${recipientInfo}
 
 📦 <b>Товар:</b> ${productLine}
-💳 <b>Способ оплаты:</b> ${paymentMethods[payment.payment_method] || payment.payment_method}
+💳 <b>Способ оплаты:</b> ${methodLabel}
 
 💵 <b>Сумма оплаты:</b> ${amountText}
 💸 <b>Наш доход:</b> ${netProfit.toFixed(2)} ₽

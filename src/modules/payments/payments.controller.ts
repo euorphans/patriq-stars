@@ -8,13 +8,14 @@ import {
   Logger,
   BadRequestException,
   UseGuards,
+  Res,
 } from '@nestjs/common';
 import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf } from 'telegraf';
 import { SkipThrottle } from '@nestjs/throttler';
 import { PaymentsService } from './payments.service';
 import { PlategaService } from './providers/platega.service';
-import { PaymentStatus } from '@prisma/client';
+import { PaymentStatus, PaymentMethod } from '@prisma/client';
 import { PrismaService } from '@/shared/services/prisma/prisma.service';
 import { SettingsService } from '@/modules/settings/settings.service';
 import { getProductName, withTransactionRetry } from '@/shared/utils';
@@ -30,6 +31,7 @@ import {
   PURCHASE_FOLLOWUP_IMAGE,
   sendOrEditPaymentSuccessPhoto,
 } from '@/shared/utils/payment-success-notification';
+import { Response } from 'express';
 
 interface PlategaCallbackPayload {
   id: string;
@@ -239,6 +241,120 @@ export class PaymentsController {
         error.stack,
       );
       throw error;
+    }
+  }
+
+  @SkipThrottle()
+  @UseGuards(IpWhitelistGuard, WebhookGuard)
+  @Post('freekassa/callback')
+  async handleFreekassaCallback(
+    @Body() body: Record<string, any>,
+    @Res({ passthrough: false }) res: Response,
+  ): Promise<void> {
+    try {
+      const merchantOrderId = String(body.MERCHANT_ORDER_ID ?? '').trim();
+      const amountRaw = body.AMOUNT;
+      const amountStr =
+        typeof amountRaw === 'number' && Number.isFinite(amountRaw)
+          ? amountRaw.toFixed(2)
+          : String(amountRaw ?? '').trim().replace(',', '.');
+      const intidRaw = body.intid ?? body.INTID;
+      const intid =
+        intidRaw !== undefined && intidRaw !== null && String(intidRaw) !== ''
+          ? String(intidRaw)
+          : undefined;
+
+      this.logger.warn(
+        `Freekassa callback: MERCHANT_ORDER_ID=${merchantOrderId} AMOUNT=${amountStr} intid=${intid ?? ''}`,
+      );
+
+      if (!merchantOrderId || !amountStr) {
+        res.type('text/plain').status(400).send('BAD');
+        return;
+      }
+
+      const payment =
+        await this.paymentsService.getPaymentByExternalId(merchantOrderId);
+
+      if (!payment) {
+        res.type('text/plain').send('YES');
+        return;
+      }
+
+      if (payment.payment_method !== PaymentMethod.FREEKASSA) {
+        this.logger.warn(
+          `Freekassa callback order ${merchantOrderId} is ${payment.payment_method}, ignoring`,
+        );
+        res.type('text/plain').send('YES');
+        return;
+      }
+
+      if (payment.status === PaymentStatus.COMPLETED) {
+        res.type('text/plain').send('YES');
+        return;
+      }
+
+      const expectedAmount = Number(payment.amount_rub);
+      const receivedAmount = Number(amountStr);
+      if (!Number.isFinite(receivedAmount)) {
+        res.type('text/plain').status(400).send('BAD');
+        return;
+      }
+
+      const minAllowed =
+        expectedAmount * (1 - this.UNDERPAYMENT_TOLERANCE_PERCENT / 100);
+      const maxAllowed = expectedAmount * 1.5;
+
+      if (receivedAmount < minAllowed) {
+        this.logger.warn(
+          `Payment ${payment.id} underpayment: expected ${expectedAmount}, received ${receivedAmount}`,
+        );
+        await this.prisma.payment.update({
+          where: { id: payment.id },
+          data: { status: PaymentStatus.FAILED, updated_at: new Date() },
+        });
+        res.type('text/plain').send('YES');
+        return;
+      }
+
+      if (receivedAmount > maxAllowed) {
+        this.logger.warn(
+          `Payment ${payment.id} suspicious overpayment: expected ${expectedAmount}, received ${receivedAmount}`,
+        );
+      }
+
+      const result = await this.paymentsService.completePaymentWithQueue(
+        payment.id,
+        intid ? { provider_transaction_id: intid } : {},
+      );
+
+      if (result) {
+        const isFraud = result.payment.status === 'FRAUD';
+
+        this.paymentsService['eventEmitter'].emit(
+          'payment.completed',
+          result.payment,
+        );
+
+        if (isFraud) {
+          await this.queuePaymentFraudNotification(result.payment);
+        } else {
+          await this.queuePaymentSuccessNotification(result.payment);
+        }
+        if (result.queueCreated) {
+          await this.queueSalesChannelNotification(result.payment);
+        }
+      }
+
+      res.type('text/plain').send('YES');
+    } catch (error: any) {
+      this.logger.error(
+        `Error processing Freekassa callback: ${error.message}`,
+        error.stack,
+      );
+      if (!res.headersSent) {
+        res.type('text/plain').status(500).send('ERR');
+      }
     }
   }
 
@@ -646,6 +762,7 @@ export class PaymentsController {
 
       const paymentMethods: Record<string, string> = {
         PLATEGA: '🏦 СБП РФ',
+        FREEKASSA: '🏦 СБП / карты (Freekassa)',
         HELEKET: '🪙 Криптовалюта',
         TON: '💎 TON',
       };
@@ -676,7 +793,10 @@ export class PaymentsController {
       const recipientInfo = recipient ? `@${recipient}` : 'Не указан';
 
       const paymentMethod =
-        paymentMethods[payment.payment_method] || payment.payment_method;
+        payment.payment_method === 'FREEKASSA' &&
+        payment.crypto_currency === 'USD'
+          ? '🪙 Крипто (Freekassa)'
+          : paymentMethods[payment.payment_method] || payment.payment_method;
       const product =
         productNames[payment.product_type] || payment.product_type;
       const productLine =
@@ -692,7 +812,12 @@ export class PaymentsController {
       let amountText = '';
       if (payment.payment_method === 'TON' && amountTon > 0) {
         amountText = `${amountTon.toFixed(9)} TON`;
-      } else if (payment.payment_method === 'HELEKET' && amountUsd > 0) {
+      } else if (
+        (payment.payment_method === 'HELEKET' ||
+          (payment.payment_method === 'FREEKASSA' &&
+            payment.crypto_currency === 'USD')) &&
+        amountUsd > 0
+      ) {
         amountText = `$${amountUsd.toFixed(2)}`;
       } else {
         amountText = `${amountRub.toFixed(2)} ₽`;

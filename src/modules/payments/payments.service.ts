@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/shared/services/prisma/prisma.service';
 import { PlategaService } from './providers/platega.service';
+import { FreekassaService } from './providers/freekassa.service';
 import { HeleketService } from './providers/heleket.service';
 import { TonPaymentService } from './providers/ton-payment.service';
 import { PaymentHealthService } from './payment-health.service';
@@ -28,6 +29,7 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly plategaService: PlategaService,
+    private readonly freekassaService: FreekassaService,
     private readonly heleketService: HeleketService,
     private readonly tonPaymentService: TonPaymentService,
     private readonly paymentHealthService: PaymentHealthService,
@@ -81,6 +83,8 @@ export class PaymentsService {
     purchase_price_usd: string;
     net_profit_rub: string;
     fragment_cookie?: string;
+    /** Параметр `i` Freekassa (крипто и др.); только для FREEKASSA. */
+    freekassa_suggested_method_id?: number;
   }): Promise<Payment> {
     const payment = await this.prisma.payment.create({
       data: {
@@ -140,6 +144,28 @@ export class PaymentsService {
               onRetry: (attempt, error) => {
                 this.logger.warn(
                   `Retry attempt ${attempt} for Platega payment ${payment.id}: ${error.message}`,
+                );
+              },
+            },
+          );
+          break;
+
+        case PaymentMethod.FREEKASSA:
+          externalPaymentData = await withRetry(
+            () =>
+              this.freekassaService.createPayment({
+                orderId: payment.order_number.toString(),
+                amountRub: parseFloat(data.amount_rub),
+                suggestedMethodId: data.freekassa_suggested_method_id,
+              }),
+            {
+              maxAttempts: 2,
+              delayMs: 500,
+              exponentialBackoff: false,
+              shouldRetry: isRetryableError,
+              onRetry: (attempt, error) => {
+                this.logger.warn(
+                  `Retry attempt ${attempt} for Freekassa payment ${payment.id}: ${error.message}`,
                 );
               },
             },
@@ -448,6 +474,19 @@ export class PaymentsService {
         return map[normalized] ?? `❓ ${status}`;
       }
 
+      if (payment.payment_method === PaymentMethod.FREEKASSA) {
+        if (payment.status === PaymentStatus.COMPLETED) {
+          return '✅ Успешная оплата';
+        }
+        if (payment.status === PaymentStatus.CANCELLED) {
+          return '🕐 Время ожидания оплаты истекло';
+        }
+        if (payment.status === PaymentStatus.FAILED) {
+          return '⛔ Ошибка оплаты';
+        }
+        return '⌛️ Ожидание оплаты (Freekassa)';
+      }
+
       if (payment.payment_method === PaymentMethod.HELEKET) {
         if (!payment.external_payment_id) return null;
         const status = await this.heleketService.getPaymentInfo(
@@ -615,6 +654,9 @@ export class PaymentsService {
           throw error;
         }
         break;
+
+      case PaymentMethod.FREEKASSA:
+        return payment.status;
 
       case PaymentMethod.TON: {
         try {

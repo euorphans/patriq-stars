@@ -316,7 +316,7 @@ export class AdminKeyboard {
 
   static getPaymentSystemsMenu(
     plategaFee: number,
-    heleketFee: number,
+    freekassaFee: number,
     tonFee: number,
   ) {
     return Markup.inlineKeyboard([
@@ -328,8 +328,8 @@ export class AdminKeyboard {
       ],
       [
         Markup.button.callback(
-          `Heleket (${heleketFee.toFixed(1)}%)`,
-          'fee_heleket',
+          `Freekassa (${freekassaFee.toFixed(1)}%)`,
+          'fee_freekassa',
         ),
       ],
       [Markup.button.callback(`TON (${tonFee.toFixed(1)}%)`, 'fee_ton')],
@@ -339,7 +339,7 @@ export class AdminKeyboard {
 
   static getServiceMarkupMenu(
     plategaMarkup: number,
-    heleketMarkup: number,
+    freekassaMarkup: number,
     tonMarkup: number,
   ) {
     return Markup.inlineKeyboard([
@@ -351,8 +351,8 @@ export class AdminKeyboard {
       ],
       [
         Markup.button.callback(
-          `Heleket (${heleketMarkup.toFixed(1)}%)`,
-          'markup_heleket',
+          `Freekassa (${freekassaMarkup.toFixed(1)}%)`,
+          'markup_freekassa',
         ),
       ],
       [Markup.button.callback(`TON (${tonMarkup.toFixed(1)}%)`, 'markup_ton')],
@@ -365,7 +365,7 @@ export class AdminKeyboard {
   ) {
     const METHOD_NAMES: Record<string, string> = {
       PLATEGA: '💵 СБП (Platega)',
-      HELEKET: '🪙 Криптовалюта',
+      FREEKASSA: '💵 СБП (Freekassa)',
       TON: '💎 TON',
     };
 

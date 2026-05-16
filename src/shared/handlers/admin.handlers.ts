@@ -356,6 +356,8 @@ ${t('orders_cancelled', { n: stats.orders.cancelled })}
 
 ${rubMethodBlock('section_platega', stats.platega)}
 
+${rubMethodBlock('section_freekassa', stats.freekassa)}
+
 ${t('section_heleket')}
 ${t('line_turnover_usd', { amount: stats.heleket.turnover.toFixed(2) })}
 ${t('line_system_fee_usd', { amount: stats.heleket.fees.toFixed(2) })}
@@ -504,13 +506,14 @@ ${t('premium_12', { n: products.premium['12'] })}`;
       SELECT
         payment_method,
         -- Turnover per method
-        COALESCE(SUM(CASE WHEN payment_method = 'PLATEGA' THEN amount_rub ELSE 0 END), 0)::float AS turnover_rub,
+        COALESCE(SUM(CASE WHEN payment_method IN ('PLATEGA', 'FREEKASSA') THEN amount_rub ELSE 0 END), 0)::float AS turnover_rub,
         COALESCE(SUM(CASE WHEN payment_method = 'HELEKET' THEN amount_usd ELSE 0 END), 0)::float AS turnover_usd,
         COALESCE(SUM(CASE WHEN payment_method = 'TON' THEN COALESCE(amount_ton, 0) ELSE 0 END), 0)::float AS turnover_ton,
         -- Fees
         COALESCE(SUM(
           CASE
             WHEN payment_method = 'PLATEGA' THEN amount_rub * COALESCE(NULLIF(payment_system_fee_percent, 0), 6) / 100
+            WHEN payment_method = 'FREEKASSA' THEN amount_rub * COALESCE(NULLIF(payment_system_fee_percent, 0), 6) / 100
             WHEN payment_method = 'HELEKET' THEN amount_usd * COALESCE(NULLIF(payment_system_fee_percent, 0), 2) / 100
             ELSE 0
           END
@@ -562,7 +565,7 @@ ${t('premium_12', { n: products.premium['12'] })}`;
         };
 
       let turnover = 0;
-      if (method === 'PLATEGA') turnover = row.turnover_rub;
+      if (method === 'PLATEGA' || method === 'FREEKASSA') turnover = row.turnover_rub;
       else if (method === 'HELEKET') turnover = row.turnover_usd;
       else if (method === 'TON') turnover = row.turnover_ton;
 
@@ -584,10 +587,12 @@ ${t('premium_12', { n: products.premium['12'] })}`;
     };
 
     const plategaStats = getStatsByMethod('PLATEGA');
+    const freekassaStats = getStatsByMethod('FREEKASSA');
     const heleketStats = getStatsByMethod('HELEKET');
     const tonStats = getStatsByMethod('TON');
     const totalProfitRub =
       plategaStats.profit +
+      freekassaStats.profit +
       heleketStats.profit +
       tonStats.profit;
 
@@ -611,6 +616,12 @@ ${t('premium_12', { n: products.premium['12'] })}`;
         profit: plategaStats.profit,
         products: plategaStats.products,
       },
+      freekassa: {
+        turnover: freekassaStats.turnover,
+        fees: freekassaStats.fees,
+        profit: freekassaStats.profit,
+        products: freekassaStats.products,
+      },
       heleket: {
         turnover: heleketStats.turnover,
         fees: heleketStats.fees,
@@ -627,27 +638,33 @@ ${t('premium_12', { n: products.premium['12'] })}`;
         products: {
           stars:
             plategaStats.products.stars +
+            freekassaStats.products.stars +
             heleketStats.products.stars +
             tonStats.products.stars,
           ton:
             plategaStats.products.ton +
+            freekassaStats.products.ton +
             heleketStats.products.ton +
             tonStats.products.ton,
           gifts:
             plategaStats.products.gifts +
+            freekassaStats.products.gifts +
             heleketStats.products.gifts +
             tonStats.products.gifts,
           premium: {
             '3':
               plategaStats.products.premium['3'] +
+              freekassaStats.products.premium['3'] +
               heleketStats.products.premium['3'] +
               tonStats.products.premium['3'],
             '6':
               plategaStats.products.premium['6'] +
+              freekassaStats.products.premium['6'] +
               heleketStats.products.premium['6'] +
               tonStats.products.premium['6'],
             '12':
               plategaStats.products.premium['12'] +
+              freekassaStats.products.premium['12'] +
               heleketStats.products.premium['12'] +
               tonStats.products.premium['12'],
           },

@@ -145,6 +145,8 @@
     "methods": "<b>Выберите удобный способ оплаты:</b>",
     "method": {
       "platega": "💳 СБП",
+      "freekassa": "💳 СБП (Freekassa)",
+      "freekassa_crypto": "🪙 Крипто (Freekassa)",
       "heleket": "🪙 Криптовалюта",
       "ton": "💎 TON Wallet"
     },
@@ -262,6 +264,7 @@
       "orders_pending": "├ Ожидают: {n} ⏳",
       "orders_cancelled": "└ Отменённые: {n} ❌",
       "section_platega": "💳 <b>PLATEGA (СБП)</b>",
+      "section_freekassa": "💳 <b>FREEKASSA (СБП / карты)</b>",
       "section_heleket": "🪙 <b>HELEKET (CRYPTO)</b>",
       "section_ton": "💎 <b>TON</b>",
       "section_totals": "💰 <b>ОБЩИЕ ИТОГИ</b>",

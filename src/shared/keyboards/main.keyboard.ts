@@ -382,10 +382,22 @@ export class MainKeyboard {
     const isEnabled = (method: string) =>
       !enabledMethods || enabledMethods.includes(method);
 
-    const methodOrder = enabledMethods || ['PLATEGA', 'HELEKET', 'TON'];
+    const baseOrder = enabledMethods || ['PLATEGA', 'FREEKASSA', 'TON'];
+    const expandedOrder: string[] = [];
+    for (const m of baseOrder) {
+      if (m === 'FREEKASSA') {
+        expandedOrder.push('FREEKASSA_RUB', 'FREEKASSA_CRYPTO');
+      } else {
+        expandedOrder.push(m);
+      }
+    }
 
-    for (const method of methodOrder) {
-      if (!isEnabled(method)) continue;
+    const isFreekassaEnabled =
+      !enabledMethods || enabledMethods.includes('FREEKASSA');
+
+    for (const method of expandedOrder) {
+      if (method.startsWith('FREEKASSA_') && !isFreekassaEnabled) continue;
+      if (!method.startsWith('FREEKASSA_') && !isEnabled(method)) continue;
 
       switch (method) {
         case 'PLATEGA':
@@ -403,15 +415,30 @@ export class MainKeyboard {
           }
           break;
 
-        case 'HELEKET':
+        case 'FREEKASSA_RUB':
+          if (prices.freekassa) {
+            const freekassaLabel = i18n
+              .t('payment.method.freekassa', lang)
+              .replace(/^💳\s+/, '');
+            buttons.push([
+              {
+                text: `${freekassaLabel} — ${prices.freekassa.rub.toFixed(2)} ₽`,
+                callback_data: `${actionPrefix}_freekassa`,
+                icon_custom_emoji_id: PAYMENT_METHOD_PLATEGA_CUSTOM_EMOJI_ID,
+              },
+            ]);
+          }
+          break;
+
+        case 'FREEKASSA_CRYPTO':
           if (prices.heleket) {
-            const heleketLabel = i18n
-              .t('payment.method.heleket', lang)
+            const cryptoLabel = i18n
+              .t('payment.method.freekassa_crypto', lang)
               .replace(/^🪙\s+/, '');
             buttons.push([
               {
-                text: `${heleketLabel} — ${prices.heleket.usd.toFixed(2)} $`,
-                callback_data: `${actionPrefix}_heleket`,
+                text: `${cryptoLabel} — ${prices.heleket.usd.toFixed(2)} $`,
+                callback_data: `${actionPrefix}_freekassa_crypto`,
                 icon_custom_emoji_id: PAYMENT_METHOD_HELEKET_CUSTOM_EMOJI_ID,
               },
             ]);
@@ -488,7 +515,12 @@ export class MainKeyboard {
         amountText = `${Number(payment.amount_ton).toFixed(4)} TON`;
       } else if (payment.payment_method === 'TON' && payment.amount_usd) {
         amountText = `$${Number(payment.amount_usd).toFixed(2)}`;
-      } else if (payment.payment_method === 'HELEKET' && payment.amount_usd) {
+      } else if (
+        (payment.payment_method === 'HELEKET' ||
+          (payment.payment_method === 'FREEKASSA' &&
+            payment.crypto_currency === 'USD')) &&
+        payment.amount_usd
+      ) {
         amountText = `$${Number(payment.amount_usd).toFixed(2)}`;
       } else {
         amountText = `${Number(payment.amount_rub).toFixed(2)} ₽`;

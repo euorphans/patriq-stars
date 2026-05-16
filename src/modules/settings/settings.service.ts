@@ -311,7 +311,7 @@ export class SettingsService implements OnModuleInit {
       }
     }
 
-    const methods = ['PLATEGA', 'HELEKET', 'TON'];
+    const methods = ['PLATEGA', 'FREEKASSA', 'TON'];
     for (const method of methods) {
       const key = `payment_method_enabled_${method}`;
       const existing = await this.getSetting(key);
@@ -327,16 +327,19 @@ export class SettingsService implements OnModuleInit {
     } else {
       try {
         const parsed: string[] = JSON.parse(existingOrder);
-        const newMethods = methods.filter((m) => !parsed.includes(m));
-        if (newMethods.length > 0) {
+        const stripped = parsed.filter((m) => m !== 'HELEKET');
+        const newMethods = methods.filter((m) => !stripped.includes(m));
+        if (newMethods.length > 0 || stripped.length !== parsed.length) {
           await this.setSetting(
             orderKey,
-            JSON.stringify([...parsed, ...newMethods]),
+            JSON.stringify([...stripped, ...newMethods]),
           );
           this.settingsCache.delete(orderKey);
         }
       } catch {}
     }
+
+    await this.setPaymentMethodEnabled('HELEKET', false);
   }
 
   async isPaymentMethodEnabled(method: string): Promise<boolean> {
@@ -373,14 +376,16 @@ export class SettingsService implements OnModuleInit {
   }
 
   async getPaymentMethodsOrder(): Promise<string[]> {
-    const validMethods = ['PLATEGA', 'HELEKET', 'TON'];
+    const validMethods = ['PLATEGA', 'FREEKASSA', 'TON'];
     const value = await this.getSetting('payment_methods_order');
     if (!value) {
       return validMethods;
     }
     try {
       const parsed: string[] = JSON.parse(value);
-      const filtered = parsed.filter((m) => validMethods.includes(m));
+      const filtered = parsed
+        .filter((m) => validMethods.includes(m))
+        .filter((m) => m !== 'HELEKET');
       return [
         ...filtered,
         ...validMethods.filter((m) => !filtered.includes(m)),

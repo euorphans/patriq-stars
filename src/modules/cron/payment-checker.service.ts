@@ -576,9 +576,14 @@ export class PaymentCheckerService {
           ? 'payment.method.ton'
           : payment.payment_method === 'PLATEGA'
             ? 'payment.method.platega'
-            : payment.payment_method === 'HELEKET'
-              ? 'payment.method.heleket'
-              : payment.payment_method;
+            : payment.payment_method === 'FREEKASSA' &&
+                payment.crypto_currency === 'USD'
+              ? 'payment.method.freekassa_crypto'
+              : payment.payment_method === 'FREEKASSA'
+                ? 'payment.method.freekassa'
+                : payment.payment_method === 'HELEKET'
+                  ? 'payment.method.heleket'
+                  : payment.payment_method;
 
       const paymentMethod =
         typeof paymentMethodKey === 'string' &&
@@ -679,6 +684,7 @@ export class PaymentCheckerService {
 
       const paymentMethods: Record<string, string> = {
         PLATEGA: '🏦 СБП РФ',
+        FREEKASSA: '🏦 СБП (Freekassa)',
         HELEKET: '🪙 Криптовалюта',
         TON: '💎 TON',
       };
@@ -709,7 +715,10 @@ export class PaymentCheckerService {
       const recipientInfo = recipient ? `@${recipient}` : 'Не указан';
 
       const paymentMethod =
-        paymentMethods[payment.payment_method] || payment.payment_method;
+        payment.payment_method === 'FREEKASSA' &&
+        payment.crypto_currency === 'USD'
+          ? '🪙 Крипто (Freekassa)'
+          : paymentMethods[payment.payment_method] || payment.payment_method;
       const product =
         productNames[payment.product_type] || payment.product_type;
       const productLine =
@@ -725,7 +734,12 @@ export class PaymentCheckerService {
       let amountText = '';
       if (payment.payment_method === 'TON' && amountTon > 0) {
         amountText = `${amountTon.toFixed(9)} TON`;
-      } else if (payment.payment_method === 'HELEKET' && amountUsd > 0) {
+      } else if (
+        (payment.payment_method === 'HELEKET' ||
+          (payment.payment_method === 'FREEKASSA' &&
+            payment.crypto_currency === 'USD')) &&
+        amountUsd > 0
+      ) {
         amountText = `$${amountUsd.toFixed(2)}`;
       } else {
         amountText = `${amountRub.toFixed(2)} ₽`;
