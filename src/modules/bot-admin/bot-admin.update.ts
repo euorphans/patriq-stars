@@ -183,8 +183,6 @@ export class BotAdminUpdate {
 
   private paymentSystemAdminLabel(system: string): string {
     switch (system) {
-      case 'PLATEGA':
-        return 'Platega';
       case 'FREEKASSA':
         return 'Freekassa';
       case 'HELEKET':
@@ -4025,15 +4023,13 @@ ${methods
       const paymentMethodText =
         payment.payment_method === 'TON'
           ? 'TON'
-          : payment.payment_method === 'PLATEGA'
-            ? 'СБП РФ (Platega)'
-            : isFreekassaCrypto
-              ? 'Крипто (Freekassa)'
-              : payment.payment_method === 'FREEKASSA'
-                ? 'СБП РФ (Freekassa)'
-                : payment.payment_method === 'HELEKET'
-                  ? 'Криптовалюта (Heleket)'
-                  : escapeHtml(String(payment.payment_method));
+          : isFreekassaCrypto
+            ? 'Крипто (Freekassa)'
+            : payment.payment_method === 'FREEKASSA'
+              ? 'СБП РФ (Freekassa)'
+              : payment.payment_method === 'HELEKET'
+                ? 'Криптовалюта (Heleket)'
+                : escapeHtml(String(payment.payment_method));
 
       const formattedDate = new Date(payment.created_at)
         .toLocaleString('ru-RU', {
@@ -4077,12 +4073,7 @@ ${methods
       const serviceMarkupPercent = Number(payment.service_markup_percent || 0);
 
       let paymentFeeSum = 0;
-      if (payment.payment_method === 'PLATEGA') {
-        paymentFeeSum = amountRub * (paymentFeePercent / 100);
-      } else if (
-        payment.payment_method === 'FREEKASSA' &&
-        !isFreekassaCrypto
-      ) {
+      if (payment.payment_method === 'FREEKASSA' && !isFreekassaCrypto) {
         paymentFeeSum = amountRub * (paymentFeePercent / 100);
       } else if (
         payment.payment_method === 'HELEKET' ||
@@ -4131,10 +4122,7 @@ ${methods
       if (paymentFeePercent > 0) {
         if (payment.payment_method === 'HELEKET' || isFreekassaCrypto) {
           feeDisplay = `\n\n💸 <b>КОМИССИЯ ПЛАТЁЖНОЙ СИСТЕМЫ</b>\n├ Процент: ${paymentFeePercent.toFixed(2)}%\n└ Сумма: ${paymentFeeSum.toFixed(2)} $`;
-        } else if (
-          payment.payment_method === 'PLATEGA' ||
-          (payment.payment_method === 'FREEKASSA' && !isFreekassaCrypto)
-        ) {
+        } else if (payment.payment_method === 'FREEKASSA' && !isFreekassaCrypto) {
           feeDisplay = `\n\n💸 <b>КОМИССИЯ ПЛАТЁЖНОЙ СИСТЕМЫ</b>\n├ Процент: ${paymentFeePercent.toFixed(2)}%\n└ Сумма: ${paymentFeeSum.toFixed(2)} ₽`;
         }
       }

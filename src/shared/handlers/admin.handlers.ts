@@ -504,13 +504,12 @@ ${t('premium_12', { n: products.premium['12'] })}`;
       SELECT
         payment_method,
         -- Turnover per method
-        COALESCE(SUM(CASE WHEN payment_method IN ('PLATEGA', 'FREEKASSA') THEN amount_rub ELSE 0 END), 0)::float AS turnover_rub,
+        COALESCE(SUM(CASE WHEN payment_method = 'FREEKASSA' THEN amount_rub ELSE 0 END), 0)::float AS turnover_rub,
         COALESCE(SUM(CASE WHEN payment_method = 'HELEKET' THEN amount_usd ELSE 0 END), 0)::float AS turnover_usd,
         COALESCE(SUM(CASE WHEN payment_method = 'TON' THEN COALESCE(amount_ton, 0) ELSE 0 END), 0)::float AS turnover_ton,
         -- Fees
         COALESCE(SUM(
           CASE
-            WHEN payment_method = 'PLATEGA' THEN amount_rub * COALESCE(NULLIF(payment_system_fee_percent, 0), 6) / 100
             WHEN payment_method = 'FREEKASSA' THEN amount_rub * COALESCE(NULLIF(payment_system_fee_percent, 0), 6) / 100
             WHEN payment_method = 'HELEKET' THEN amount_usd * COALESCE(NULLIF(payment_system_fee_percent, 0), 2) / 100
             ELSE 0
@@ -563,7 +562,7 @@ ${t('premium_12', { n: products.premium['12'] })}`;
         };
 
       let turnover = 0;
-      if (method === 'PLATEGA' || method === 'FREEKASSA') turnover = row.turnover_rub;
+      if (method === 'FREEKASSA') turnover = row.turnover_rub;
       else if (method === 'HELEKET') turnover = row.turnover_usd;
       else if (method === 'TON') turnover = row.turnover_ton;
 
@@ -584,32 +583,7 @@ ${t('premium_12', { n: products.premium['12'] })}`;
       };
     };
 
-    const legacyPlategaStats = getStatsByMethod('PLATEGA');
-
-    const mergeRubStats = (
-      primary: ReturnType<typeof getStatsByMethod>,
-      legacy: ReturnType<typeof getStatsByMethod>,
-    ) => ({
-      turnover: primary.turnover + legacy.turnover,
-      fees: primary.fees + legacy.fees,
-      profit: primary.profit + legacy.profit,
-      products: {
-        stars: primary.products.stars + legacy.products.stars,
-        ton: primary.products.ton + legacy.products.ton,
-        gifts: primary.products.gifts + legacy.products.gifts,
-        premium: {
-          '3': primary.products.premium['3'] + legacy.products.premium['3'],
-          '6': primary.products.premium['6'] + legacy.products.premium['6'],
-          '12':
-            primary.products.premium['12'] + legacy.products.premium['12'],
-        },
-      },
-    });
-
-    const freekassaStats = mergeRubStats(
-      getStatsByMethod('FREEKASSA'),
-      legacyPlategaStats,
-    );
+    const freekassaStats = getStatsByMethod('FREEKASSA');
     const heleketStats = getStatsByMethod('HELEKET');
     const tonStats = getStatsByMethod('TON');
     const totalProfitRub =

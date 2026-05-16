@@ -379,9 +379,7 @@ export class PaymentAdminService {
       }
 
       let providerLine = '';
-      if (payment.payment_method === 'PLATEGA' && payment.external_payment_id) {
-        providerLine = `\n🔗 <b>Операция Platega:</b> <code>${payment.external_payment_id}</code>`;
-      } else if (
+      if (
         payment.payment_method === 'FREEKASSA' &&
         payment.external_payment_id
       ) {
@@ -444,7 +442,6 @@ export class PaymentAdminService {
       }
 
       const paymentMethods: Record<string, string> = {
-        PLATEGA: '🏦 СБП РФ',
         FREEKASSA: '🏦 СБП (Freekassa)',
         HELEKET: '🪙 Криптовалюта',
         TON: '💎 TON',

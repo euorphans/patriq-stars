@@ -2028,15 +2028,13 @@ export class BotUpdate {
       const paymentMethodText =
         payment.payment_method === 'TON'
           ? this.i18n.t('payment.method.ton', lang)
-          : payment.payment_method === 'PLATEGA'
-            ? this.i18n.t('payment.method.platega', lang)
-            : isFreekassaCrypto
-              ? this.i18n.t('payment.method.freekassa_crypto', lang)
-              : payment.payment_method === 'FREEKASSA'
-                ? this.i18n.t('payment.method.freekassa', lang)
-                : payment.payment_method === 'HELEKET'
-                  ? this.i18n.t('payment.method.heleket', lang)
-                  : payment.payment_method;
+          : isFreekassaCrypto
+            ? this.i18n.t('payment.method.freekassa_crypto', lang)
+            : payment.payment_method === 'FREEKASSA'
+              ? this.i18n.t('payment.method.freekassa', lang)
+              : payment.payment_method === 'HELEKET'
+                ? this.i18n.t('payment.method.heleket', lang)
+                : payment.payment_method;
 
       let recipientText: string;
       if (payment.recipient_username) {

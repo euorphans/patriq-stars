@@ -595,7 +595,6 @@ export class PaymentsController {
       }
 
       const paymentMethods: Record<string, string> = {
-        PLATEGA: '🏦 СБП РФ',
         FREEKASSA: '🏦 СБП / карты (Freekassa)',
         HELEKET: '🪙 Криптовалюта',
         TON: '💎 TON',

@@ -42,7 +42,7 @@ export const PAYMENT_USERNAME_WARNING_CUSTOM_EMOJI_ID = '5447644880824181073';
 export const PAYMENT_RECIPIENT_CUSTOM_EMOJI_ID = '5391032818111363540';
 
 /** InlineKeyboard: СБП (Freekassa). */
-export const PAYMENT_METHOD_PLATEGA_CUSTOM_EMOJI_ID = '5294247005701292072';
+export const PAYMENT_METHOD_SBP_CUSTOM_EMOJI_ID = '5294247005701292072';
 
 /** InlineKeyboard: Heleket (криптовалюта). */
 export const PAYMENT_METHOD_HELEKET_CUSTOM_EMOJI_ID = '5294015055992471554';
@@ -396,7 +396,7 @@ export class MainKeyboard {
               {
                 text: `${freekassaLabel} — ${prices.freekassa.rub.toFixed(2)} ₽`,
                 callback_data: `${actionPrefix}_freekassa`,
-                icon_custom_emoji_id: PAYMENT_METHOD_PLATEGA_CUSTOM_EMOJI_ID,
+                icon_custom_emoji_id: PAYMENT_METHOD_SBP_CUSTOM_EMOJI_ID,
               },
             ]);
           }

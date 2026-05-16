@@ -328,6 +328,9 @@ export class SettingsService implements OnModuleInit {
       try {
         const parsed: string[] = JSON.parse(existingOrder);
         let order = parsed.filter((m) => m !== 'HELEKET' && m !== 'PLATEGA');
+        await this.prisma.botSettings
+          .deleteMany({ where: { setting_key: 'payment_method_enabled_PLATEGA' } })
+          .catch(() => {});
         if (!order.includes('FREEKASSA_CRYPTO')) {
           const fkIdx = order.indexOf('FREEKASSA');
           if (fkIdx >= 0) {
@@ -339,8 +342,9 @@ export class SettingsService implements OnModuleInit {
         const newMethods = methods.filter((m) => !order.includes(m));
         if (
           newMethods.length > 0 ||
-          order.length !== parsed.filter((m) => m !== 'HELEKET').length ||
-          parsed.some((m) => m === 'HELEKET')
+          order.length !==
+            parsed.filter((m) => m !== 'HELEKET' && m !== 'PLATEGA').length ||
+          parsed.some((m) => m === 'HELEKET' || m === 'PLATEGA')
         ) {
           await this.setSetting(
             orderKey,
@@ -352,7 +356,6 @@ export class SettingsService implements OnModuleInit {
     }
 
     await this.setPaymentMethodEnabled('HELEKET', false);
-    await this.setPaymentMethodEnabled('PLATEGA', false);
   }
 
   async isPaymentMethodEnabled(method: string): Promise<boolean> {

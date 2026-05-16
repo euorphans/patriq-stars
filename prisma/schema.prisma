@@ -30,7 +30,6 @@ enum PaymentStatus {
 }
 
 enum PaymentMethod {
-  PLATEGA
   FREEKASSA
   HELEKET
   TON
