@@ -30,7 +30,7 @@ data:
   LOCAL_STORAGE_PATH: "/data/local-storage"
 
   # Frontend (CORS allowed origins, comma-separated)
-  FRONTEND_URL: "https://fh34hfhfw9efhjsdhkjsfd.lol"
+  FRONTEND_URL: "https://grim.llc"
   CORS_EXTRA_ORIGINS: ""
 
   # TON streaming (Toncenter SSE): worker overrides TON_STREAMING_ENABLED=true

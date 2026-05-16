@@ -426,7 +426,7 @@ deploy_https_edge() {
 
   if [[ -z "$email" || -z "$host" ]]; then
     warn "HTTPS/Ingress пропущен. Добавь в .env, затем: ./scripts/deploy.sh --ingress"
-    warn "Пример: ACME_EMAIL=you@mail.ru и WEBHOOK_DOMAIN=https://patriq.lol"
+    warn "Пример: ACME_EMAIL=you@mail.ru и WEBHOOK_DOMAIN=https://grim.llc"
     return 0
   fi
 
