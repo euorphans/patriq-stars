@@ -7,6 +7,12 @@ import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf, Markup } from 'telegraf';
 import { MainKeyboard } from '@/shared/keyboards/main.keyboard';
 import { backInlineButton } from '@/shared/keyboards/back-inline-button';
+import {
+  buildOrderDeliveredCaptionPayload,
+  buildPaymentAcceptedCaptionPayload,
+  orderStatusPhotoOptions,
+  OrderStatusCaptionPayload,
+} from '@/shared/utils/order-status-notification.util';
 import * as QRCode from 'qrcode';
 
 @Injectable()
@@ -319,27 +325,12 @@ export class NotificationQueueService {
     notification: any,
     data: any,
   ): Promise<void> {
-    let productText: string;
-    if (data.type === 'stars') {
-      productText = `${data.amount_value} звёзд ⭐`;
-    } else if (data.type === 'premium') {
-      productText = `Telegram Premium 👑`;
-    } else if (data.type === 'ton') {
-      productText = `${data.amount_value} TON 💎`;
-    } else {
-      productText = `${data.amount_value} ${data.type}`;
-    }
-
-    let notificationText = `✅ <b>Ваш заказ выполнен!</b>\n\n📦 <b>Товар:</b> ${productText}`;
-
-    if (data.order_number) {
-      notificationText += `\n\n🆔 <b>Номер заказа:</b> <code>#${data.order_number}</code>`;
-    }
-
-    if (data.tonscanUrl) {
-      notificationText += `\n\n🔗 <a href="${data.tonscanUrl}">Посмотреть транзакцию</a>`;
-    }
-    notificationText += `\n\nСпасибо за покупку! Если у вас есть вопросы, пожалуйста, свяжитесь с нашей поддержкой.`;
+    const payload = buildOrderDeliveredCaptionPayload({
+      orderNumber: data.order_number,
+      productType: data.type,
+      productQuantity: data.amount_value,
+      tonscanUrl: data.tonscanUrl,
+    });
 
     let successImage: string;
     if (data.type === 'ton') {
@@ -361,8 +352,7 @@ export class NotificationQueueService {
           {
             type: 'photo',
             media: { source: successImage },
-            caption: notificationText,
-            parse_mode: 'HTML',
+            ...orderStatusPhotoOptions(payload),
           },
           {
             reply_markup: MainKeyboard.getBackButton().reply_markup,
@@ -380,9 +370,9 @@ export class NotificationQueueService {
           notification.user_telegram_id,
           parseInt(data.payment_message_id),
           undefined,
-          notificationText,
+          payload.caption,
           {
-            parse_mode: 'HTML',
+            caption_entities: payload.caption_entities,
             reply_markup: MainKeyboard.getBackButton().reply_markup,
           },
         );
@@ -393,7 +383,7 @@ export class NotificationQueueService {
     await this.sendPhotoWithFallback(
       notification.user_telegram_id,
       successImage,
-      notificationText,
+      payload,
     );
   }
 
@@ -401,13 +391,14 @@ export class NotificationQueueService {
     notification: any,
     data: any,
   ): Promise<void> {
-    const message =
-      data.message ||
-      (() => {
-        const productName = data.productName || 'Товар';
-        const pendingText = 'будет отправлен в ближайшее время';
-        return `✅ <b>Оплата успешна!</b>\n\n${productName} ${pendingText}.\n\nВаш заказ: <code>#${data.order_number}</code>`;
-      })();
+    const legacyHtmlMessage: string | undefined = data.message;
+    const payload: OrderStatusCaptionPayload | undefined = legacyHtmlMessage
+      ? undefined
+      : buildPaymentAcceptedCaptionPayload({
+          orderNumber: data.order_number,
+          productType: data.product_type,
+          productQuantity: data.product_quantity,
+        });
 
     let successImage = './images/main_menu.webp';
     if (data.product_type === 'TON') {
@@ -428,6 +419,10 @@ export class NotificationQueueService {
       } catch {}
     };
 
+    const captionOpts = legacyHtmlMessage
+      ? { caption: legacyHtmlMessage, parse_mode: 'HTML' as const }
+      : orderStatusPhotoOptions(payload!);
+
     if (data.payment_message_id) {
       try {
         await this.bot.telegram.editMessageMedia(
@@ -437,8 +432,7 @@ export class NotificationQueueService {
           {
             type: 'photo',
             media: { source: successImage },
-            caption: message,
-            parse_mode: 'HTML',
+            ...captionOpts,
           },
           {
             reply_markup: MainKeyboard.getBackButton().reply_markup,
@@ -454,9 +448,11 @@ export class NotificationQueueService {
             notification.user_telegram_id,
             parseInt(data.payment_message_id, 10),
             undefined,
-            message,
+            captionOpts.caption,
             {
-              parse_mode: 'HTML',
+              ...(legacyHtmlMessage
+                ? { parse_mode: 'HTML' as const }
+                : { caption_entities: payload!.caption_entities }),
               reply_markup: MainKeyboard.getBackButton().reply_markup,
             },
           );
@@ -468,7 +464,7 @@ export class NotificationQueueService {
           await this.sendPhotoWithFallback(
             notification.user_telegram_id,
             successImage,
-            message,
+            legacyHtmlMessage ?? payload!,
           );
           await deletePaymentDetailsMessage();
         }
@@ -477,12 +473,10 @@ export class NotificationQueueService {
       await this.sendPhotoWithFallback(
         notification.user_telegram_id,
         successImage,
-        message,
+        legacyHtmlMessage ?? payload!,
       );
       await deletePaymentDetailsMessage();
     }
-
-    // Do not send extra follow-up message after successful delivery.
   }
 
   private async sendCancelledNotification(
@@ -749,19 +743,19 @@ export class NotificationQueueService {
   private async sendPhotoWithFallback(
     chatId: string,
     image: string,
-    caption: string,
+    captionOrPayload: string | OrderStatusCaptionPayload,
     retryCount = 0,
   ): Promise<void> {
+    const captionOpts =
+      typeof captionOrPayload === 'string'
+        ? { caption: captionOrPayload, parse_mode: 'HTML' as const }
+        : orderStatusPhotoOptions(captionOrPayload);
+
     try {
-      await this.bot.telegram.sendPhoto(
-        chatId,
-        { source: image },
-        {
-          caption,
-          parse_mode: 'HTML',
-          reply_markup: MainKeyboard.getBackButton().reply_markup,
-        },
-      );
+      await this.bot.telegram.sendPhoto(chatId, { source: image }, {
+        ...captionOpts,
+        reply_markup: MainKeyboard.getBackButton().reply_markup,
+      });
     } catch (err: any) {
       if (err.response?.error_code === 429 && retryCount < 3) {
         const retryAfter = err.response.parameters?.retry_after ?? 1;
@@ -769,12 +763,14 @@ export class NotificationQueueService {
         return this.sendPhotoWithFallback(
           chatId,
           image,
-          caption,
+          captionOrPayload,
           retryCount + 1,
         );
       }
-      await this.bot.telegram.sendMessage(chatId, caption, {
-        parse_mode: 'HTML',
+      await this.bot.telegram.sendMessage(chatId, captionOpts.caption, {
+        ...(typeof captionOrPayload === 'string'
+          ? { parse_mode: 'HTML' as const }
+          : { entities: captionOrPayload.caption_entities }),
         reply_markup: MainKeyboard.getBackButton().reply_markup,
       });
     }

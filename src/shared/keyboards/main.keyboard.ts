@@ -83,6 +83,9 @@ const INFO_MENU_CUSTOM_EMOJI = {
   support: '5395695537687123235',
 } as const;
 
+/** Подпись «поддержка» / футер после доставки (caption_entities). */
+export const INFO_SUPPORT_CUSTOM_EMOJI_ID = INFO_MENU_CUSTOM_EMOJI.support;
+
 /** На клавиатуре не выше этой суммы; больше — через «Свой ввод». */
 const STARS_QTY_PRESET_CAP = 5000;
 

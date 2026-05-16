@@ -420,6 +420,7 @@ export class PaymentsController {
           productName,
           order_number: payment.order_number,
           product_type: payment.product_type,
+          product_quantity: payment.product_quantity,
           payment_message_id: payment.payment_message_id,
           details_message_id: payment.details_message_id,
         },
@@ -548,9 +549,10 @@ export class PaymentsController {
       const lang = await this.userService.getUserLanguage(
         payment.user_telegram_id,
       );
-      const caption = await buildPurchaseFollowUpCaption(this.i18n, lang, {
+      const caption = buildPurchaseFollowUpCaption({
         product_type: payment.product_type,
         product_quantity: payment.product_quantity,
+        order_number: payment.order_number,
       });
       const reply_markup = MainKeyboard.getPurchaseFollowUpKeyboard(
         this.i18n,

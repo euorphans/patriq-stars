@@ -140,7 +140,7 @@
     "premium.duration.12": "12 месяцев"
   },
   "payment": {
-    "followup_caption": "✅ Спасибо за покупку: {purchaseHtml}",
+    "followup_caption": "Оплата прошла — доставка в процессе",
     "title": "<b>Оформление заказа</b>\n",
     "product": "<b>Товар:</b> {quantity} {emoji}",
     "recipient": "<b>Получатель:</b> {recipient}",

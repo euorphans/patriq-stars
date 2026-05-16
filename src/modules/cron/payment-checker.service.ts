@@ -305,7 +305,7 @@ export class PaymentCheckerService {
         return false;
       }
 
-      await this.queueExpiredPaymentNotification(cancelledPayment);
+      await this.cleanupExpiredPaymentMessages(cancelledPayment);
 
       this.fraudService
         .checkConsecutiveCancellations(cancelledPayment.user_telegram_id)
@@ -542,6 +542,7 @@ export class PaymentCheckerService {
             productName,
             order_number: payment.order_number,
             product_type: payment.product_type,
+            product_quantity: payment.product_quantity,
             payment_message_id: payment.payment_message_id,
             details_message_id: payment.details_message_id,
           },
@@ -555,64 +556,26 @@ export class PaymentCheckerService {
     }
   }
 
-  private async queueExpiredPaymentNotification(payment: any): Promise<void> {
-    try {
-      const userLanguage = await this.userService.getUserLanguage(
-        payment.user_telegram_id,
-      );
+  /** Истёкший платёж: убираем экран оплаты без отдельного уведомления. */
+  private async cleanupExpiredPaymentMessages(payment: {
+    user_telegram_id: string;
+    payment_message_id?: string | null;
+    details_message_id?: string | null;
+  }): Promise<void> {
+    const chatId = payment.user_telegram_id;
 
-      const paymentMethodKey =
-        payment.payment_method === 'TON'
-          ? 'payment.method.ton'
-          : payment.payment_method === 'FREEKASSA' &&
-                payment.crypto_currency === 'USD'
-              ? 'payment.method.freekassa_crypto'
-              : payment.payment_method === 'FREEKASSA' &&
-                  payment.crypto_currency === 'CARD'
-                ? 'payment.method.freekassa_card'
-                : payment.payment_method === 'FREEKASSA'
-                  ? 'payment.method.freekassa'
-                : payment.payment_method === 'HELEKET'
-                  ? 'payment.method.heleket'
-                  : payment.payment_method;
+    const deleteMessage = async (messageId?: string | null) => {
+      if (!messageId) return;
+      try {
+        await this.bot.telegram.deleteMessage(
+          chatId,
+          parseInt(String(messageId), 10),
+        );
+      } catch {}
+    };
 
-      const paymentMethod =
-        typeof paymentMethodKey === 'string' &&
-        paymentMethodKey.startsWith('payment.')
-          ? this.i18n.t(paymentMethodKey, userLanguage)
-          : paymentMethodKey;
-
-      const windowText =
-        payment.payment_method === 'TON'
-          ? this.i18n.t('payment.expired.window_ton', userLanguage)
-          : this.i18n.t('payment.expired.window_other', userLanguage);
-
-      const message = this.i18n.t('payment.expired.title', userLanguage, {
-        order: payment.order_number,
-        method: paymentMethod,
-        window: windowText,
-      });
-
-      const notificationData = {
-        user_telegram_id: payment.user_telegram_id,
-        message_type: 'cancelled',
-        payment_id: payment.id,
-        message_data: {
-          order_number: payment.order_number,
-          payment_message_id: payment.payment_message_id,
-          details_message_id: payment.details_message_id,
-          message: message,
-        },
-      };
-
-      await this.prisma.notificationQueue.create({
-        data: notificationData,
-      });
-    } catch (error: any) {
-      this.logger.error(
-        `Failed to queue expired notification for ${payment.id}: ${error.message}`,
-      );
-    }
+    await deleteMessage(payment.details_message_id);
+    await deleteMessage(payment.payment_message_id);
   }
 
   private async sendPaymentSuccessNotificationDirect(
@@ -622,9 +585,10 @@ export class PaymentCheckerService {
       const lang = await this.userService.getUserLanguage(
         payment.user_telegram_id,
       );
-      const caption = await buildPurchaseFollowUpCaption(this.i18n, lang, {
+      const caption = buildPurchaseFollowUpCaption({
         product_type: payment.product_type,
         product_quantity: payment.product_quantity,
+        order_number: payment.order_number,
       });
       const reply_markup = MainKeyboard.getPurchaseFollowUpKeyboard(
         this.i18n,

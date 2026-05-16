@@ -16,6 +16,11 @@ import { EventLoopMonitorService } from '@/modules/health/event-loop-monitor.ser
 import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf } from 'telegraf';
 import { MainKeyboard } from '@/shared/keyboards/main.keyboard';
+import {
+  buildOrderDeliveredCaptionPayload,
+  orderStatusPhotoOptions,
+  OrderStatusCaptionPayload,
+} from '@/shared/utils/order-status-notification.util';
 
 interface FragmentQueueItem {
   id: string;
@@ -2723,27 +2728,12 @@ export class FragmentQueueService implements OnModuleInit, OnModuleDestroy {
         );
       }
 
-      let productText: string;
-      if (order.type === 'stars') {
-        productText = `${order.amount_value} звёзд ⭐`;
-      } else if (order.type === 'premium') {
-        productText = `Telegram Premium 👑`;
-      } else if (order.type === 'ton') {
-        productText = `${order.amount_value} TON 💎`;
-      } else {
-        productText = `${order.amount_value} ${order.type}`;
-      }
-
-      let notificationText = `✅ <b>Ваш заказ выполнен!</b>\n\n📦 <b>Товар:</b> ${productText}`;
-
-      if (payment?.order_number) {
-        notificationText += `\n\n🆔 <b>Номер заказа:</b> <code>#${payment.order_number}</code>`;
-      }
-
-      if (tonscanUrl) {
-        notificationText += `\n\n🔗 <a href="${tonscanUrl}">Посмотреть транзакцию</a>`;
-      }
-      notificationText += `\n\nСпасибо за покупку! Если у вас есть вопросы, пожалуйста, свяжитесь с нашей поддержкой.`;
+      const payload = buildOrderDeliveredCaptionPayload({
+        orderNumber: payment?.order_number,
+        productType: order.type,
+        productQuantity: order.amount_value,
+        tonscanUrl,
+      });
 
       let successImage: string;
       if (order.type === 'ton') {
@@ -2765,8 +2755,7 @@ export class FragmentQueueService implements OnModuleInit, OnModuleDestroy {
             {
               type: 'photo',
               media: { source: successImage },
-              caption: notificationText,
-              parse_mode: 'HTML',
+              ...orderStatusPhotoOptions(payload),
             },
             {
               reply_markup: MainKeyboard.getBackButton().reply_markup,
@@ -2776,14 +2765,14 @@ export class FragmentQueueService implements OnModuleInit, OnModuleDestroy {
           await this.sendPhotoWithFallback(
             order.user_id,
             successImage,
-            notificationText,
+            payload,
           );
         }
       } else {
         await this.sendPhotoWithFallback(
           order.user_id,
           successImage,
-          notificationText,
+          payload,
         );
       }
     } catch (error: any) {
@@ -2841,18 +2830,18 @@ export class FragmentQueueService implements OnModuleInit, OnModuleDestroy {
   private async sendPhotoWithFallback(
     chatId: string,
     image: string,
-    caption: string,
+    captionOrPayload: string | OrderStatusCaptionPayload,
   ): Promise<void> {
+    const captionOpts =
+      typeof captionOrPayload === 'string'
+        ? { caption: captionOrPayload, parse_mode: 'HTML' as const }
+        : orderStatusPhotoOptions(captionOrPayload);
+
     try {
-      await this.bot.telegram.sendPhoto(
-        chatId,
-        { source: image },
-        {
-          caption,
-          parse_mode: 'HTML',
-          reply_markup: MainKeyboard.getBackButton().reply_markup,
-        },
-      );
+      await this.bot.telegram.sendPhoto(chatId, { source: image }, {
+        ...captionOpts,
+        reply_markup: MainKeyboard.getBackButton().reply_markup,
+      });
     } catch (error: any) {
       if (
         error?.response?.error_code === 403 ||
@@ -2861,8 +2850,10 @@ export class FragmentQueueService implements OnModuleInit, OnModuleDestroy {
       ) {
         return;
       }
-      await this.bot.telegram.sendMessage(chatId, caption, {
-        parse_mode: 'HTML',
+      await this.bot.telegram.sendMessage(chatId, captionOpts.caption, {
+        ...(typeof captionOrPayload === 'string'
+          ? { parse_mode: 'HTML' as const }
+          : { entities: captionOrPayload.caption_entities }),
         reply_markup: MainKeyboard.getBackButton().reply_markup,
       });
     }

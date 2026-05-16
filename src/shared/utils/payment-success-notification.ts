@@ -1,24 +1,22 @@
 import { ProductType } from '@prisma/client';
 import type { Telegraf } from 'telegraf';
 import {
-  I18nService,
-  SupportedLanguage,
-} from '@/shared/services/i18n/i18n.service';
-import { getProductName } from './product.utils';
+  buildPaymentAcceptedCaptionPayload,
+  orderStatusPhotoOptions,
+  OrderStatusCaptionPayload,
+} from '@/shared/utils/order-status-notification.util';
 
 export const PURCHASE_FOLLOWUP_IMAGE = './images/main_menu.webp';
 
-export async function buildPurchaseFollowUpCaption(
-  i18n: I18nService,
-  lang: SupportedLanguage,
-  payment: {
-    product_type: ProductType;
-    product_quantity: string;
-  },
-): Promise<string> {
-  const purchaseHtml = getProductName(payment);
-  return i18n.t('payment.followup_caption', lang, {
-    purchaseHtml,
+export function buildPurchaseFollowUpCaption(payment: {
+  product_type: ProductType | string;
+  product_quantity: string;
+  order_number: number | string;
+}): OrderStatusCaptionPayload {
+  return buildPaymentAcceptedCaptionPayload({
+    orderNumber: payment.order_number,
+    productType: payment.product_type,
+    productQuantity: payment.product_quantity,
   });
 }
 
@@ -31,7 +29,7 @@ export async function sendOrEditPaymentSuccessPhoto(
     userTelegramId: string;
     paymentMessageId?: string | null;
     detailsMessageId?: string | null;
-    caption: string;
+    caption: OrderStatusCaptionPayload;
     imagePath: string;
     reply_markup: { inline_keyboard: any[][] };
   },
@@ -48,10 +46,13 @@ export async function sendOrEditPaymentSuccessPhoto(
     } catch {}
   };
 
-  await bot.telegram.sendPhoto(chatId, { source: params.imagePath }, {
-    caption: params.caption,
-    parse_mode: 'HTML',
-    reply_markup: params.reply_markup,
-  });
+  await bot.telegram.sendPhoto(
+    chatId,
+    { source: params.imagePath },
+    {
+      ...orderStatusPhotoOptions(params.caption),
+      reply_markup: params.reply_markup,
+    },
+  );
   await deleteDetails();
 }
