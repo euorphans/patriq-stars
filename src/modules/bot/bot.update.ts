@@ -257,9 +257,25 @@ export class BotUpdate {
     forceRefreshMedia = false,
   ): Promise<any> {
     const deleteCurrentMessage = async () => {
+      const chatId = ctx.chat?.id;
+      if (chatId && ctx.session.lastBotMessageId) {
+        try {
+          await ctx.telegram.deleteMessage(
+            chatId,
+            ctx.session.lastBotMessageId,
+          );
+        } catch {}
+      }
       try {
         await ctx.deleteMessage();
       } catch {}
+    };
+
+    const trackSentMessage = (message: { message_id?: number } | undefined) => {
+      if (message?.message_id) {
+        ctx.session.lastBotMessageId = message.message_id;
+      }
+      return message;
     };
 
     if (this.isImagesDisabled()) {
@@ -270,7 +286,7 @@ export class BotUpdate {
         textOpts.parse_mode = options.parse_mode;
       }
       await deleteCurrentMessage();
-      return ctx.reply(options.caption || '', textOpts);
+      return trackSentMessage(await ctx.reply(options.caption || '', textOpts));
     }
 
     const uid = ctx.from?.id;
@@ -285,7 +301,7 @@ export class BotUpdate {
       `sendCachedPhoto [${imagePath}]`,
       Date.now() - t2,
     );
-    return result;
+    return trackSentMessage(result);
   }
 
   private getUserLanguage(_ctx: BotContext): 'ru' {
