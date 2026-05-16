@@ -3046,7 +3046,7 @@ export class BotUpdate {
       ctx.session.lastBotMessageId = mq.message_id;
     }
 
-    await this.showPaymentMethodsByMessageId(ctx);
+    await this.showPaymentMethods(ctx, true);
   }
 
   private async showPaymentMethods(
@@ -3214,140 +3214,6 @@ export class BotUpdate {
         error.stack,
       );
       await ctx.reply(this.i18n.t('payment.calc_error', lang));
-    }
-  }
-
-  private async showPaymentMethodsByMessageId(ctx: BotContext): Promise<void> {
-    const lang = this.getUserLanguage(ctx);
-    const { productType, quantity, recipientUsername } = ctx.session;
-    const user = ctx.from;
-    const chatId = ctx.chat?.id;
-    const messageId = ctx.session.lastBotMessageId;
-
-    if (!productType || !quantity || !chatId) {
-      await ctx.reply(this.i18n.t('payment.restart', lang));
-      return;
-    }
-
-    if (productType === 'ton') {
-      ctx.session.productType = undefined;
-      ctx.session.quantity = undefined;
-      await this.showMainMenu(ctx, false);
-      return;
-    }
-
-    try {
-      const cachedRates = await this.rapiraService.getCachedRates();
-
-      const rateCheck = await this.settingsService.checkRateProtection(
-        cachedRates.tonToUsd,
-        cachedRates.usdtToRub,
-      );
-
-      if (!rateCheck.allowed) {
-        this.eventEmitter.emit('rate.protection.triggered', {
-          reason: rateCheck.reason,
-          userTelegramId: String(user?.id || ''),
-          tonRate: cachedRates.tonToUsd,
-          usdtRate: cachedRates.usdtToRub,
-        });
-
-        const errorText = this.i18n.t('payment.rate_protection', lang, {
-          reason: rateCheck.reason || 'Exchange rate is too low',
-        });
-        await ctx.reply(errorText, {
-          parse_mode: 'HTML',
-          reply_markup: MainKeyboard.getBackButton('back_to_main').reply_markup,
-        });
-        return;
-      }
-
-      const [prices, enabledMethods, { sbpLimitRub }] = await Promise.all([
-        this.pricingService.getAllPricesForProduct(
-          productType.toUpperCase(),
-          quantity,
-        ),
-        this.settingsService.getEnabledPaymentMethods(),
-        this.settingsService.getPurchaseLimits(),
-      ]);
-      const tonAmount = prices.ton.usd / cachedRates.tonToUsd;
-
-      let recipientDisplay: string;
-      if (ctx.session.isForSelf) {
-        const userName =
-          user?.first_name || this.i18n.t('common.you', lang);
-        const userUsername = ctx.from?.username;
-        recipientDisplay = userUsername
-          ? `${userName} (@${userUsername})`
-          : userName;
-      } else if (recipientUsername) {
-        recipientDisplay = `@${recipientUsername}`;
-      } else {
-        recipientDisplay = this.i18n.t('common.you', lang);
-      }
-
-      const paymentCaption = this.buildPaymentMethodsCaptionPayload(
-        lang,
-        productType,
-        quantity,
-        recipientDisplay,
-      );
-
-      const keyboard = MainKeyboard.getPaymentMethodKeyboard(
-        prices,
-        tonAmount,
-        this.i18n,
-        lang,
-        enabledMethods,
-        sbpLimitRub,
-      );
-      const imagePath = this.paymentMethodsHeroImage(productType);
-      const media = await this.getMediaSource(imagePath);
-
-      if (messageId) {
-        try {
-          const result = await ctx.telegram.editMessageMedia(
-            chatId,
-            messageId,
-            undefined,
-            {
-              type: 'photo',
-              media,
-              caption: paymentCaption.caption,
-              caption_entities: paymentCaption.caption_entities,
-            },
-            { reply_markup: keyboard.reply_markup },
-          );
-          ctx.session.currentImage = imagePath;
-          this.cacheFileIdFromResult(imagePath, result);
-          return;
-        } catch (error) {
-          this.logger.debug(`Edit by ID failed: ${error.message}`);
-        }
-      }
-
-      const msg = await withRetry(
-        () =>
-          this.sendCachedPhoto(ctx, imagePath, {
-            caption: paymentCaption.caption,
-            caption_entities: paymentCaption.caption_entities,
-            reply_markup: keyboard.reply_markup,
-          }),
-        {
-          maxAttempts: 2,
-          delayMs: 0,
-          exponentialBackoff: false,
-          shouldRetry: (err: any) =>
-            !err?.response?.error_code || err.response.error_code >= 500,
-        },
-      );
-      ctx.session.lastBotMessageId = msg.message_id;
-    } catch (error: any) {
-      this.logger.error(
-        `Price calculation error in showPaymentMethodsByMessageId: ${error.message}`,
-        error.stack,
-      );
-      await ctx.reply(this.i18n.t('payment.calc_error', lang)).catch(() => {});
     }
   }
 
@@ -4075,7 +3941,7 @@ export class BotUpdate {
 
       ctx.deleteMessage().catch(() => {});
 
-      await this.showPaymentMethodsByMessageId(ctx);
+      await this.showPaymentMethods(ctx, true);
       return;
     }
   }
