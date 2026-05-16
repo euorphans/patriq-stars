@@ -3414,13 +3414,6 @@ export class BotUpdate {
           ? priceDetails.amount_usd / cachedRates.tonToUsd
           : undefined;
 
-      if (paymentMethod !== 'ton') {
-        await this.editOrSendPhoto(ctx, './images/main_menu.webp', {
-          caption: this.i18n.t('payment.creating', lang),
-          parse_mode: 'HTML',
-        }).catch(() => {});
-      }
-
       const prismaPaymentMethod =
         paymentMethod === 'freekassa' ||
         paymentMethod === 'freekassa_card' ||
