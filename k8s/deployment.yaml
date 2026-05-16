@@ -131,16 +131,6 @@ spec:
                 secretKeyRef:
                   name: stars-bot-secrets
                   key: FRAGMENT_STEL_TON_TOKEN
-            - name: PLATEGA_MERCHANT_ID
-              valueFrom:
-                secretKeyRef:
-                  name: stars-bot-secrets
-                  key: PLATEGA_MERCHANT_ID
-            - name: PLATEGA_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: stars-bot-secrets
-                  key: PLATEGA_SECRET
             - name: HELEKET_MERCHANT_ID
               valueFrom:
                 secretKeyRef:
@@ -156,12 +146,6 @@ spec:
                 secretKeyRef:
                   name: stars-bot-secrets
                   key: HELEKET_CALLBACK_URL
-            - name: PLATEGA_IP_WHITELIST
-              valueFrom:
-                secretKeyRef:
-                  name: stars-bot-secrets
-                  key: PLATEGA_IP_WHITELIST
-                  optional: true
             - name: HELEKET_IP_WHITELIST
               valueFrom:
                 secretKeyRef:

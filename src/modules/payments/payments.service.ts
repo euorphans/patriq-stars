@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/shared/services/prisma/prisma.service';
-import { PlategaService } from './providers/platega.service';
 import { FreekassaService } from './providers/freekassa.service';
 import { HeleketService } from './providers/heleket.service';
 import { TonPaymentService } from './providers/ton-payment.service';
@@ -28,7 +27,6 @@ export class PaymentsService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly plategaService: PlategaService,
     private readonly freekassaService: FreekassaService,
     private readonly heleketService: HeleketService,
     private readonly tonPaymentService: TonPaymentService,
@@ -36,31 +34,6 @@ export class PaymentsService {
     private readonly eventEmitter: EventEmitter2,
     private readonly fraudService: FraudService,
   ) {}
-
-  private getPlategaPaymentDescription(params: {
-    product_type: ProductType;
-    product_quantity: string;
-    recipient: string;
-    recipient_username?: string;
-    user_telegram_id: string;
-  }): string {
-    let productLabel: string;
-    if (params.product_type === 'STARS') {
-      productLabel = `${params.product_quantity} Звёзд (внутренней валюты мессенджера https://telegram.org)`;
-    } else if (params.product_type === 'TON') {
-      productLabel = `${params.product_quantity} TON`;
-    } else if (params.product_type === 'PREMIUM') {
-      productLabel = `Telegram Premium ${params.product_quantity} мес (внутренней услуги мессенджера https://telegram.org)`;
-    } else {
-      productLabel = 'Товар';
-    }
-
-    const recipientUsername = params.recipient_username
-      ? `@${params.recipient_username.replace(/^@/, '')}`
-      : params.recipient;
-
-    return `‼️ВНИМАНИЕ‼️ Вы совершаете покупку: ${productLabel}. Получатель: ${recipientUsername} (ID: ${params.user_telegram_id}). В магазине https://t.me/patriqStarsBot ‼️ Данную ссылку для оплаты может выдать только https://t.me/patriqStarsBot Если вам прислал её кто-то другой — не совершайте покупку! Возврат за этот платёж невозможен!`;
-  }
 
   async createPayment(data: {
     user_id: string;
@@ -116,40 +89,6 @@ export class PaymentsService {
       let externalPaymentData: any = null;
 
       switch (data.payment_method) {
-        case PaymentMethod.PLATEGA:
-          externalPaymentData = await withRetry(
-            () =>
-              this.plategaService.createPayment({
-                order_id: payment.order_number.toString(),
-                amount: parseFloat(data.amount_rub),
-                user_id: data.user_telegram_id,
-                stars_count:
-                  data.product_type === 'STARS'
-                    ? parseInt(data.product_quantity, 10)
-                    : undefined,
-                payment_method: 2,
-                description: this.getPlategaPaymentDescription({
-                  product_type: data.product_type,
-                  product_quantity: data.product_quantity,
-                  recipient: data.recipient,
-                  recipient_username: data.recipient_username,
-                  user_telegram_id: data.user_telegram_id,
-                }),
-              }),
-            {
-              maxAttempts: 2,
-              delayMs: 500,
-              exponentialBackoff: false,
-              shouldRetry: isRetryableError,
-              onRetry: (attempt, error) => {
-                this.logger.warn(
-                  `Retry attempt ${attempt} for Platega payment ${payment.id}: ${error.message}`,
-                );
-              },
-            },
-          );
-          break;
-
         case PaymentMethod.FREEKASSA:
           externalPaymentData = await withRetry(
             () =>
@@ -450,30 +389,6 @@ export class PaymentsService {
 
   async getProviderStatus(payment: Payment): Promise<string | null> {
     try {
-      if (payment.payment_method === PaymentMethod.PLATEGA) {
-        if (!payment.external_payment_id) return null;
-        const { status } = await this.plategaService.getTransactionStatus(
-          payment.external_payment_id,
-        );
-
-        const normalized = status?.toUpperCase() || '';
-
-        // Platega API status strings (документация): PENDING, CONFIRMED, EXPIRED, CANCELED, FAILED;
-        // в ответах также встречаются CANCELLED, REFUND.
-        const map: Record<string, string> = {
-          PENDING: '⌛️ Ожидание оплаты',
-          CONFIRMED: '✅ Подтверждение оплаты',
-          EXPIRED: '🕐 Истек срок оплаты платежа',
-          CANCELED: '❌ Отмененный платеж',
-          CANCELLED: '❌ Отмененный платеж',
-          FAILED: '⛔️ Ошибка создания платежа',
-          REFUND: '↩️ Возврат',
-          NOT_FOUND: '⚠️ Не найдена в Platega',
-          IP_DENIED: '⛔️ IP сервера не в вайтлисте Platega',
-        };
-        return map[normalized] ?? `❓ ${status}`;
-      }
-
       if (payment.payment_method === PaymentMethod.FREEKASSA) {
         if (payment.status === PaymentStatus.COMPLETED) {
           return '✅ Успешная оплата';
@@ -596,40 +511,6 @@ export class PaymentsService {
     let isPaid = false;
 
     switch (payment.payment_method) {
-      case PaymentMethod.PLATEGA:
-        if (!payment.external_payment_id) {
-          return payment.status;
-        }
-        try {
-          isPaid = await withRetry(
-            () =>
-              this.plategaService.checkPaymentStatus(
-                payment.external_payment_id!,
-              ),
-            {
-              maxAttempts: 2,
-              delayMs: 500,
-              exponentialBackoff: false,
-              shouldRetry: isRetryableError,
-            },
-          );
-        } catch (error: any) {
-          if (
-            error.message?.includes('400') ||
-            error.message?.includes('not found')
-          ) {
-            this.logger.warn(
-              `Payment ${payment.id} check returned 400/not found from Platega - treating as pending. Error: ${error.message}`,
-            );
-            return PaymentStatus.PENDING;
-          }
-          this.logger.error(
-            `Error checking Platega payment ${payment.id}: ${error.message}`,
-          );
-          throw error;
-        }
-        break;
-
       case PaymentMethod.HELEKET:
         if (!payment.external_payment_id) {
           return payment.status;

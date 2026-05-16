@@ -311,7 +311,7 @@ export class SettingsService implements OnModuleInit {
       }
     }
 
-    const methods = ['PLATEGA', 'FREEKASSA', 'FREEKASSA_CRYPTO', 'TON'];
+    const methods = ['FREEKASSA', 'FREEKASSA_CRYPTO', 'TON'];
     for (const method of methods) {
       const key = `payment_method_enabled_${method}`;
       const existing = await this.getSetting(key);
@@ -327,7 +327,7 @@ export class SettingsService implements OnModuleInit {
     } else {
       try {
         const parsed: string[] = JSON.parse(existingOrder);
-        let order = parsed.filter((m) => m !== 'HELEKET');
+        let order = parsed.filter((m) => m !== 'HELEKET' && m !== 'PLATEGA');
         if (!order.includes('FREEKASSA_CRYPTO')) {
           const fkIdx = order.indexOf('FREEKASSA');
           if (fkIdx >= 0) {
@@ -352,6 +352,7 @@ export class SettingsService implements OnModuleInit {
     }
 
     await this.setPaymentMethodEnabled('HELEKET', false);
+    await this.setPaymentMethodEnabled('PLATEGA', false);
   }
 
   async isPaymentMethodEnabled(method: string): Promise<boolean> {
@@ -388,7 +389,7 @@ export class SettingsService implements OnModuleInit {
   }
 
   async getPaymentMethodsOrder(): Promise<string[]> {
-    const validMethods = ['PLATEGA', 'FREEKASSA', 'FREEKASSA_CRYPTO', 'TON'];
+    const validMethods = ['FREEKASSA', 'FREEKASSA_CRYPTO', 'TON'];
     const value = await this.getSetting('payment_methods_order');
     if (!value) {
       return validMethods;

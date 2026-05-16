@@ -354,8 +354,6 @@ ${t('orders_completed', { n: stats.orders.completed })}
 ${t('orders_pending', { n: stats.orders.pending })}
 ${t('orders_cancelled', { n: stats.orders.cancelled })}
 
-${rubMethodBlock('section_platega', stats.platega)}
-
 ${rubMethodBlock('section_freekassa', stats.freekassa)}
 
 ${t('section_heleket')}
@@ -586,15 +584,36 @@ ${t('premium_12', { n: products.premium['12'] })}`;
       };
     };
 
-    const plategaStats = getStatsByMethod('PLATEGA');
-    const freekassaStats = getStatsByMethod('FREEKASSA');
+    const legacyPlategaStats = getStatsByMethod('PLATEGA');
+
+    const mergeRubStats = (
+      primary: ReturnType<typeof getStatsByMethod>,
+      legacy: ReturnType<typeof getStatsByMethod>,
+    ) => ({
+      turnover: primary.turnover + legacy.turnover,
+      fees: primary.fees + legacy.fees,
+      profit: primary.profit + legacy.profit,
+      products: {
+        stars: primary.products.stars + legacy.products.stars,
+        ton: primary.products.ton + legacy.products.ton,
+        gifts: primary.products.gifts + legacy.products.gifts,
+        premium: {
+          '3': primary.products.premium['3'] + legacy.products.premium['3'],
+          '6': primary.products.premium['6'] + legacy.products.premium['6'],
+          '12':
+            primary.products.premium['12'] + legacy.products.premium['12'],
+        },
+      },
+    });
+
+    const freekassaStats = mergeRubStats(
+      getStatsByMethod('FREEKASSA'),
+      legacyPlategaStats,
+    );
     const heleketStats = getStatsByMethod('HELEKET');
     const tonStats = getStatsByMethod('TON');
     const totalProfitRub =
-      plategaStats.profit +
-      freekassaStats.profit +
-      heleketStats.profit +
-      tonStats.profit;
+      freekassaStats.profit + heleketStats.profit + tonStats.profit;
 
     return {
       users: {
@@ -609,12 +628,6 @@ ${t('premium_12', { n: products.premium['12'] })}`;
         completed: ordersStats.completed,
         pending: pendingOrders,
         cancelled: ordersStats.cancelled,
-      },
-      platega: {
-        turnover: plategaStats.turnover,
-        fees: plategaStats.fees,
-        profit: plategaStats.profit,
-        products: plategaStats.products,
       },
       freekassa: {
         turnover: freekassaStats.turnover,
@@ -637,33 +650,27 @@ ${t('premium_12', { n: products.premium['12'] })}`;
         profit: totalProfitRub,
         products: {
           stars:
-            plategaStats.products.stars +
             freekassaStats.products.stars +
             heleketStats.products.stars +
             tonStats.products.stars,
           ton:
-            plategaStats.products.ton +
             freekassaStats.products.ton +
             heleketStats.products.ton +
             tonStats.products.ton,
           gifts:
-            plategaStats.products.gifts +
             freekassaStats.products.gifts +
             heleketStats.products.gifts +
             tonStats.products.gifts,
           premium: {
             '3':
-              plategaStats.products.premium['3'] +
               freekassaStats.products.premium['3'] +
               heleketStats.products.premium['3'] +
               tonStats.products.premium['3'],
             '6':
-              plategaStats.products.premium['6'] +
               freekassaStats.products.premium['6'] +
               heleketStats.products.premium['6'] +
               tonStats.products.premium['6'],
             '12':
-              plategaStats.products.premium['12'] +
               freekassaStats.products.premium['12'] +
               heleketStats.products.premium['12'] +
               tonStats.products.premium['12'],

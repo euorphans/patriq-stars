@@ -13,7 +13,6 @@ interface PriceCalculation {
 }
 
 interface PriceBreakdown {
-  platega: { rub: number; usd: number; rate: number };
   freekassa: { rub: number; usd: number; rate: number };
   heleket: { rub: number; usd: number; rate: number };
   ton: { rub: number; usd: number; rate: number };
@@ -63,7 +62,7 @@ export class PricingService implements OnModuleInit {
     }
   }
 
-  private calculatePlategaPrice(
+  private calculateRubSbpPrice(
     basePriceUsd: number,
     serviceMarkupPercent: number,
     paymentFeePercent: number,
@@ -178,10 +177,9 @@ export class PricingService implements OnModuleInit {
       ]);
 
     switch (paymentSystem.toLowerCase()) {
-      case 'platega':
       case 'sbp':
       case 'freekassa':
-        return this.calculatePlategaPrice(
+        return this.calculateRubSbpPrice(
           basePriceUsd,
           serviceMarkup,
           paymentFee,
@@ -222,10 +220,9 @@ export class PricingService implements OnModuleInit {
     let result: { rub: number; usd: number; rate: number };
 
     switch (paymentSystem.toLowerCase()) {
-      case 'platega':
       case 'sbp':
       case 'freekassa':
-        result = this.calculatePlategaPrice(
+        result = this.calculateRubSbpPrice(
           basePriceUsd,
           serviceMarkup,
           paymentFee,
@@ -272,26 +269,23 @@ export class PricingService implements OnModuleInit {
     productType: string,
     quantity: number,
   ): Promise<PriceBreakdown> {
-    const [platega, freekassa, heleket, ton] = await Promise.all([
-      this.calculatePriceForPaymentSystem(productType, quantity, 'platega'),
+    const [freekassa, heleket, ton] = await Promise.all([
       this.calculatePriceForPaymentSystem(productType, quantity, 'freekassa'),
       this.calculatePriceForPaymentSystem(productType, quantity, 'heleket'),
       this.calculatePriceForPaymentSystem(productType, quantity, 'ton'),
     ]);
 
-    return { platega, freekassa, heleket, ton };
+    return { freekassa, heleket, ton };
   }
 
   async initializeDefaultSettings(): Promise<void> {
     const defaultFees = {
-      platega: 6.0,
       freekassa: 6.0,
       heleket: 2.0,
       ton: 0.0,
     };
 
     const defaultMarkups = {
-      platega: 13.0,
       freekassa: 13.0,
       heleket: 13.0,
       ton: 13.0,

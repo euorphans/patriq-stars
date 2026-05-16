@@ -3130,13 +3130,12 @@ export class BotUpdate {
     }
   }
 
-  @Action(/^payment_(platega|freekassa|freekassa_crypto|ton)$/)
+  @Action(/^payment_(freekassa|freekassa_crypto|ton)$/)
   async selectPaymentMethod(@Ctx() ctx: BotContext): Promise<void> {
     const match = ctx.match;
     if (!match) return;
 
     const paymentMethod = match[1] as
-      | 'platega'
       | 'freekassa'
       | 'freekassa_crypto'
       | 'ton';
@@ -3171,7 +3170,7 @@ export class BotUpdate {
 
   private async processPaymentCreation(
     ctx: BotContext,
-    paymentMethod: 'platega' | 'freekassa' | 'freekassa_crypto' | 'ton',
+    paymentMethod: 'freekassa' | 'freekassa_crypto' | 'ton',
   ): Promise<void> {
     const userId = ctx.from?.id;
 
@@ -3191,7 +3190,7 @@ export class BotUpdate {
 
   private async doProcessPaymentCreation(
     ctx: BotContext,
-    paymentMethod: 'platega' | 'freekassa' | 'freekassa_crypto' | 'ton',
+    paymentMethod: 'freekassa' | 'freekassa_crypto' | 'ton',
   ): Promise<void> {
     const { productType, quantity, recipientUsername, recipientName } =
       ctx.session;
@@ -3232,8 +3231,7 @@ export class BotUpdate {
       if (!userId) return;
 
       const limits = await this.settingsService.getPurchaseLimits();
-      const isSbpOrCard =
-        paymentMethod === 'platega' || paymentMethod === 'freekassa';
+      const isSbpOrCard = paymentMethod === 'freekassa';
 
       const pricingKey =
         paymentMethod === 'freekassa_crypto' ? 'heleket' : paymentMethod;
@@ -3273,8 +3271,8 @@ export class BotUpdate {
           `${paymentMethod.toUpperCase()} payment rejected: amount ${priceDetails.amount_rub} RUB exceeds ${limits.sbpLimitRub} RUB limit`,
         );
         const errorText =
-          this.i18n.t('payment.platega_limit_exceeded', lang) ||
-          `❌ Сумма (${priceDetails.amount_rub.toFixed(2)} ₽) превышает лимит СБП/карты.\n\nВыберите другой способ оплаты.`;
+          this.i18n.t('payment.sbp_limit_exceeded', lang) ||
+          `❌ Сумма (${priceDetails.amount_rub.toFixed(2)} ₽) превышает лимит СБП.\n\nВыберите другой способ оплаты.`;
         await ctx.reply(errorText, {
           parse_mode: 'HTML',
           reply_markup: MainKeyboard.getBackButton('back_to_main').reply_markup,
@@ -3379,13 +3377,11 @@ export class BotUpdate {
         }
 
         const paymentMethodDisplay =
-          paymentMethod === 'platega'
-            ? this.i18n.t('payment.method.platega', lang)
-            : paymentMethod === 'freekassa'
-              ? this.i18n.t('payment.method.freekassa', lang)
-              : paymentMethod === 'freekassa_crypto'
-                ? this.i18n.t('payment.method.freekassa_crypto', lang)
-                : this.i18n.t('payment.method.ton', lang);
+          paymentMethod === 'freekassa'
+            ? this.i18n.t('payment.method.freekassa', lang)
+            : paymentMethod === 'freekassa_crypto'
+              ? this.i18n.t('payment.method.freekassa_crypto', lang)
+              : this.i18n.t('payment.method.ton', lang);
 
         let recipientDisplay: string;
         if (payment.recipient_username && payment.recipient_name) {

@@ -5,7 +5,6 @@ import {
   PaymentsService,
   TON_PAYMENT_WINDOW_MS,
 } from '@/modules/payments/payments.service';
-import { PlategaService } from '@/modules/payments/providers/platega.service';
 import { FraudService } from '@/modules/fraud/fraud.service';
 import { SettingsService } from '@/modules/settings/settings.service';
 import { RedisLockService } from '@/shared/services/redis/redis-lock.service';
@@ -41,7 +40,6 @@ export class PaymentCheckerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly paymentsService: PaymentsService,
-    private readonly plategaService: PlategaService,
     private readonly fraudService: FraudService,
     private readonly settingsService: SettingsService,
     private readonly redisLock: RedisLockService,
@@ -252,18 +250,6 @@ export class PaymentCheckerService {
             completedPayment &&
             completedPayment.status === PaymentStatus.COMPLETED
           ) {
-            if (
-              completedPayment.payment_method === 'PLATEGA' &&
-              completedPayment.external_payment_id
-            ) {
-              await this.checkPlategaPhoneFraud(
-                completedPayment.external_payment_id,
-                completedPayment.id,
-                completedPayment.user_telegram_id,
-                Number(completedPayment.amount_rub || 0),
-              );
-            }
-
             const result =
               await this.paymentsService.handleCompletedPayment(
                 completedPayment,
@@ -574,9 +560,7 @@ export class PaymentCheckerService {
       const paymentMethodKey =
         payment.payment_method === 'TON'
           ? 'payment.method.ton'
-          : payment.payment_method === 'PLATEGA'
-            ? 'payment.method.platega'
-            : payment.payment_method === 'FREEKASSA' &&
+          : payment.payment_method === 'FREEKASSA' &&
                 payment.crypto_currency === 'USD'
               ? 'payment.method.freekassa_crypto'
               : payment.payment_method === 'FREEKASSA'
@@ -792,36 +776,6 @@ export class PaymentCheckerService {
       }
     } catch (error: any) {
       this.logger.error(`Error sending sales notifications: ${error.message}`);
-    }
-  }
-
-  private async checkPlategaPhoneFraud(
-    transactionId: string,
-    paymentId: string,
-    userTelegramId: string,
-    amountRub: number,
-  ): Promise<void> {
-    const phone = await this.plategaService.getTransactionPhone(transactionId);
-
-    if (!phone) {
-      return;
-    }
-
-    await this.fraudService.savePaymentPhone(paymentId, userTelegramId, phone);
-
-    const { isFraud, uniquePhones } = await this.fraudService.checkPhoneFraud(
-      userTelegramId,
-      amountRub,
-    );
-
-    if (isFraud) {
-      this.logger.warn(
-        `Phone fraud detected for user ${userTelegramId}: ${uniquePhones.length} unique phones`,
-      );
-      await this.fraudService.handlePhoneFraudDetected(
-        userTelegramId,
-        uniquePhones,
-      );
     }
   }
 

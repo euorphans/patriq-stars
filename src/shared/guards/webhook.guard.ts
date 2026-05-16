@@ -23,9 +23,7 @@ export class WebhookGuard implements CanActivate {
     const path = request.path;
 
     try {
-      if (path.includes('/platega/')) {
-        await this.verifyPlategaWebhook(request);
-      } else if (path.includes('/freekassa/')) {
+      if (path.includes('/freekassa/')) {
         await this.verifyFreekassaWebhook(request);
       } else if (path.includes('/heleket/')) {
         await this.verifyHeleketWebhook(request);
@@ -38,38 +36,6 @@ export class WebhookGuard implements CanActivate {
     } catch {
       throw new UnauthorizedException('Webhook verification failed');
     }
-  }
-
-  private async verifyPlategaWebhook(request: WebhookRequest): Promise<void> {
-    const merchantIdRaw =
-      request.headers['x-merchantid'] ||
-      request.headers['x-merchant-id'] ||
-      request.headers['X-MerchantId'];
-    const merchantId = Array.isArray(merchantIdRaw)
-      ? merchantIdRaw[0]
-      : merchantIdRaw;
-
-    const secretRaw =
-      request.headers['x-secret'] || request.headers['X-Secret'];
-    const secret = Array.isArray(secretRaw) ? secretRaw[0] : secretRaw;
-
-    const expectedMerchantId = process.env.PLATEGA_MERCHANT_ID;
-    const expectedSecret = process.env.PLATEGA_SECRET;
-
-    if (!merchantId || !secret) {
-      throw new UnauthorizedException('Missing authentication headers');
-    }
-
-    if (merchantId !== expectedMerchantId) {
-      throw new UnauthorizedException('Invalid merchant ID');
-    }
-
-    if (secret !== expectedSecret) {
-      throw new UnauthorizedException('Invalid secret');
-    }
-
-    request.webhookVerified = true;
-    request.webhookProvider = 'platega';
   }
 
   private async verifyFreekassaWebhook(request: WebhookRequest): Promise<void> {

@@ -14,7 +14,6 @@ import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf } from 'telegraf';
 import { SkipThrottle } from '@nestjs/throttler';
 import { PaymentsService } from './payments.service';
-import { PlategaService } from './providers/platega.service';
 import { PaymentStatus, PaymentMethod } from '@prisma/client';
 import { PrismaService } from '@/shared/services/prisma/prisma.service';
 import { SettingsService } from '@/modules/settings/settings.service';
@@ -32,16 +31,6 @@ import {
   sendOrEditPaymentSuccessPhoto,
 } from '@/shared/utils/payment-success-notification';
 import { Response } from 'express';
-
-interface PlategaCallbackPayload {
-  id: string;
-  status: number | string;
-  amount?: number;
-  currency?: string;
-  paymentMethod?: number | string;
-  payload?: string;
-  merchantId?: string;
-}
 
 interface HeleketCallbackPayload {
   type?: string;
@@ -72,13 +61,6 @@ interface HeleketCallbackPayload {
   [key: string]: any;
 }
 
-/** Колбэк Platega: числовые и строковые коды (док. статусы — PENDING, CONFIRMED, EXPIRED, CANCELED, FAILED). */
-const PLATEGA_STATUS = {
-  PENDING: [1, 'PENDING', 'pending'],
-  CANCELED: [6, 'CANCELED', 'CANCELED', 'canceled'],
-  CONFIRMED: [7, 'CONFIRMED', 'confirmed'],
-} as const;
-
 @Controller('payments')
 export class PaymentsController {
   private readonly logger = new Logger(PaymentsController.name);
@@ -86,7 +68,6 @@ export class PaymentsController {
 
   constructor(
     private readonly paymentsService: PaymentsService,
-    private readonly plategaService: PlategaService,
     private readonly settingsService: SettingsService,
     private readonly prisma: PrismaService,
     private readonly redisLock: RedisLockService,
@@ -96,153 +77,6 @@ export class PaymentsController {
     @InjectBot() private readonly bot: Telegraf,
     @InjectBot('admin') private readonly adminBot: Telegraf,
   ) {}
-
-  @SkipThrottle()
-  @UseGuards(IpWhitelistGuard, WebhookGuard)
-  @Post('platega/callback')
-  @HttpCode(HttpStatus.OK)
-  async handlePlategaCallback(
-    @Body() payload: PlategaCallbackPayload,
-    @Headers() _headers: Record<string, string>,
-  ): Promise<{ success: boolean }> {
-    try {
-      this.logger.warn(`Platega callback body: ${JSON.stringify(payload)}`);
-      const transactionId = payload.id;
-
-      let payment =
-        await this.paymentsService.getPaymentByExternalId(transactionId);
-
-      if (!payment && payload.payload) {
-        let orderId = payload.payload;
-        try {
-          const parsedPayload = JSON.parse(payload.payload);
-          if (parsedPayload.orderId) {
-            orderId = parsedPayload.orderId;
-          }
-        } catch {}
-        payment = await this.paymentsService.getPayment(orderId);
-      }
-
-      if (!payment) {
-        return { success: true };
-      }
-
-      const status = payload.status;
-      const statusNum =
-        typeof status === 'number' ? status : parseInt(String(status), 10);
-
-      const matchesStatus = (
-        statusCode: number | string,
-        allowedValues: readonly (number | string)[],
-      ): boolean => {
-        return (
-          allowedValues.includes(statusCode) ||
-          allowedValues.includes(String(statusCode).toUpperCase())
-        );
-      };
-
-      if (statusNum === 7 || matchesStatus(status, PLATEGA_STATUS.CONFIRMED)) {
-        if (payload.amount !== undefined && payment.amount_rub) {
-          const expectedAmount = Number(payment.amount_rub);
-          const receivedAmount = Number(payload.amount);
-          const minAllowed =
-            expectedAmount * (1 - this.UNDERPAYMENT_TOLERANCE_PERCENT / 100);
-          const maxAllowed = expectedAmount * 1.5;
-
-          if (receivedAmount < minAllowed) {
-            this.logger.warn(
-              `Payment ${payment.id} underpayment: expected ${expectedAmount}, received ${receivedAmount}`,
-            );
-            await this.prisma.payment.update({
-              where: { id: payment.id },
-              data: { status: PaymentStatus.FAILED, updated_at: new Date() },
-            });
-            throw new BadRequestException('Payment amount too low');
-          }
-
-          if (receivedAmount > maxAllowed) {
-            this.logger.warn(
-              `Payment ${payment.id} suspicious overpayment: expected ${expectedAmount}, received ${receivedAmount}`,
-            );
-          }
-        }
-
-        await this.checkPlategaPhoneFraud(
-          transactionId,
-          payment.id,
-          payment.user_telegram_id,
-          Number(payment.amount_rub || 0),
-        );
-
-        const result = await this.paymentsService.completePaymentWithQueue(
-          payment.id,
-          { provider_transaction_id: transactionId },
-        );
-
-        if (result) {
-          const isFraud = result.payment.status === 'FRAUD';
-
-          this.paymentsService['eventEmitter'].emit(
-            'payment.completed',
-            result.payment,
-          );
-
-          if (isFraud) {
-            await this.queuePaymentFraudNotification(result.payment);
-          } else {
-            await this.queuePaymentSuccessNotification(result.payment);
-          }
-          if (result.queueCreated) {
-            await this.queueSalesChannelNotification(result.payment);
-          }
-        }
-
-        return { success: true };
-      }
-
-      if (statusNum === 6 || matchesStatus(status, PLATEGA_STATUS.CANCELED)) {
-        const cancelledPayment = await this.prisma.$transaction(async (tx) => {
-          const currentPayment = await tx.payment.findUnique({
-            where: { id: payment.id },
-          });
-
-          if (
-            !currentPayment ||
-            currentPayment.status === PaymentStatus.COMPLETED ||
-            currentPayment.status === PaymentStatus.CANCELLED ||
-            currentPayment.status === PaymentStatus.REFUNDED
-          ) {
-            return null;
-          }
-
-          return tx.payment.update({
-            where: { id: payment.id },
-            data: { status: PaymentStatus.CANCELLED, updated_at: new Date() },
-          });
-        });
-
-        if (cancelledPayment) {
-          await this.queuePaymentCancellationNotification(cancelledPayment);
-
-          this.fraudService
-            .checkConsecutiveCancellations(cancelledPayment.user_telegram_id)
-            .catch((err) =>
-              this.logger.error(
-                `Consecutive cancellation check failed: ${err.message}`,
-              ),
-            );
-        }
-      }
-
-      return { success: true };
-    } catch (error: any) {
-      this.logger.error(
-        `Error processing Platega callback: ${error.message}`,
-        error.stack,
-      );
-      throw error;
-    }
-  }
 
   @SkipThrottle()
   @UseGuards(IpWhitelistGuard, WebhookGuard)
@@ -873,33 +707,4 @@ export class PaymentsController {
     }
   }
 
-  private async checkPlategaPhoneFraud(
-    transactionId: string,
-    paymentId: string,
-    userTelegramId: string,
-    amountRub: number,
-  ): Promise<void> {
-    const phone = await this.plategaService.getTransactionPhone(transactionId);
-
-    if (!phone) {
-      return;
-    }
-
-    await this.fraudService.savePaymentPhone(paymentId, userTelegramId, phone);
-
-    const { isFraud, uniquePhones } = await this.fraudService.checkPhoneFraud(
-      userTelegramId,
-      amountRub,
-    );
-
-    if (isFraud) {
-      this.logger.warn(
-        `Phone fraud detected for user ${userTelegramId}: ${uniquePhones.length} unique phones`,
-      );
-      await this.fraudService.handlePhoneFraudDetected(
-        userTelegramId,
-        uniquePhones,
-      );
-    }
-  }
 }

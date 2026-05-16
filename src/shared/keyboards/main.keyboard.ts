@@ -41,7 +41,7 @@ export const PAYMENT_USERNAME_WARNING_CUSTOM_EMOJI_ID = '5447644880824181073';
 /** Иконка перед «Получатель:» на экране выбора способа оплаты (caption_entities). */
 export const PAYMENT_RECIPIENT_CUSTOM_EMOJI_ID = '5391032818111363540';
 
-/** InlineKeyboard: СБП (Platega). */
+/** InlineKeyboard: СБП (Freekassa). */
 export const PAYMENT_METHOD_PLATEGA_CUSTOM_EMOJI_ID = '5294247005701292072';
 
 /** InlineKeyboard: Heleket (криптовалюта). */
@@ -380,7 +380,6 @@ export class MainKeyboard {
     const buttons: any[] = [];
 
     const methodOrder = enabledMethods || [
-      'PLATEGA',
       'FREEKASSA',
       'FREEKASSA_CRYPTO',
       'TON',
@@ -388,21 +387,6 @@ export class MainKeyboard {
 
     for (const method of methodOrder) {
       switch (method) {
-        case 'PLATEGA':
-          if (prices.platega) {
-            const plategaLabel = i18n
-              .t('payment.method.platega', lang)
-              .replace(/^💳\s+/, '');
-            buttons.push([
-              {
-                text: `${plategaLabel} — ${prices.platega.rub.toFixed(2)} ₽`,
-                callback_data: `${actionPrefix}_platega`,
-                icon_custom_emoji_id: PAYMENT_METHOD_PLATEGA_CUSTOM_EMOJI_ID,
-              },
-            ]);
-          }
-          break;
-
         case 'FREEKASSA':
           if (prices.freekassa) {
             const freekassaLabel = i18n

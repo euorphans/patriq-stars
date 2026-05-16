@@ -3,7 +3,6 @@ import { TelegrafModule } from 'nestjs-telegraf';
 import { PaymentsService } from './payments.service';
 import { PaymentAdminService } from './payment-admin.service';
 import { PaymentsController } from './payments.controller';
-import { PlategaService } from './providers/platega.service';
 import { FreekassaService } from './providers/freekassa.service';
 import { HeleketService } from './providers/heleket.service';
 import { TonPaymentService } from './providers/ton-payment.service';
@@ -29,7 +28,6 @@ import { I18nModule } from '@/shared/services/i18n/i18n.module';
   providers: [
     PaymentsService,
     PaymentAdminService,
-    PlategaService,
     FreekassaService,
     HeleketService,
     TonPaymentService,
@@ -40,7 +38,6 @@ import { I18nModule } from '@/shared/services/i18n/i18n.module';
   exports: [
     PaymentsService,
     PaymentAdminService,
-    PlategaService,
     FreekassaService,
     HeleketService,
     TonPaymentService,

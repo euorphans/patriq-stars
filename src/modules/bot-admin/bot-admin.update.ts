@@ -2067,22 +2067,15 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
       await ctx.deleteMessage();
     } catch {}
 
-    const [plategaFeeRecord, freekassaFeeRecord, tonFeeRecord] =
-      await Promise.all([
-        this.prisma.paymentFee.findUnique({
-          where: { payment_system: 'PLATEGA' },
-        }),
-        this.prisma.paymentFee.findUnique({
-          where: { payment_system: 'FREEKASSA' },
-        }),
-        this.prisma.paymentFee.findUnique({
-          where: { payment_system: 'TON' },
-        }),
-      ]);
+    const [freekassaFeeRecord, tonFeeRecord] = await Promise.all([
+      this.prisma.paymentFee.findUnique({
+        where: { payment_system: 'FREEKASSA' },
+      }),
+      this.prisma.paymentFee.findUnique({
+        where: { payment_system: 'TON' },
+      }),
+    ]);
 
-    const plategaFee = plategaFeeRecord
-      ? Number(plategaFeeRecord.fee_percent)
-      : 0;
     const freekassaFee = freekassaFeeRecord
       ? Number(freekassaFeeRecord.fee_percent)
       : 0;
@@ -2091,7 +2084,6 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
 💳 <b>Платежные системы</b>
 
 Текущие комиссии:
-• Platega: ${plategaFee.toFixed(1)}%
 • Freekassa: ${freekassaFee.toFixed(1)}%
 • TON: ${tonFee.toFixed(1)}%
 
@@ -2101,17 +2093,10 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
     await ctx.reply(text, {
       parse_mode: 'HTML',
       reply_markup: AdminKeyboard.getPaymentSystemsMenu(
-        plategaFee,
         freekassaFee,
         tonFee,
       ).reply_markup,
     });
-  }
-
-  @Action('fee_platega')
-  async feePlatega(@Ctx() ctx: BotContext): Promise<void> {
-    if (!(await this.checkAccess(ctx))) return;
-    await this.handleFeeSelection(ctx, 'PLATEGA', 'Platega');
   }
 
   @Action('fee_freekassa')
@@ -2166,22 +2151,15 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
       await ctx.deleteMessage();
     } catch {}
 
-    const [plategaMarkupRecord, freekassaMarkupRecord, tonMarkupRecord] =
-      await Promise.all([
-        this.prisma.serviceMarkup.findUnique({
-          where: { payment_system: 'PLATEGA' },
-        }),
-        this.prisma.serviceMarkup.findUnique({
-          where: { payment_system: 'FREEKASSA' },
-        }),
-        this.prisma.serviceMarkup.findUnique({
-          where: { payment_system: 'TON' },
-        }),
-      ]);
+    const [freekassaMarkupRecord, tonMarkupRecord] = await Promise.all([
+      this.prisma.serviceMarkup.findUnique({
+        where: { payment_system: 'FREEKASSA' },
+      }),
+      this.prisma.serviceMarkup.findUnique({
+        where: { payment_system: 'TON' },
+      }),
+    ]);
 
-    const plategaMarkup = plategaMarkupRecord
-      ? Number(plategaMarkupRecord.markup_percent)
-      : 0;
     const freekassaMarkup = freekassaMarkupRecord
       ? Number(freekassaMarkupRecord.markup_percent)
       : 0;
@@ -2192,7 +2170,6 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
 💰 <b>Наша наценка</b>
 
 Текущая наценка сервиса (чистая прибыль):
-• Platega: ${plategaMarkup.toFixed(1)}%
 • Freekassa: ${freekassaMarkup.toFixed(1)}%
 • TON: ${tonMarkup.toFixed(1)}%
 
@@ -2202,14 +2179,13 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
     await ctx.reply(text, {
       parse_mode: 'HTML',
       reply_markup: AdminKeyboard.getServiceMarkupMenu(
-        plategaMarkup,
         freekassaMarkup,
         tonMarkup,
       ).reply_markup,
     });
   }
 
-  @Action(/^markup_(platega|freekassa|ton)$/)
+  @Action(/^markup_(freekassa|ton)$/)
   async selectMarkupSystem(@Ctx() ctx: BotContext): Promise<void> {
     if (!(await this.checkAccess(ctx))) return;
     const match = ctx.match;
@@ -2264,7 +2240,6 @@ ${statusEmoji} Статус: <b>${active.status === 'PROCESSING' ? 'Отправ
 ${methods
   .map((m) => {
     const names: Record<string, string> = {
-      PLATEGA: 'СБП (Platega)',
       FREEKASSA: 'СБП (Freekassa)',
       FREEKASSA_CRYPTO: 'Крипто (Freekassa)',
       TON: 'TON',
@@ -2296,7 +2271,6 @@ ${methods
     await this.settingsService.setPaymentMethodEnabled(method, !currentEnabled);
 
     const METHOD_NAMES: Record<string, string> = {
-      PLATEGA: 'СБП (Platega)',
       FREEKASSA: 'СБП (Freekassa)',
       FREEKASSA_CRYPTO: 'Крипто (Freekassa)',
       TON: 'TON',
@@ -2316,7 +2290,6 @@ ${methods
 ${methods
   .map((m) => {
     const names: Record<string, string> = {
-      PLATEGA: 'СБП (Platega)',
       FREEKASSA: 'СБП (Freekassa)',
       FREEKASSA_CRYPTO: 'Крипто (Freekassa)',
       TON: 'TON',
@@ -2356,7 +2329,6 @@ ${methods
 ${methods
   .map((m) => {
     const names: Record<string, string> = {
-      PLATEGA: 'СБП (Platega)',
       FREEKASSA: 'СБП (Freekassa)',
       FREEKASSA_CRYPTO: 'Крипто (Freekassa)',
       TON: 'TON',
@@ -2396,7 +2368,6 @@ ${methods
 ${methods
   .map((m) => {
     const names: Record<string, string> = {
-      PLATEGA: 'СБП (Platega)',
       FREEKASSA: 'СБП (Freekassa)',
       FREEKASSA_CRYPTO: 'Крипто (Freekassa)',
       TON: 'TON',
@@ -2419,7 +2390,8 @@ ${methods
   }
 
   private async buildFailoverText(): Promise<string> {
-    const plategaHealth = this.paymentHealthService.getHealthStatus('PLATEGA');
+    const freekassaHealth =
+      this.paymentHealthService.getHealthStatus('FREEKASSA');
     const failoverEnabled = await this.paymentHealthService.isFailoverEnabled();
     const autoRecovery =
       await this.paymentHealthService.isAutoRecoveryEnabled();
@@ -2434,23 +2406,23 @@ ${methods
           ? `⚠️ ${health.consecutiveFailures}/${threshold} ошибок`
           : '✅ Работает';
 
-    const plategaStatus = fmt(plategaHealth, threshold);
+    const freekassaStatus = fmt(freekassaHealth, threshold);
 
-    const recoveryStatus = plategaHealth.recoveryInProgress
+    const recoveryStatus = freekassaHealth.recoveryInProgress
       ? '\n🔄 Восстановление в процессе...'
       : '';
 
-    const lastSwitch = plategaHealth.failoverTriggeredAt
-      ? plategaHealth.failoverTriggeredAt.toLocaleString('ru-RU', {
+    const lastSwitch = freekassaHealth.failoverTriggeredAt
+      ? freekassaHealth.failoverTriggeredAt.toLocaleString('ru-RU', {
           timeZone: 'Europe/Moscow',
         })
       : 'никогда';
 
     return (
-      `🔄 <b>PLATEGA (СБП)</b>\n\n` +
+      `🔄 <b>Freekassa (СБП)</b>\n\n` +
       `Резервный способ оплаты не подключён — автопереключение при сбоях отключено.\n\n` +
       `📊 <b>Статус:</b>\n` +
-      `├ PLATEGA: ${plategaStatus}\n` +
+      `├ Freekassa: ${freekassaStatus}\n` +
       `└ Последнее переключение: ${lastSwitch}${recoveryStatus}\n\n` +
       `⚙️ <b>Настройки (на будущее):</b>\n` +
       `├ Авто-переключение: ${failoverEnabled ? '✅ Вкл' : '❌ Выкл'}\n` +
@@ -2461,14 +2433,15 @@ ${methods
   }
 
   private async getFailoverConfig() {
-    const plategaHealth = this.paymentHealthService.getHealthStatus('PLATEGA');
+    const freekassaHealth =
+      this.paymentHealthService.getHealthStatus('FREEKASSA');
     return {
       failoverEnabled: await this.paymentHealthService.isFailoverEnabled(),
       autoRecovery: await this.paymentHealthService.isAutoRecoveryEnabled(),
       threshold: await this.paymentHealthService.getFailoverThreshold(),
       cooldownMinutes:
         await this.paymentHealthService.getFailoverCooldownMinutes(),
-      failoverActive: plategaHealth.failoverActive,
+      failoverActive: freekassaHealth.failoverActive,
     };
   }
 
@@ -2582,7 +2555,7 @@ ${methods
   async failoverManualSwitch(@Ctx() ctx: BotContext): Promise<void> {
     if (!(await this.checkAccess(ctx))) return;
 
-    const success = await this.paymentHealthService.manualFailover('PLATEGA');
+    const success = await this.paymentHealthService.manualFailover('FREEKASSA');
 
     if (success) {
       await ctx.answerCbQuery('⚡ Переключено на СБП 2');
@@ -2605,10 +2578,10 @@ ${methods
   async failoverManualRecovery(@Ctx() ctx: BotContext): Promise<void> {
     if (!(await this.checkAccess(ctx))) return;
 
-    const success = await this.paymentHealthService.manualRecovery('PLATEGA');
+    const success = await this.paymentHealthService.manualRecovery('FREEKASSA');
 
     if (success) {
-      await ctx.answerCbQuery('🟢 PLATEGA восстановлен');
+      await ctx.answerCbQuery('🟢 Freekassa восстановлена');
     } else {
       await ctx.answerCbQuery('Failover не активен');
     }
