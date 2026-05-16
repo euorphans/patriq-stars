@@ -2266,6 +2266,7 @@ ${methods
     const names: Record<string, string> = {
       PLATEGA: 'СБП (Platega)',
       FREEKASSA: 'СБП (Freekassa)',
+      FREEKASSA_CRYPTO: 'Крипто (Freekassa)',
       TON: 'TON',
     };
     return `${m.enabled ? '🟢' : '🔴'} ${names[m.method] || m.method}`;
@@ -2297,6 +2298,7 @@ ${methods
     const METHOD_NAMES: Record<string, string> = {
       PLATEGA: 'СБП (Platega)',
       FREEKASSA: 'СБП (Freekassa)',
+      FREEKASSA_CRYPTO: 'Крипто (Freekassa)',
       TON: 'TON',
     };
     const name = METHOD_NAMES[method] || method;
@@ -2316,6 +2318,7 @@ ${methods
     const names: Record<string, string> = {
       PLATEGA: 'СБП (Platega)',
       FREEKASSA: 'СБП (Freekassa)',
+      FREEKASSA_CRYPTO: 'Крипто (Freekassa)',
       TON: 'TON',
     };
     return `${m.enabled ? '🟢' : '🔴'} ${names[m.method] || m.method}`;
@@ -2355,6 +2358,7 @@ ${methods
     const names: Record<string, string> = {
       PLATEGA: 'СБП (Platega)',
       FREEKASSA: 'СБП (Freekassa)',
+      FREEKASSA_CRYPTO: 'Крипто (Freekassa)',
       TON: 'TON',
     };
     return `${m.enabled ? '🟢' : '🔴'} ${names[m.method] || m.method}`;
@@ -2394,6 +2398,7 @@ ${methods
     const names: Record<string, string> = {
       PLATEGA: 'СБП (Platega)',
       FREEKASSA: 'СБП (Freekassa)',
+      FREEKASSA_CRYPTO: 'Крипто (Freekassa)',
       TON: 'TON',
     };
     return `${m.enabled ? '🟢' : '🔴'} ${names[m.method] || m.method}`;

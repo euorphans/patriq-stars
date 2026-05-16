@@ -366,6 +366,7 @@ export class AdminKeyboard {
     const METHOD_NAMES: Record<string, string> = {
       PLATEGA: '💵 СБП (Platega)',
       FREEKASSA: '💵 СБП (Freekassa)',
+      FREEKASSA_CRYPTO: '🪙 Крипто (Freekassa)',
       TON: '💎 TON',
     };
 

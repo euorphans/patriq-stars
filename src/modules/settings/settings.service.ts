@@ -311,7 +311,7 @@ export class SettingsService implements OnModuleInit {
       }
     }
 
-    const methods = ['PLATEGA', 'FREEKASSA', 'TON'];
+    const methods = ['PLATEGA', 'FREEKASSA', 'FREEKASSA_CRYPTO', 'TON'];
     for (const method of methods) {
       const key = `payment_method_enabled_${method}`;
       const existing = await this.getSetting(key);
@@ -327,12 +327,24 @@ export class SettingsService implements OnModuleInit {
     } else {
       try {
         const parsed: string[] = JSON.parse(existingOrder);
-        const stripped = parsed.filter((m) => m !== 'HELEKET');
-        const newMethods = methods.filter((m) => !stripped.includes(m));
-        if (newMethods.length > 0 || stripped.length !== parsed.length) {
+        let order = parsed.filter((m) => m !== 'HELEKET');
+        if (!order.includes('FREEKASSA_CRYPTO')) {
+          const fkIdx = order.indexOf('FREEKASSA');
+          if (fkIdx >= 0) {
+            order.splice(fkIdx + 1, 0, 'FREEKASSA_CRYPTO');
+          } else {
+            order.push('FREEKASSA_CRYPTO');
+          }
+        }
+        const newMethods = methods.filter((m) => !order.includes(m));
+        if (
+          newMethods.length > 0 ||
+          order.length !== parsed.filter((m) => m !== 'HELEKET').length ||
+          parsed.some((m) => m === 'HELEKET')
+        ) {
           await this.setSetting(
             orderKey,
-            JSON.stringify([...stripped, ...newMethods]),
+            JSON.stringify([...order, ...newMethods]),
           );
           this.settingsCache.delete(orderKey);
         }
@@ -376,7 +388,7 @@ export class SettingsService implements OnModuleInit {
   }
 
   async getPaymentMethodsOrder(): Promise<string[]> {
-    const validMethods = ['PLATEGA', 'FREEKASSA', 'TON'];
+    const validMethods = ['PLATEGA', 'FREEKASSA', 'FREEKASSA_CRYPTO', 'TON'];
     const value = await this.getSetting('payment_methods_order');
     if (!value) {
       return validMethods;

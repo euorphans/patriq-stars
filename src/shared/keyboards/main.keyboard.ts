@@ -379,26 +379,14 @@ export class MainKeyboard {
   ) {
     const buttons: any[] = [];
 
-    const isEnabled = (method: string) =>
-      !enabledMethods || enabledMethods.includes(method);
+    const methodOrder = enabledMethods || [
+      'PLATEGA',
+      'FREEKASSA',
+      'FREEKASSA_CRYPTO',
+      'TON',
+    ];
 
-    const baseOrder = enabledMethods || ['PLATEGA', 'FREEKASSA', 'TON'];
-    const expandedOrder: string[] = [];
-    for (const m of baseOrder) {
-      if (m === 'FREEKASSA') {
-        expandedOrder.push('FREEKASSA_RUB', 'FREEKASSA_CRYPTO');
-      } else {
-        expandedOrder.push(m);
-      }
-    }
-
-    const isFreekassaEnabled =
-      !enabledMethods || enabledMethods.includes('FREEKASSA');
-
-    for (const method of expandedOrder) {
-      if (method.startsWith('FREEKASSA_') && !isFreekassaEnabled) continue;
-      if (!method.startsWith('FREEKASSA_') && !isEnabled(method)) continue;
-
+    for (const method of methodOrder) {
       switch (method) {
         case 'PLATEGA':
           if (prices.platega) {
@@ -415,7 +403,7 @@ export class MainKeyboard {
           }
           break;
 
-        case 'FREEKASSA_RUB':
+        case 'FREEKASSA':
           if (prices.freekassa) {
             const freekassaLabel = i18n
               .t('payment.method.freekassa', lang)
