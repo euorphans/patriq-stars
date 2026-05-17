@@ -56,7 +56,9 @@ export class PaymentsService {
     purchase_price_usd: string;
     net_profit_rub: string;
     fragment_cookie?: string;
-    /** Параметр `i` Freekassa (крипто и др.); только для FREEKASSA. */
+    /** СБП / карта / крипто — для Freekassa createOrder (`i`). */
+    freekassa_channel?: 'sbp' | 'card' | 'crypto';
+    /** Параметр `i` Freekassa (устар., используйте freekassa_channel). */
     freekassa_suggested_method_id?: number;
   }): Promise<Payment> {
     const payment = await this.prisma.payment.create({
@@ -95,6 +97,7 @@ export class PaymentsService {
               this.freekassaService.createPayment({
                 orderId: payment.order_number.toString(),
                 amountRub: parseFloat(data.amount_rub),
+                channel: data.freekassa_channel,
                 suggestedMethodId: data.freekassa_suggested_method_id,
                 payerEmail: `${data.user_telegram_id}@telegram.org`,
               }),

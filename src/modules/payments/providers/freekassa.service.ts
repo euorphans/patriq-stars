@@ -1,17 +1,24 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import * as crypto from 'crypto';
+import {
+  type FreekassaPaymentChannel,
+  freekassaApiMethodIds,
+  resolveFreekassaMethodId,
+} from '@/shared/utils/freekassa-payment.util';
 
 export interface CreateFreekassaPaymentParams {
   /** MERCHANT_ORDER_ID / paymentId (у нас — order_number). */
   orderId: string;
   amountRub: number;
+  /** СБП / карта / крипто — надёжнее, чем только suggestedMethodId. */
+  channel?: FreekassaPaymentChannel;
   /**
-   * ID способа оплаты (§8 / API `i`): СБП 4.2 = 44, карты 5.7 = 36, USDT TRC20 = 15.
-   * СБП и карты — API → paymentt.kassa.ai; крипто — SCI pay.fk.money.
+   * ID способа оплаты (API `i`): СБП = 44, карты = 36, крипто SCI = 15.
+   * СБП и карты — POST /orders/create → paymentt.kassa.ai; крипто — SCI pay.fk.money.
    */
   suggestedMethodId?: number;
-  /** Email плательщика (обязателен для API СБП). */
+  /** Email плательщика (обязателен для API). */
   payerEmail?: string;
 }
 
@@ -45,16 +52,6 @@ export class FreekassaService {
 
   private cachedPayerIp: string | null = null;
   private payerIpLookup: Promise<string> | null = null;
-
-  private static readonly SBP_METHOD_ID = () =>
-    parseInt(process.env.FREEKASSA_SBP_CUR_ID || '44', 10);
-
-  private static readonly CARD_METHOD_ID = () =>
-    parseInt(process.env.FREEKASSA_CARD_CUR_ID || '36', 10);
-
-  private static apiMethodIds(): number[] {
-    return [FreekassaService.SBP_METHOD_ID(), FreekassaService.CARD_METHOD_ID()];
-  }
 
   formatAmountForSign(amountRub: number): string {
     return amountRub.toFixed(2);
@@ -175,20 +172,32 @@ export class FreekassaService {
     return 'Unknown API error';
   }
 
-  private usesApiMethod(methodId?: number): boolean {
-    if (typeof methodId !== 'number' || !Number.isFinite(methodId)) {
-      return false;
+  private resolveMethodId(params: CreateFreekassaPaymentParams): number {
+    if (params.channel) {
+      return resolveFreekassaMethodId(params.channel);
     }
-    return FreekassaService.apiMethodIds().includes(methodId);
+    if (
+      typeof params.suggestedMethodId === 'number' &&
+      Number.isFinite(params.suggestedMethodId) &&
+      params.suggestedMethodId > 0
+    ) {
+      return Math.floor(params.suggestedMethodId);
+    }
+    return resolveFreekassaMethodId('sbp');
+  }
+
+  private usesApiMethod(methodId: number): boolean {
+    return freekassaApiMethodIds().includes(methodId);
   }
 
   async createPayment(
     params: CreateFreekassaPaymentParams,
   ): Promise<{ id: string; url: string }> {
-    if (this.usesApiMethod(params.suggestedMethodId)) {
-      return this.createPaymentViaApi(params);
+    const methodId = this.resolveMethodId(params);
+    if (this.usesApiMethod(methodId)) {
+      return this.createPaymentViaApi({ ...params, suggestedMethodId: methodId });
     }
-    return this.createPaymentViaSci(params);
+    return this.createPaymentViaSci({ ...params, suggestedMethodId: methodId });
   }
 
   /** API v1 — СБП / карты, страница оплаты paymentt.kassa.ai */
@@ -215,8 +224,7 @@ export class FreekassaService {
       throw new Error('Freekassa: orderId is required');
     }
 
-    const paymentSystemId =
-      params.suggestedMethodId ?? FreekassaService.SBP_METHOD_ID();
+    const paymentSystemId = this.resolveMethodId(params);
     const email =
       params.payerEmail?.trim() ||
       `order_${orderId}@telegram.org`;
@@ -243,7 +251,7 @@ export class FreekassaService {
     body.signature = this.buildApiSignature(body);
 
     this.logger.log(
-      `Freekassa API create order ${orderId}, i=${paymentSystemId}, amount=${amountStr}, ip=${payerIp}`,
+      `Freekassa API createOrder ${orderId}: channel=${params.channel ?? '—'}, i=${paymentSystemId}, amount=${amountStr}, ip=${payerIp}`,
     );
 
     try {

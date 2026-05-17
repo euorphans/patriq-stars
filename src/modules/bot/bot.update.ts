@@ -34,8 +34,10 @@ import {
 import {
   FREEKASSA_CARD_MARKER,
   FREEKASSA_CRYPTO_MARKER,
+  channelFromBotPaymentMethod,
   isFreekassaCardPayment,
   isFreekassaCryptoPayment,
+  resolveFreekassaMethodId,
 } from '@/shared/utils/freekassa-payment.util';
 import { RapiraService } from '@/shared/services/rapira/rapira.service';
 import { PrismaService } from '@/shared/services/prisma/prisma.service';
@@ -3409,7 +3411,7 @@ export class BotUpdate {
     }
   }
 
-  @Action(/^payment_(freekassa|freekassa_card|freekassa_crypto|ton)$/)
+  @Action(/^payment_(freekassa_card|freekassa_crypto|freekassa|ton)$/)
   async selectPaymentMethod(@Ctx() ctx: BotContext): Promise<void> {
     const match = ctx.match;
     if (!match) return;
@@ -3521,15 +3523,7 @@ export class BotUpdate {
             ? 'freekassa'
             : paymentMethod;
 
-      const sbpFkCurId = parseInt(process.env.FREEKASSA_SBP_CUR_ID || '44', 10);
-      const cardFkCurId = parseInt(
-        process.env.FREEKASSA_CARD_CUR_ID || '36',
-        10,
-      );
-      const cryptoFkCurId = parseInt(
-        process.env.FREEKASSA_CRYPTO_CUR_ID || '15',
-        10,
-      );
+      const fkChannel = channelFromBotPaymentMethod(paymentMethod);
 
       let effectiveQuantity = quantity;
       let showSbpStarsCapNotice = false;
@@ -3645,20 +3639,10 @@ export class BotUpdate {
         payment_system_fee_percent: priceDetails.payment_fee_percent.toString(),
         purchase_price_usd: priceDetails.purchase_price_usd.toString(),
         net_profit_rub: priceDetails.net_profit_rub.toString(),
-        freekassa_suggested_method_id:
-          paymentMethod === 'freekassa_crypto' &&
-          Number.isFinite(cryptoFkCurId) &&
-          cryptoFkCurId > 0
-            ? cryptoFkCurId
-            : paymentMethod === 'freekassa_card' &&
-                Number.isFinite(cardFkCurId) &&
-                cardFkCurId > 0
-              ? cardFkCurId
-              : paymentMethod === 'freekassa' &&
-                  Number.isFinite(sbpFkCurId) &&
-                  sbpFkCurId > 0
-                ? sbpFkCurId
-                : undefined,
+        freekassa_channel: fkChannel ?? undefined,
+        freekassa_suggested_method_id: fkChannel
+          ? resolveFreekassaMethodId(fkChannel)
+          : undefined,
       });
 
       if (paymentMethod === 'ton') {
