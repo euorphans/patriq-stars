@@ -38,12 +38,9 @@ export function isFreekassaCardPayment(payment: {
 /** ID способа оплаты `i` для Freekassa createOrder / SCI. */
 export function resolveFreekassaMethodId(channel: FreekassaPaymentChannel): number {
   switch (channel) {
-    case 'card': {
-      const fromEnv = parseInt(process.env.FREEKASSA_CARD_CUR_ID || '', 10);
-      return Number.isFinite(fromEnv) && fromEnv > 0
-        ? fromEnv
-        : FREEKASSA_CARD_METHOD_ID;
-    }
+    case 'card':
+      // Карты 5.7 — только API i=36 (Card RUB API), не переопределяем на СБП.
+      return FREEKASSA_CARD_METHOD_ID;
     case 'sbp': {
       const fromEnv = parseInt(process.env.FREEKASSA_SBP_CUR_ID || '', 10);
       return Number.isFinite(fromEnv) && fromEnv > 0
@@ -57,6 +54,27 @@ export function resolveFreekassaMethodId(channel: FreekassaPaymentChannel): numb
         : FREEKASSA_CRYPTO_METHOD_ID;
     }
   }
+}
+
+/** Канал FK по данным платежа (fallback, если freekassa_channel не передан). */
+export function inferFreekassaChannelFromPayment(data: {
+  freekassa_channel?: FreekassaPaymentChannel;
+  crypto_currency?: string | null;
+  payment_method?: string;
+}): FreekassaPaymentChannel | undefined {
+  if (data.freekassa_channel) {
+    return data.freekassa_channel;
+  }
+  if (data.crypto_currency === FREEKASSA_CARD_MARKER) {
+    return 'card';
+  }
+  if (data.crypto_currency === FREEKASSA_CRYPTO_MARKER) {
+    return 'crypto';
+  }
+  if (data.payment_method === 'FREEKASSA') {
+    return 'sbp';
+  }
+  return undefined;
 }
 
 export function freekassaApiMethodIds(): number[] {

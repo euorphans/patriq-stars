@@ -3523,7 +3523,14 @@ export class BotUpdate {
             ? 'freekassa'
             : paymentMethod;
 
-      const fkChannel = channelFromBotPaymentMethod(paymentMethod);
+      let fkChannel = channelFromBotPaymentMethod(paymentMethod);
+      if (paymentMethod === 'freekassa_card') {
+        fkChannel = 'card';
+      } else if (paymentMethod === 'freekassa_crypto') {
+        fkChannel = 'crypto';
+      } else if (paymentMethod === 'freekassa') {
+        fkChannel = 'sbp';
+      }
 
       let effectiveQuantity = quantity;
       let showSbpStarsCapNotice = false;
@@ -3644,6 +3651,12 @@ export class BotUpdate {
           ? resolveFreekassaMethodId(fkChannel)
           : undefined,
       });
+
+      if (paymentMethod === 'freekassa_card') {
+        this.logger.log(
+          `FK card payment #${payment.order_number}: channel=card, i=${resolveFreekassaMethodId('card')}, crypto_currency=${payment.crypto_currency}`,
+        );
+      }
 
       if (paymentMethod === 'ton') {
         await this.showTonPayment(ctx, payment, amountTon);

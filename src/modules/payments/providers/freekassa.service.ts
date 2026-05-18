@@ -3,6 +3,7 @@ import axios from 'axios';
 import * as crypto from 'crypto';
 import {
   type FreekassaPaymentChannel,
+  FREEKASSA_CARD_METHOD_ID,
   freekassaApiMethodIds,
   resolveFreekassaMethodId,
 } from '@/shared/utils/freekassa-payment.util';
@@ -174,7 +175,17 @@ export class FreekassaService {
 
   private resolveMethodId(params: CreateFreekassaPaymentParams): number {
     if (params.channel) {
-      return resolveFreekassaMethodId(params.channel);
+      const id = resolveFreekassaMethodId(params.channel);
+      if (
+        params.channel === 'card' &&
+        typeof params.suggestedMethodId === 'number' &&
+        params.suggestedMethodId !== id
+      ) {
+        this.logger.warn(
+          `FK card: ignoring suggestedMethodId=${params.suggestedMethodId}, using i=${id}`,
+        );
+      }
+      return id;
     }
     if (
       typeof params.suggestedMethodId === 'number' &&
@@ -194,10 +205,16 @@ export class FreekassaService {
     params: CreateFreekassaPaymentParams,
   ): Promise<{ id: string; url: string }> {
     const methodId = this.resolveMethodId(params);
-    if (this.usesApiMethod(methodId)) {
-      return this.createPaymentViaApi({ ...params, suggestedMethodId: methodId });
+    if (params.channel === 'card' && methodId !== FREEKASSA_CARD_METHOD_ID) {
+      throw new Error(
+        `Freekassa card: expected i=${FREEKASSA_CARD_METHOD_ID}, got i=${methodId}`,
+      );
     }
-    return this.createPaymentViaSci({ ...params, suggestedMethodId: methodId });
+    const payload = { ...params, suggestedMethodId: methodId };
+    if (this.usesApiMethod(methodId)) {
+      return this.createPaymentViaApi(payload);
+    }
+    return this.createPaymentViaSci(payload);
   }
 
   /** API v1 — СБП / карты, страница оплаты paymentt.kassa.ai */
@@ -255,7 +272,11 @@ export class FreekassaService {
     );
 
     try {
-      await this.assertPaymentSystemAvailable(shopId, paymentSystemId);
+      await this.assertPaymentSystemAvailable(
+        shopId,
+        paymentSystemId,
+        params.channel,
+      );
 
       const { status, data } = await axios.post<FkApiCreateOrderResponse>(
         `${this.API_BASE_URL}/orders/create`,
@@ -306,10 +327,11 @@ export class FreekassaService {
     }
   }
 
-  /** POST /currencies/{id}/status — диагностика перед созданием заказа */
+  /** POST /currencies/{id}/status — проверка перед createOrder */
   private async assertPaymentSystemAvailable(
     shopId: number,
     paymentSystemId: number,
+    channel?: FreekassaPaymentChannel,
   ): Promise<void> {
     const body: Record<string, string | number> = {
       shopId,
@@ -329,11 +351,20 @@ export class FreekassaService {
       );
 
       if (data.type !== 'success') {
+        const msg = data.message || JSON.stringify(data);
         this.logger.warn(
-          `Freekassa: payment system ${paymentSystemId} status check: ${JSON.stringify(data)}`,
+          `Freekassa: payment system ${paymentSystemId} status: ${msg}`,
         );
+        if (channel === 'card') {
+          throw new Error(
+            `Карты (i=${paymentSystemId}) недоступны в Freekassa: ${msg}. Включите «Card RUB API» (36) в ЛК и IP сервера.`,
+          );
+        }
       }
     } catch (err: any) {
+      if (channel === 'card' && err.message?.includes('недоступны')) {
+        throw err;
+      }
       this.logger.warn(
         `Freekassa: could not check status for i=${paymentSystemId}: ${err.message}`,
       );

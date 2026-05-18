@@ -17,6 +17,7 @@ import {
   isRetryableError,
   withTransactionRetry,
 } from '@/shared/utils';
+import { inferFreekassaChannelFromPayment } from '@/shared/utils/freekassa-payment.util';
 
 /** Окно ожидания оплаты TON (автоотмена, проверка «истекло» в статусе). */
 export const TON_PAYMENT_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -91,13 +92,18 @@ export class PaymentsService {
       let externalPaymentData: any = null;
 
       switch (data.payment_method) {
-        case PaymentMethod.FREEKASSA:
+        case PaymentMethod.FREEKASSA: {
+          const fkChannel = inferFreekassaChannelFromPayment({
+            freekassa_channel: data.freekassa_channel,
+            crypto_currency: data.crypto_currency,
+            payment_method: data.payment_method,
+          });
           externalPaymentData = await withRetry(
             () =>
               this.freekassaService.createPayment({
                 orderId: payment.order_number.toString(),
                 amountRub: parseFloat(data.amount_rub),
-                channel: data.freekassa_channel,
+                channel: fkChannel,
                 suggestedMethodId: data.freekassa_suggested_method_id,
                 payerEmail: `${data.user_telegram_id}@telegram.org`,
               }),
@@ -114,6 +120,7 @@ export class PaymentsService {
             },
           );
           break;
+        }
 
         case PaymentMethod.HELEKET:
           if (!data.amount_crypto || !data.crypto_currency) {
